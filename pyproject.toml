@@ -1,0 +1,21 @@
+[project]
+name = "aetheros"
+version = "0.1.0"
+description = "The Ultimate AI Orchestration Platform"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.10.0",
+    "langgraph>=0.2.0",
+    "dspy-ai>=2.5.0",
+    "gitpython>=3.1.0",
+    "redis>=5.2.0",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+]

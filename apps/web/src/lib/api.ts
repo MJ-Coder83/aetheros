@@ -1,0 +1,188 @@
+/** InkosAI API client — typed fetch wrapper.
+ *
+ *  In development, all requests go through /api/* proxy to avoid CORS.
+ *  Set NEXT_PUBLIC_API_URL for the backend if different from default.
+ */
+
+const API_URL = ""; // Requests go through Next.js API proxy
+
+// Direct backend URL (used only if you bypass the proxy)
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+class ApiClientError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiClientError";
+  }
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const url = `${API_URL}${path}`;
+  const res = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => res.statusText);
+    throw new ApiClientError(res.status, body);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+/* ── Tape ─────────────────────────────────────────────────────── */
+
+import type { TapeEntry } from "@/types";
+
+export const tapeApi = {
+  getEntries(params?: {
+    event_type?: string;
+    agent_id?: string;
+    limit?: number;
+  }): Promise<TapeEntry[]> {
+    const search = new URLSearchParams();
+    if (params?.event_type) search.set("event_type", params.event_type);
+    if (params?.agent_id) search.set("agent_id", params.agent_id);
+    if (params?.limit) search.set("limit", String(params.limit));
+    const qs = search.toString();
+    return request(`/api/tape/entries${qs ? `?${qs}` : ""}`);
+  },
+
+  getEntry(id: string): Promise<TapeEntry> {
+    return request(`/api/tape/entries/${id}`);
+  },
+
+  getRecent(limit = 20): Promise<TapeEntry[]> {
+    return request(`/api/tape/entries?limit=${limit}`);
+  },
+};
+
+/* ── Prime Introspection ──────────────────────────────────────── */
+
+import type { SystemSnapshot } from "@/types";
+
+export const primeApi = {
+  snapshot(): Promise<SystemSnapshot> {
+    return request("/api/prime/snapshot");
+  },
+};
+
+/* ── Proposals ────────────────────────────────────────────────── */
+
+import type {
+  Proposal,
+  ProposalStatus,
+  ProposalSummary,
+} from "@/types";
+
+export const proposalsApi = {
+  list(status?: ProposalStatus): Promise<Proposal[]> {
+    const qs = status ? `?status=${status}` : "";
+    return request(`/api/prime/proposals${qs}`);
+  },
+
+  get(id: string): Promise<Proposal> {
+    return request(`/api/prime/proposals/${id}`);
+  },
+
+  approve(id: string, reviewer: string): Promise<Proposal> {
+    return request(`/api/prime/proposals/${id}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer }),
+    });
+  },
+
+  reject(id: string, reviewer: string, reason?: string): Promise<Proposal> {
+    return request(`/api/prime/proposals/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer, reason }),
+    });
+  },
+
+  summarize(): Promise<ProposalSummary[]> {
+    return request("/api/prime/proposals/summarize");
+  },
+};
+
+/* ── Skill Evolution ──────────────────────────────────────────── */
+
+import type { SkillAnalysis } from "@/types";
+
+// Extend types for skill evolution endpoints
+interface SkillEvolutionProposalLocal {
+  id: string;
+  proposal_id: string;
+  evolution_type: string;
+  target_skill_ids: string[];
+  new_skill_descriptor: unknown | null;
+  before_snapshot: unknown[];
+  reasoning: string;
+  created_at: string;
+}
+
+export const skillEvolutionApi = {
+  analyze(): Promise<SkillAnalysis[]> {
+    return request("/api/prime/skill-evolution/analyze");
+  },
+
+  proposals(): Promise<SkillEvolutionProposalLocal[]> {
+    return request("/api/prime/skill-evolution/proposals");
+  },
+};
+
+/* ── Simulation ───────────────────────────────────────────────── */
+
+import type {
+  ComparisonReport,
+  SimulationRun,
+  SimulationStatus,
+  WhatIfScenario,
+} from "@/types";
+
+export const simulationApi = {
+  list(status?: SimulationStatus): Promise<SimulationRun[]> {
+    const qs = status ? `?status=${status}` : "";
+    return request(`/api/simulation/runs${qs}`);
+  },
+
+  get(id: string): Promise<SimulationRun> {
+    return request(`/api/simulation/runs/${id}`);
+  },
+
+  run(scenario: WhatIfScenario, timeout = 60): Promise<SimulationRun> {
+    return request("/api/simulation/run", {
+      method: "POST",
+      body: JSON.stringify({ scenario, timeout_seconds: timeout }),
+    });
+  },
+
+  compare(id: string): Promise<ComparisonReport> {
+    return request(`/api/simulation/runs/${id}/compare`);
+  },
+
+  rollback(id: string): Promise<unknown> {
+    return request(`/api/simulation/runs/${id}/rollback`, { method: "POST" });
+  },
+
+  scenarios(): Promise<WhatIfScenario[]> {
+    return request("/api/simulation/scenarios");
+  },
+};
+
+/* ── Health ───────────────────────────────────────────────────── */
+
+export const healthApi = {
+  check(): Promise<{ status: string }> {
+    return request("/api/health");
+  },
+};

@@ -9,7 +9,8 @@ import {
   FlaskConical,
   LayoutDashboard,
   MessageSquare,
-  User,
+  Settings,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -63,10 +64,41 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* User avatar placeholder */}
-        <div className="flex items-center gap-3">
+        {/* Right side: search trigger + settings */}
+        <div className="flex items-center gap-2">
+          {/* Command palette trigger */}
+          <button
+            onClick={() =>
+              document.dispatchEvent(
+                new KeyboardEvent("keydown", {
+                  key: "k",
+                  metaKey: true,
+                  ctrlKey: true,
+                }),
+              )
+            }
+            className="hidden sm:flex items-center gap-2 rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-1.5 text-xs text-muted-foreground hover:border-inkos-purple/40 hover:text-foreground transition-all"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Search</span>
+            <kbd className="font-mono text-[9px] bg-inkos-navy-800/60 px-1.5 py-0.5 rounded border border-inkos-purple/20 ml-2">
+              ⌘K
+            </kbd>
+          </button>
+
+          {/* Settings button */}
+          <button
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent("open-settings"))
+            }
+            className="h-8 w-8 rounded-md flex items-center justify-center text-muted-foreground hover:bg-inkos-purple/10 hover:text-foreground transition-all"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+
+          {/* User avatar */}
           <div className="h-8 w-8 rounded-full bg-inkos-purple/20 border border-inkos-purple/30 flex items-center justify-center">
-            <User className="h-4 w-4 text-inkos-purple-400" />
+            <Brain className="h-3.5 w-3.5 text-inkos-purple-400" />
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   tapeApi,
   primeApi,
@@ -22,6 +23,7 @@ export function useTapeEntries(params?: {
   return useQuery({
     queryKey: ["tape", "entries", params],
     queryFn: () => tapeApi.getEntries(params),
+    refetchInterval: 10_000,
   });
 }
 
@@ -29,7 +31,7 @@ export function useRecentTape(limit = 20) {
   return useQuery({
     queryKey: ["tape", "recent", limit],
     queryFn: () => tapeApi.getRecent(limit),
-    refetchInterval: 10_000, // Auto-refresh every 10s
+    refetchInterval: 10_000,
   });
 }
 
@@ -49,6 +51,7 @@ export function useProposals(status?: ProposalStatus) {
   return useQuery({
     queryKey: ["proposals", status],
     queryFn: () => proposalsApi.list(status),
+    refetchInterval: 15_000,
   });
 }
 
@@ -64,7 +67,17 @@ export function useApproveProposal() {
   return useMutation({
     mutationFn: ({ id, reviewer }: { id: string; reviewer: string }) =>
       proposalsApi.approve(id, reviewer),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["proposals"] }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["proposals"] });
+      toast.success("Proposal approved", {
+        description: "The proposal has been approved and can now be implemented.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to approve proposal", {
+        description: error.message,
+      });
+    },
   });
 }
 
@@ -80,7 +93,17 @@ export function useRejectProposal() {
       reviewer: string;
       reason?: string;
     }) => proposalsApi.reject(id, reviewer, reason),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["proposals"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["proposals"] });
+      toast.success("Proposal rejected", {
+        description: "The proposal has been rejected.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Failed to reject proposal", {
+        description: error.message,
+      });
+    },
   });
 }
 
@@ -90,6 +113,7 @@ export function useSimulations(status?: SimulationStatus) {
   return useQuery({
     queryKey: ["simulations", status],
     queryFn: () => simulationApi.list(status),
+    refetchInterval: 8_000, // Poll more often for running sims
   });
 }
 
@@ -110,7 +134,17 @@ export function useRunSimulation() {
       scenario: WhatIfScenario;
       timeout?: number;
     }) => simulationApi.run(scenario, timeout),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["simulations"] }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["simulations"] });
+      toast.success("Simulation started", {
+        description: `Running "${variables.scenario.name}"...`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Simulation failed", {
+        description: error.message,
+      });
+    },
   });
 }
 
@@ -118,7 +152,17 @@ export function useRollbackSimulation() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => simulationApi.rollback(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["simulations"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["simulations"] });
+      toast.success("Simulation rolled back", {
+        description: "The simulation has been rolled back. No side effects on production.",
+      });
+    },
+    onError: (error) => {
+      toast.error("Rollback failed", {
+        description: error.message,
+      });
+    },
   });
 }
 

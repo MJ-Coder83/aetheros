@@ -11,11 +11,13 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { SkeletonCard, EmptyState } from "@/components/skeleton";
 import { useProposals, useApproveProposal, useRejectProposal } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -37,11 +39,34 @@ const RISK_COLOURS: Record<RiskLevel, string> = {
 export default function ProposalsPage() {
   const [statusFilter, setStatusFilter] = useState<ProposalStatus | "all">("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
   const { data: proposals, isLoading } = useProposals(
     statusFilter === "all" ? undefined : statusFilter,
   );
   const approveMutation = useApproveProposal();
   const rejectMutation = useRejectProposal();
+
+  async function handleApprove(id: string) {
+    setActingId(id);
+    try {
+      await approveMutation.mutateAsync({ id, reviewer: "web-user" });
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function handleReject(id: string) {
+    setActingId(id);
+    try {
+      await rejectMutation.mutateAsync({
+        id,
+        reviewer: "web-user",
+        reason: "Rejected via web console",
+      });
+    } finally {
+      setActingId(null);
+    }
+  }
 
   const counts = {
     all: proposals?.length ?? 0,
@@ -101,15 +126,19 @@ export default function ProposalsPage() {
         className="space-y-3"
       >
         {isLoading ? (
-          <div className="space-y-3 animate-pulse">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 rounded-xl bg-muted/30" />
-            ))}
+          <div className="space-y-3">
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={4} />
           </div>
         ) : !proposals || proposals.length === 0 ? (
           <Card className="glass border-inkos-purple/20">
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              No proposals found. Prime will generate them from introspection.
+            <CardContent>
+              <EmptyState
+                icon={Vote}
+                title="No proposals yet"
+                description="Prime will automatically generate proposals from system introspection. They'll appear here for your review."
+              />
             </CardContent>
           </Card>
         ) : (
@@ -121,18 +150,9 @@ export default function ProposalsPage() {
               onToggle={() =>
                 setExpanded(expanded === proposal.id ? null : proposal.id)
               }
-              onApprove={() =>
-                approveMutation.mutate({ id: proposal.id, reviewer: "web-user" })
-              }
-              onReject={() =>
-                rejectMutation.mutate({
-                  id: proposal.id,
-                  reviewer: "web-user",
-                  reason: "Rejected via web console",
-                })
-              }
-              isApproving={approveMutation.isPending}
-              isRejecting={rejectMutation.isPending}
+              onApprove={() => handleApprove(proposal.id)}
+              onReject={() => handleReject(proposal.id)}
+              isActing={actingId === proposal.id}
             />
           ))
         )}
@@ -147,19 +167,17 @@ function ProposalCard({
   onToggle,
   onApprove,
   onReject,
-  isApproving,
-  isRejecting,
+  isActing,
 }: {
   proposal: Proposal;
   expanded: boolean;
   onToggle: () => void;
   onApprove: () => void;
   onReject: () => void;
-  isApproving: boolean;
-  isRejecting: boolean;
+  isActing: boolean;
 }) {
   const config = STATUS_CONFIG[proposal.status];
-  const StatusIcon = config.icon;
+  const StatusIcon = isActing ? Loader2 : config.icon;
 
   return (
     <Card className="glass border-inkos-purple/20 overflow-hidden">
@@ -168,7 +186,7 @@ function ProposalCard({
         onClick={onToggle}
         className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-inkos-purple/5 transition-colors"
       >
-        <StatusIcon className={cn("h-5 w-5 shrink-0", config.colour.split(" ")[1])} />
+        <StatusIcon className={cn("h-5 w-5 shrink-0", isActing ? "animate-spin text-inkos-cyan" : config.colour.split(" ")[1])} />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">{proposal.title}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -206,7 +224,24 @@ function ProposalCard({
               <DetailRow label="Description" value={proposal.description} />
               <DetailRow label="Reasoning" value={proposal.reasoning} />
               <DetailRow label="Expected Impact" value={proposal.expected_impact} />
-              <DetailRow label="Confidence" value={`${Math.round(proposal.confidence_score * 100)}%`} />
+
+              <div className="flex items-center gap-3">
+                <DetailRow label="Confidence" value={`${Math.round(proposal.confidence_score * 100)}%`} />
+                {/* Confidence bar */}
+                <div className="flex-1 h-2 rounded-full bg-inkos-navy-800 overflow-hidden max-w-[120px]">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      proposal.confidence_score >= 0.7
+                        ? "bg-emerald-400"
+                        : proposal.confidence_score >= 0.4
+                          ? "bg-amber-400"
+                          : "bg-red-400",
+                    )}
+                    style={{ width: `${Math.round(proposal.confidence_score * 100)}%` }}
+                  />
+                </div>
+              </div>
 
               {proposal.implementation_steps.length > 0 && (
                 <div>
@@ -231,9 +266,13 @@ function ProposalCard({
                       e.stopPropagation();
                       onApprove();
                     }}
-                    disabled={isApproving || isRejecting}
+                    disabled={isActing}
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                    {isActing ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                    )}
                     Approve
                   </Button>
                   <Button
@@ -243,9 +282,13 @@ function ProposalCard({
                       e.stopPropagation();
                       onReject();
                     }}
-                    disabled={isApproving || isRejecting}
+                    disabled={isActing}
                   >
-                    <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                    {isActing ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
+                    )}
                     Reject
                   </Button>
                 </div>

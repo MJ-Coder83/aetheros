@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { CommandPalette } from "@/components/command-palette";
+import { SettingsDialog } from "@/components/settings-dialog";
+import { GlobalShortcuts } from "@/components/global-shortcuts";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,8 +35,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <Providers>
+          <GlobalShortcuts />
           <Navbar />
           <main className="flex-1">{children}</main>
+          <CommandPalette />
+          <SettingsDialog />
         </Providers>
       </body>
     </html>

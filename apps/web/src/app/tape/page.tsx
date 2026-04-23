@@ -2,23 +2,32 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ScrollText, Search, Filter } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollText, Search, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { SkeletonList, EmptyState } from "@/components/skeleton";
 import { useTapeEntries } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 
+const PAGE_SIZE = 20;
+
 const EVENT_TYPE_COLOURS: Record<string, string> = {
   "prime.introspection": "border-inkos-purple/40 text-inkos-purple-400",
+  "prime.tape_query": "border-inkos-purple/40 text-inkos-purple-400",
+  "prime.agent_lookup": "border-inkos-purple/40 text-inkos-purple-400",
+  "prime.skill_list": "border-inkos-purple/40 text-inkos-purple-400",
+  "prime.domain_list": "border-inkos-purple/40 text-inkos-purple-400",
   "prime.proposal_created": "border-inkos-cyan/40 text-inkos-cyan-400",
   "prime.proposal_approved": "border-emerald-400/40 text-emerald-400",
   "prime.proposal_rejected": "border-red-400/40 text-red-400",
   "prime.proposal_implemented": "border-emerald-400/40 text-emerald-400",
   "prime.skill_analysis": "border-inkos-purple/40 text-inkos-purple-400",
   "prime.skill_evolution_applied": "border-inkos-cyan/40 text-inkos-cyan-400",
+  "prime.skill_evolution_rollback": "border-amber-400/40 text-amber-400",
   "simulation.started": "border-amber-400/40 text-amber-400",
   "simulation.completed": "border-emerald-400/40 text-emerald-400",
   "simulation.timeout": "border-red-400/40 text-red-400",
@@ -31,7 +40,8 @@ const EVENT_TYPE_COLOURS: Record<string, string> = {
 export default function TapePage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
-  const { data: entries, isLoading } = useTapeEntries({ limit: 100 });
+  const [page, setPage] = useState(0);
+  const { data: entries, isLoading } = useTapeEntries({ limit: 200 });
 
   const eventTypes = useMemo(() => {
     if (!entries) return [];
@@ -57,6 +67,11 @@ export default function TapePage() {
     return result;
   }, [entries, filterType, search]);
 
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const paged = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
       {/* Header */}
@@ -71,7 +86,8 @@ export default function TapePage() {
             Tape Viewer
           </h1>
           <p className="text-sm text-muted-foreground">
-            Immutable audit trail — {entries?.length ?? 0} events
+            Immutable audit trail — {filtered.length} event{filtered.length !== 1 ? "s" : ""}
+            {filterType && ` (filtered by ${filterType})`}
           </p>
         </div>
       </motion.div>
@@ -81,45 +97,59 @@ export default function TapePage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="flex flex-wrap items-center gap-3"
+        className="space-y-3"
       >
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search events..."
-            className="pl-9 bg-inkos-navy-800/50 border-inkos-purple/20 placeholder:text-muted-foreground/50"
-          />
-        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Search events, agents, or payload..."
+              className="pl-9 bg-inkos-navy-800/50 border-inkos-purple/20 placeholder:text-muted-foreground/50"
+            />
+          </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <Filter className="h-4 w-4 text-muted-foreground" />
-          <button
-            onClick={() => setFilterType(null)}
-            className={cn(
-              "text-xs px-2.5 py-1 rounded-full border transition-all",
-              !filterType
-                ? "bg-inkos-purple/20 border-inkos-purple/40 text-inkos-purple-400"
-                : "border-border text-muted-foreground hover:border-inkos-purple/30",
-            )}
-          >
-            All
-          </button>
-          {eventTypes.map((type) => (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             <button
-              key={type}
-              onClick={() => setFilterType(filterType === type ? null : type)}
+              onClick={() => {
+                setFilterType(null);
+                setPage(0);
+              }}
               className={cn(
-                "text-xs px-2.5 py-1 rounded-full border transition-all truncate max-w-[180px]",
-                filterType === type
+                "text-xs px-2.5 py-1 rounded-full border transition-all",
+                !filterType
                   ? "bg-inkos-purple/20 border-inkos-purple/40 text-inkos-purple-400"
                   : "border-border text-muted-foreground hover:border-inkos-purple/30",
               )}
             >
-              {type}
+              All ({entries?.length ?? 0})
             </button>
-          ))}
+            {eventTypes.map((type) => {
+              const count = entries?.filter((e) => e.event_type === type).length ?? 0;
+              return (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setFilterType(filterType === type ? null : type);
+                    setPage(0);
+                  }}
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-full border transition-all truncate max-w-[180px]",
+                    filterType === type
+                      ? "bg-inkos-purple/20 border-inkos-purple/40 text-inkos-purple-400"
+                      : "border-border text-muted-foreground hover:border-inkos-purple/30",
+                  )}
+                >
+                  {type} ({count})
+                </button>
+              );
+            })}
+          </div>
         </div>
       </motion.div>
 
@@ -132,34 +162,31 @@ export default function TapePage() {
         <Card className="glass border-inkos-purple/20">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="space-y-3 p-6 animate-pulse">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-12 rounded bg-muted/30"
-                  />
-                ))}
-              </div>
+              <div className="p-6"><SkeletonList rows={8} /></div>
             ) : filtered.length === 0 ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">
-                {entries?.length === 0
-                  ? "No Tape events yet. Start the backend to see activity."
-                  : "No events match your search criteria."}
-              </p>
+              <EmptyState
+                icon={ScrollText}
+                title={entries?.length === 0 ? "No Tape events yet" : "No matching events"}
+                description={
+                  entries?.length === 0
+                    ? "Start the backend API to begin recording system activity to the Tape."
+                    : "Try adjusting your search or filter criteria."
+                }
+              />
             ) : (
-              <ScrollArea className="max-h-[calc(100vh-320px)]">
+              <ScrollArea className="max-h-[calc(100vh-340px)]">
                 <div className="relative">
                   {/* Timeline line */}
                   <div className="absolute left-5 top-0 bottom-0 w-px bg-inkos-purple/20" />
 
                   <ul>
-                    {filtered.map((entry, idx) => (
-                      <li key={entry.id} className="relative pl-12 pr-4 py-3">
+                    {paged.map((entry, idx) => (
+                      <li key={entry.id} className="relative pl-12 pr-4 py-3 hover:bg-inkos-purple/5 transition-colors">
                         {/* Dot */}
                         <div
                           className={cn(
                             "absolute left-[14px] top-5 h-2.5 w-2.5 rounded-full border-2",
-                            idx === 0
+                            safePage === 0 && idx === 0
                               ? "bg-inkos-cyan border-inkos-cyan shadow-sm shadow-inkos-cyan/50"
                               : "bg-inkos-navy-900 border-inkos-purple/40",
                           )}
@@ -195,11 +222,14 @@ export default function TapePage() {
 
                         {/* Payload preview */}
                         {Object.keys(entry.payload).length > 0 && (
-                          <pre className="mt-1 text-[11px] text-muted-foreground/70 font-mono truncate">
-                            {JSON.stringify(entry.payload).slice(0, 200)}
-                            {JSON.stringify(entry.payload).length > 200 &&
-                              "..."}
-                          </pre>
+                          <details className="mt-1 group">
+                            <summary className="text-[11px] text-muted-foreground/60 cursor-pointer hover:text-muted-foreground transition-colors">
+                              View payload
+                            </summary>
+                            <pre className="mt-1 text-[11px] text-muted-foreground/70 font-mono bg-inkos-navy-800/50 rounded-md p-2 overflow-x-auto max-h-40">
+                              {JSON.stringify(entry.payload, null, 2)}
+                            </pre>
+                          </details>
                         )}
                       </li>
                     ))}
@@ -210,6 +240,44 @@ export default function TapePage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Pagination */}
+      {filtered.length > PAGE_SIZE && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="flex items-center justify-between text-sm"
+        >
+          <p className="text-xs text-muted-foreground">
+            Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs border-inkos-purple/20"
+              disabled={safePage === 0}
+              onClick={() => setPage((p) => p - 1)}
+            >
+              <ChevronLeft className="h-3 w-3 mr-1" />
+              Prev
+            </Button>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {safePage + 1} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs border-inkos-purple/20"
+              disabled={safePage >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+              <ChevronRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 }

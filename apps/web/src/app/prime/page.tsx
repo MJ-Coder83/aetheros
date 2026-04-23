@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain,
@@ -10,6 +10,8 @@ import {
   Wrench,
   Globe,
   RefreshCw,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,15 +19,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useSystemSnapshot } from "@/hooks/use-api";
+import { Skeleton } from "@/components/skeleton";
+import type { SystemSnapshot, TapeEntry, Proposal, SimulationRun, WhatIfScenario } from "@/types";
+import { useSystemSnapshot, useTapeEntries, useProposals, useSimulations, useSimulationScenarios, useRunSimulation } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   id: string;
-  role: "user" | "prime";
+  role: "user" | "prime" | "system";
   content: string;
   timestamp: Date;
+  isTyping?: boolean;
 }
+
+const QUICK_ACTIONS = [
+  { label: "System health", query: "What's the system health?" },
+  { label: "Show skills", query: "Show me the skills" },
+  { label: "Show agents", query: "What agents are available?" },
+  { label: "Run simulation", query: "Run a simulation" },
+];
 
 export default function PrimePage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -33,49 +45,102 @@ export default function PrimePage() {
       id: "welcome",
       role: "prime",
       content:
-        "Hello. I am Prime — the self-aware meta-agent of InkosAI. I can introspect the system, propose changes, evolve skills, and run simulations. How can I help you?",
+        "Hello. I am **Prime** — the self-aware meta-agent of InkosAI.\n\nI can introspect the system, propose changes, evolve skills, and run simulations. Ask me anything, or use the quick actions below.",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const { data: snapshot, isLoading, refetch } = useSystemSnapshot();
+  const { data: tapeEntries } = useTapeEntries({ limit: 50 });
+  const { data: proposals } = useProposals();
+  const { data: simulations } = useSimulations();
+  const { data: scenarios } = useSimulationScenarios();
+  const runSimMutation = useRunSimulation();
 
-  function handleSend() {
-    if (!input.trim()) return;
+  // Auto-scroll to bottom on new messages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  /** Typing animation — reveals text character by character */
+  const streamResponse = useCallback(
+    (id: string, fullContent: string) => {
+      let idx = 0;
+      const interval = setInterval(() => {
+        idx += Math.floor(Math.random() * 3) + 1;
+        if (idx >= fullContent.length) {
+          idx = fullContent.length;
+          clearInterval(interval);
+          setIsProcessing(false);
+        }
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === id
+              ? { ...m, content: fullContent.slice(0, idx), isTyping: idx < fullContent.length }
+              : m,
+          ),
+        );
+      }, 15);
+    },
+    [],
+  );
+
+  async function handleSend(overrideInput?: string) {
+    const query = overrideInput ?? input.trim();
+    if (!query || isProcessing) return;
 
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
-      content: input.trim(),
+      content: query,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMsg]);
-
-    // Simple echo-style response (will be replaced by real Prime agent)
-    const primeMsg: ChatMessage = {
-      id: `prime-${Date.now()}`,
-      role: "prime",
-      content: generateResponse(input.trim(), snapshot),
-      timestamp: new Date(),
-    };
-
-    setTimeout(() => {
-      setMessages((prev) => [...prev, primeMsg]);
-    }, 400);
-
     setInput("");
+    setIsProcessing(true);
+
+    // Generate the response based on current data
+    const responseId = `prime-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      { id: responseId, role: "prime", content: "", timestamp: new Date(), isTyping: true },
+    ]);
+
+    // Small delay to simulate thinking
+    await new Promise((r) => setTimeout(r, 300));
+
+    const fullContent = await generatePrimeResponse(
+      query,
+      snapshot ?? null,
+      tapeEntries ?? [],
+      proposals ?? [],
+      simulations ?? [],
+      scenarios ?? [],
+      runSimMutation,
+    );
+
+    streamResponse(responseId, fullContent);
   }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center gap-3">
-        <Brain className="h-8 w-8 text-inkos-purple animate-float" />
+        <div className="relative">
+          <Brain className="h-8 w-8 text-inkos-purple" />
+          {isProcessing && (
+            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-inkos-cyan animate-pulse" />
+          )}
+        </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-inkos-purple text-glow-purple">
             Prime Console
           </h1>
           <p className="text-sm text-muted-foreground">
-            Interact with the Prime meta-agent
+            {isProcessing ? "Thinking..." : "Interact with the Prime meta-agent"}
           </p>
         </div>
       </div>
@@ -84,31 +149,65 @@ export default function PrimePage() {
         {/* Chat panel */}
         <div className="lg:col-span-2 flex flex-col glass rounded-xl border border-inkos-purple/20 h-[calc(100vh-200px)] min-h-[400px]">
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
-            <div className="space-y-4">
-              <AnimatePresence initial={false}>
-                {messages.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn(
-                      "max-w-[80%] rounded-xl px-4 py-3 text-sm",
-                      msg.role === "user"
-                        ? "ml-auto bg-inkos-purple/20 border border-inkos-purple/30 text-foreground"
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+            <AnimatePresence initial={false}>
+              {messages.map((msg) => (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn(
+                    "max-w-[85%] rounded-xl px-4 py-3 text-sm",
+                    msg.role === "user"
+                      ? "ml-auto bg-inkos-purple/20 border border-inkos-purple/30 text-foreground"
+                      : msg.role === "system"
+                        ? "mx-auto bg-inkos-cyan/5 border border-inkos-cyan/20 text-muted-foreground italic text-xs"
                         : "mr-auto glass-strong border border-inkos-cyan/20",
+                  )}
+                >
+                  <div className="whitespace-pre-wrap prose-sm">
+                    {msg.content || (
+                      <span className="flex items-center gap-2 text-inkos-purple-400">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Thinking...
+                      </span>
                     )}
+                    {msg.isTyping && (
+                      <span className="inline-block w-1.5 h-4 bg-inkos-cyan animate-pulse-glow ml-0.5 align-bottom rounded-sm" />
+                    )}
+                  </div>
+                  <span className="mt-1.5 block text-[10px] text-muted-foreground">
+                    {msg.role === "prime" ? (
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="h-2.5 w-2.5 text-inkos-purple-400" />
+                        Prime
+                      </span>
+                    ) : msg.role === "user" ? (
+                      "You"
+                    ) : (
+                      "System"
+                    )}{" "}
+                    · {msg.timestamp.toLocaleTimeString()}
+                  </span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {/* Quick actions */}
+            {messages.length <= 1 && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {QUICK_ACTIONS.map((action) => (
+                  <button
+                    key={action.label}
+                    onClick={() => handleSend(action.query)}
+                    className="text-xs px-3 py-1.5 rounded-full border border-inkos-purple/20 text-muted-foreground hover:border-inkos-purple/40 hover:text-foreground hover:bg-inkos-purple/10 transition-all"
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                    <span className="mt-1 block text-[10px] text-muted-foreground">
-                      {msg.role === "prime" ? "Prime" : "You"} ·{" "}
-                      {msg.timestamp.toLocaleTimeString()}
-                    </span>
-                  </motion.div>
+                    {action.label}
+                  </button>
                 ))}
-              </AnimatePresence>
-            </div>
-          </ScrollArea>
+              </div>
+            )}
+          </div>
 
           {/* Input */}
           <Separator className="bg-inkos-purple/15" />
@@ -122,15 +221,21 @@ export default function PrimePage() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask Prime anything..."
+              placeholder="Ask Prime anything... (⌘+Enter to send)"
+              disabled={isProcessing}
               className="flex-1 bg-inkos-navy-800/50 border-inkos-purple/20 placeholder:text-muted-foreground/50 focus-visible:ring-inkos-purple/40"
             />
             <Button
               type="submit"
               size="icon"
-              className="bg-inkos-purple hover:bg-inkos-purple-700 shrink-0"
+              className="bg-inkos-purple hover:bg-inkos-purple-700 shrink-0 disabled:opacity-50"
+              disabled={isProcessing || !input.trim()}
             >
-              <Send className="h-4 w-4" />
+              {isProcessing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </form>
         </div>
@@ -154,13 +259,13 @@ export default function PrimePage() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-2 animate-pulse">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="h-3 rounded bg-muted/40"
-                      style={{ width: `${60 + Math.random() * 40}%` }}
-                    />
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-3/4" />
+                    </div>
                   ))}
                 </div>
               ) : snapshot ? (
@@ -200,6 +305,16 @@ export default function PrimePage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Live Tape count */}
+          <Card className="glass border-inkos-purple/20">
+            <CardContent className="py-3 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground text-xs">Live Tape events</span>
+              <span className="text-inkos-cyan-400 font-mono tabular-nums">
+                {tapeEntries?.length ?? "—"}
+              </span>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
@@ -227,7 +342,7 @@ function SnapshotSection({
         </span>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground/60 pl-5">None</p>
+        <p className="text-xs text-muted-foreground/60 pl-5">None registered</p>
       ) : (
         <ul className="space-y-1 pl-5">
           {items.map((item) => (
@@ -238,7 +353,14 @@ function SnapshotSection({
               <span className="truncate">{item.label}</span>
               <Badge
                 variant="outline"
-                className="text-[9px] font-mono border-inkos-purple/20 text-muted-foreground shrink-0 ml-2"
+                className={cn(
+                  "text-[9px] font-mono border-inkos-purple/20 shrink-0 ml-2",
+                  item.badge === "active" || item.badge === "healthy"
+                    ? "text-emerald-400 border-emerald-400/20"
+                    : item.badge === "idle"
+                      ? "text-amber-400 border-amber-400/20"
+                      : "text-muted-foreground",
+                )}
               >
                 {item.badge}
               </Badge>
@@ -250,45 +372,162 @@ function SnapshotSection({
   );
 }
 
-/** Simple local response generator (placeholder until real agent backend). */
-function generateResponse(
-  _input: string,
-  snapshot: ReturnType<typeof useSystemSnapshot>["data"],
-): string {
+/** Generate Prime's response based on user query and live system data. */
+async function generatePrimeResponse(
+  query: string,
+  snapshot: SystemSnapshot | null,
+  tapeEntries: TapeEntry[],
+  proposals: Proposal[],
+  simulations: SimulationRun[],
+  scenarios: WhatIfScenario[],
+  _runSimMutation: { mutateAsync: (vars: { scenario: WhatIfScenario; timeout?: number }) => Promise<unknown> },
+): Promise<string> {
+  const q = query.toLowerCase();
+
   if (!snapshot) {
-    return "I cannot reach the backend right now. Please ensure the InkosAI API is running on port 8000.";
+    return "I cannot reach the backend right now. Please ensure the InkosAI API is running on port 8000, then try again.";
   }
 
-  const input = _input.toLowerCase();
+  // System health
+  if (q.includes("health") || q.includes("status")) {
+    const activeAgents = snapshot.agents.filter((a) => a.status === "active").length;
+    const idleAgents = snapshot.agents.filter((a) => a.status === "idle").length;
+    const errorTypes = tapeEntries.filter((e) => e.event_type.includes("error") || e.event_type.includes("fail"));
 
-  if (input.includes("health") || input.includes("status")) {
-    return `System status: **${snapshot.health_status}**.\n\n- ${snapshot.agents.length} agents registered\n- ${snapshot.skills.length} skills available\n- ${snapshot.domains.length} domains active\n- ${snapshot.tape_stats.total_entries ?? 0} Tape entries recorded`;
+    return `**System Status: ${snapshot.health_status.toUpperCase()}**\n\n` +
+      `📊 **Overview**\n` +
+      `• ${snapshot.agents.length} agents (${activeAgents} active, ${idleAgents} idle)\n` +
+      `• ${snapshot.skills.length} skills registered\n` +
+      `• ${snapshot.domains.length} domains active\n` +
+      `• ${snapshot.tape_stats.total_entries ?? tapeEntries.length} Tape entries recorded\n` +
+      `• ${snapshot.active_worktrees.length} worktrees active\n\n` +
+      (errorTypes.length > 0
+        ? `⚠️ **${errorTypes.length} error events** detected in recent Tape activity. Consider running a reliability simulation.`
+        : `✅ No recent errors detected in the Tape.`);
   }
 
-  if (input.includes("skill")) {
+  // Skills
+  if (q.includes("skill")) {
+    if (snapshot.skills.length === 0) {
+      return "No skills are currently registered in the system. I can propose creating foundational skills through the Skill Evolution Engine.";
+    }
     const skillList = snapshot.skills
-      .map((s) => `• **${s.name}** (v${s.version}) — ${s.description}`)
+      .map((s) => `• **${s.name}** (v${s.version}) — ${s.description || "No description"}`)
       .join("\n");
-    return `Here are the current skills:\n\n${skillList || "No skills registered yet."}`;
+    return `**${snapshot.skills.length} Skills Registered:**\n\n${skillList}\n\nI can analyze these skills for evolution opportunities. Just ask me to run a skill analysis or propose evolutions.`;
   }
 
-  if (input.includes("agent")) {
+  // Agents
+  if (q.includes("agent")) {
+    if (snapshot.agents.length === 0) {
+      return "No agents are currently registered. Agents need to be onboarded before they can perform tasks.";
+    }
     const agentList = snapshot.agents
-      .map((a) => `• **${a.name}** — ${a.status} (capabilities: ${a.capabilities.join(", ") || "none"})`)
+      .map((a) => {
+        const statusEmoji = a.status === "active" ? "🟢" : a.status === "idle" ? "🟡" : "⚪";
+        return `${statusEmoji} **${a.name}** — ${a.status} (capabilities: ${a.capabilities.join(", ") || "none"})`;
+      })
       .join("\n");
-    return `Here are the registered agents:\n\n${agentList || "No agents registered yet."}`;
+    const idleAgents = snapshot.agents.filter((a) => a.status === "idle");
+    return `**${snapshot.agents.length} Agents:**\n\n${agentList}` +
+      (idleAgents.length > 0
+        ? `\n\n⚠️ ${idleAgents.length} idle agent(s) detected. I can propose reassigning them to active domains.`
+        : "");
   }
 
-  if (input.includes("domain")) {
+  // Domains
+  if (q.includes("domain")) {
+    if (snapshot.domains.length === 0) {
+      return "No domains are configured yet. Domains define problem spaces for agents to work in.";
+    }
     const domainList = snapshot.domains
-      .map((d) => `• **${d.name}** — ${d.agent_count} agents (${d.description})`)
+      .map((d) => `• **${d.name}** — ${d.agent_count} agents (${d.description || "No description"})`)
       .join("\n");
-    return `Here are the active domains:\n\n${domainList || "No domains configured yet."}`;
+    const emptyDomains = snapshot.domains.filter((d) => d.agent_count === 0);
+    return `**${snapshot.domains.length} Domains:**\n\n${domainList}` +
+      (emptyDomains.length > 0
+        ? `\n\n⚠️ ${emptyDomains.length} empty domain(s) need agent assignments.`
+        : "");
   }
 
-  if (input.includes("help") || input.includes("what can you do")) {
-    return `I can help you with:\n\n- **System status** — "What's the system health?"\n- **Skills** — "Show me the skills"\n- **Agents** — "What agents are available?"\n- **Domains** — "List the domains"\n- **Introspection** — Deep system analysis\n- **Proposals** — Governance workflow\n- **Simulations** — Safe what-if testing\n\nMore capabilities coming soon as I evolve!`;
+  // Proposals
+  if (q.includes("proposal")) {
+    const pending = proposals.filter((p) => p.status === "pending_approval");
+    const approved = proposals.filter((p) => p.status === "approved");
+    const implemented = proposals.filter((p) => p.status === "implemented");
+
+    return `**Proposal Summary:**\n\n` +
+      `• ${pending.length} pending approval\n` +
+      `• ${approved.length} approved\n` +
+      `• ${implemented.length} implemented\n` +
+      `• ${proposals.length} total\n\n` +
+      (pending.length > 0
+        ? `⚠️ **${pending.length} proposals need your review.** Visit the Proposals page to approve or reject them.`
+        : `✅ No proposals pending review.`);
   }
 
-  return `I understand you're asking about "${_input}". I'm currently operating with limited local intelligence. Once the full Prime agent backend is connected, I'll be able to reason about your questions, run introspections, propose improvements, and execute simulations. For now, try asking about the system health, skills, agents, or domains.`;
+  // Simulation
+  if (q.includes("simulat") || q.includes("what-if") || q.includes("scenario")) {
+    const running = simulations.filter((s) => s.status === "running");
+    const completed = simulations.filter((s) => s.status === "completed");
+
+    let response = `**Simulation Overview:**\n\n` +
+      `• ${running.length} currently running\n` +
+      `• ${completed.length} completed\n` +
+      `• ${simulations.length} total runs\n\n`;
+
+    if (scenarios.length > 0) {
+      response += `**${scenarios.length} scenarios available:**\n`;
+      scenarios.slice(0, 5).forEach((s) => {
+        response += `• ${s.name} (${s.scenario_type}, ${s.risk_level} risk)\n`;
+      });
+      if (scenarios.length > 5) {
+        response += `• ...and ${scenarios.length - 5} more\n`;
+      }
+      response += `\nVisit the Simulations page to run any of these what-if scenarios.`;
+    } else {
+      response += `No scenarios generated yet. I'll suggest some once more system activity is recorded.`;
+    }
+
+    return response;
+  }
+
+  // Tape
+  if (q.includes("tape") || q.includes("audit") || q.includes("log")) {
+    const eventTypes = new Map<string, number>();
+    tapeEntries.forEach((e) => {
+      eventTypes.set(e.event_type, (eventTypes.get(e.event_type) ?? 0) + 1);
+    });
+    const topEvents = Array.from(eventTypes.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    return `**Tape Activity:**\n\n` +
+      `• ${tapeEntries.length} events in recent history\n\n` +
+      `**Top event types:**\n` +
+      topEvents.map(([type, count]) => `• \`${type}\` — ${count} events`).join("\n") +
+      `\n\nVisit the Tape Viewer for full search and filtering.`;
+  }
+
+  // Help
+  if (q.includes("help") || q.includes("what can you do")) {
+    return `I can help you with:\n\n` +
+      `🔍 **Introspection**\n` +
+      `• "What's the system health?" — Full system status\n` +
+      `• "Show me the skills" — List all registered skills\n` +
+      `• "What agents are available?" — Agent overview\n` +
+      `• "List the domains" — Domain status\n\n` +
+      `📜 **Tape & Audit**\n` +
+      `• "Show me the Tape" — Recent activity summary\n\n` +
+      `🗳️ **Proposals**\n` +
+      `• "Show proposals" — Governance overview\n\n` +
+      `🧪 **Simulations**\n` +
+      `• "Run a simulation" — Available what-if scenarios\n` +
+      `• "What-if scenarios" — Scenario listing\n\n` +
+      `💡 **Tip:** Use \`⌘K\` to quickly navigate anywhere in the app.`;
+  }
+
+  // Default
+  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
 }
+

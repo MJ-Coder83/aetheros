@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: "..",
+    root: "/home/catchyosuser1/AetherOS/apps",
   },
 };
 

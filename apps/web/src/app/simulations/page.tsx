@@ -14,15 +14,20 @@ import {
   AlertTriangle,
   Zap,
   BarChart3,
+  Loader2,
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useSimulations, useSimulationScenarios, useRunSimulation, useRollbackSimulation } from "@/hooks/use-api";
+import { SkeletonCard, EmptyState } from "@/components/skeleton";
+import { useSimulations, useSimulationScenarios, useRunSimulation, useRollbackSimulation, useComparisonReport } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import type { SimulationRun, SimulationStatus, WhatIfScenario } from "@/types";
+import type { SimulationRun, SimulationStatus, WhatIfScenario, OutcomeDelta } from "@/types";
 
 const SIM_STATUS_CONFIG: Record<SimulationStatus, { icon: React.ElementType; colour: string; label: string }> = {
   pending: { icon: Clock, colour: "border-amber-400/40 text-amber-400", label: "Pending" },
@@ -43,10 +48,21 @@ const SCENARIO_TYPE_COLOURS: Record<string, string> = {
 export default function SimulationsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showScenarios, setShowScenarios] = useState(false);
+  const [compareId, setCompareId] = useState<string | null>(null);
   const { data: simulations, isLoading } = useSimulations();
   const { data: scenarios } = useSimulationScenarios();
   const runMutation = useRunSimulation();
   const rollbackMutation = useRollbackSimulation();
+  const { data: comparison } = useComparisonReport(compareId);
+
+  async function handleRun(scenario: WhatIfScenario) {
+    await runMutation.mutateAsync({ scenario, timeout: 60 });
+    setShowScenarios(false);
+  }
+
+  async function handleRollback(id: string) {
+    await rollbackMutation.mutateAsync(id);
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
@@ -71,7 +87,11 @@ export default function SimulationsPage() {
           onClick={() => setShowScenarios(!showScenarios)}
           className="bg-inkos-purple hover:bg-inkos-purple-700"
         >
-          <Play className="h-4 w-4 mr-1.5" />
+          {runMutation.isPending ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Play className="h-4 w-4 mr-1.5" />
+          )}
           New Simulation
         </Button>
       </motion.div>
@@ -93,20 +113,18 @@ export default function SimulationsPage() {
               </CardHeader>
               <CardContent>
                 {!scenarios || scenarios.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-4 text-center">
-                    No scenarios generated yet. Start the backend and Prime will
-                    suggest what-if scenarios.
-                  </p>
+                  <EmptyState
+                    icon={FlaskConical}
+                    title="No scenarios available"
+                    description="Prime will suggest what-if scenarios once the backend is running and system activity is recorded."
+                  />
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {scenarios.map((scenario) => (
                       <ScenarioCard
                         key={scenario.id}
                         scenario={scenario}
-                        onRun={() => {
-                          runMutation.mutate({ scenario, timeout: 60 });
-                          setShowScenarios(false);
-                        }}
+                        onRun={() => handleRun(scenario)}
                         isRunning={runMutation.isPending}
                       />
                     ))}
@@ -126,15 +144,29 @@ export default function SimulationsPage() {
         className="space-y-3"
       >
         {isLoading ? (
-          <div className="space-y-3 animate-pulse">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 rounded-xl bg-muted/30" />
-            ))}
+          <div className="space-y-3">
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={5} />
           </div>
         ) : !simulations || simulations.length === 0 ? (
           <Card className="glass border-inkos-purple/20">
-            <CardContent className="py-12 text-center text-sm text-muted-foreground">
-              No simulations yet. Click &ldquo;New Simulation&rdquo; to run a what-if scenario.
+            <CardContent>
+              <EmptyState
+                icon={FlaskConical}
+                title="No simulations yet"
+                description='Click "New Simulation" to run a what-if scenario and explore potential changes safely.'
+                action={
+                  <Button
+                    onClick={() => setShowScenarios(true)}
+                    size="sm"
+                    className="bg-inkos-purple hover:bg-inkos-purple-700"
+                  >
+                    <Play className="h-3.5 w-3.5 mr-1.5" />
+                    Run Your First Simulation
+                  </Button>
+                }
+              />
             </CardContent>
           </Card>
         ) : (
@@ -146,8 +178,10 @@ export default function SimulationsPage() {
               onToggle={() =>
                 setExpanded(expanded === sim.id ? null : sim.id)
               }
-              onRollback={() => rollbackMutation.mutate(sim.id)}
+              onRollback={() => handleRollback(sim.id)}
               isRollingBack={rollbackMutation.isPending}
+              comparison={compareId === sim.id ? comparison ?? null : null}
+              onCompare={() => setCompareId(compareId === sim.id ? null : sim.id)}
             />
           ))
         )}
@@ -202,7 +236,11 @@ function ScenarioCard({
         onClick={onRun}
         disabled={isRunning}
       >
-        <Play className="h-3 w-3 mr-1" />
+        {isRunning ? (
+          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+        ) : (
+          <Play className="h-3 w-3 mr-1" />
+        )}
         Run Simulation
       </Button>
     </div>
@@ -215,15 +253,20 @@ function SimulationCard({
   onToggle,
   onRollback,
   isRollingBack,
+  comparison,
+  onCompare,
 }: {
   simulation: SimulationRun;
   expanded: boolean;
   onToggle: () => void;
   onRollback: () => void;
   isRollingBack: boolean;
+  comparison: { deltas: OutcomeDelta[]; overall_assessment: string; recommendation: string; summary: string } | null;
+  onCompare: () => void;
 }) {
   const config = SIM_STATUS_CONFIG[simulation.status];
-  const StatusIcon = config.icon;
+  const isRunning = simulation.status === "running";
+  const StatusIcon = isRunning ? Loader2 : config.icon;
   const result = simulation.result;
 
   return (
@@ -232,13 +275,13 @@ function SimulationCard({
         onClick={onToggle}
         className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-inkos-purple/5 transition-colors"
       >
-        <StatusIcon className={cn("h-5 w-5 shrink-0", config.colour.split(" ")[1])} />
+        <StatusIcon className={cn("h-5 w-5 shrink-0", isRunning && "animate-spin text-inkos-cyan", config.colour.split(" ")[1])} />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">
             {simulation.scenario.name}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {simulation.scenario.scenario_type.replace(/_/g, "")} ·{" "}
+            {simulation.scenario.scenario_type.replace(/_/g, " ")} ·{" "}
             {formatDistanceToNow(new Date(simulation.created_at), {
               addSuffix: true,
             })}
@@ -307,7 +350,7 @@ function SimulationCard({
                           <div className="flex-1 h-2 rounded-full bg-inkos-navy-800 overflow-hidden">
                             <div
                               className={cn(
-                                "h-full rounded-full",
+                                "h-full rounded-full transition-all duration-500",
                                 key.includes("success")
                                   ? "bg-inkos-cyan"
                                   : "bg-red-400/60",
@@ -329,14 +372,14 @@ function SimulationCard({
 
               {/* Decision trace */}
               {result.decision_trace.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                    Decision Trace
-                  </h4>
-                  <pre className="text-[11px] font-mono text-muted-foreground/70 bg-inkos-navy-800/50 rounded-lg p-3 overflow-x-auto max-h-40">
+                <details className="group">
+                  <summary className="text-xs font-medium uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
+                    Decision Trace ({result.decision_trace.length} steps)
+                  </summary>
+                  <pre className="mt-2 text-[11px] font-mono text-muted-foreground/70 bg-inkos-navy-800/50 rounded-lg p-3 overflow-x-auto max-h-40">
                     {JSON.stringify(result.decision_trace, null, 2)}
                   </pre>
-                </div>
+                </details>
               )}
 
               {/* Error */}
@@ -347,9 +390,87 @@ function SimulationCard({
                 </div>
               )}
 
+              {/* Comparison report */}
+              {simulation.status === "completed" && (
+                <div className="space-y-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={cn(
+                      "border-inkos-cyan/30 text-inkos-cyan-400 hover:bg-inkos-cyan/10 text-xs",
+                      comparison && "bg-inkos-cyan/10",
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCompare();
+                    }}
+                  >
+                    <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+                    {comparison ? "Hide Comparison" : "Compare vs Baseline"}
+                  </Button>
+
+                  {comparison && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="bg-inkos-navy-800/30 rounded-lg p-4 space-y-3 border border-inkos-cyan/10"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={cn(
+                          "text-xs font-medium px-2 py-1 rounded-full",
+                          comparison.overall_assessment === "positive"
+                            ? "bg-emerald-400/10 text-emerald-400"
+                            : comparison.overall_assessment === "negative"
+                              ? "bg-red-400/10 text-red-400"
+                              : comparison.overall_assessment === "mixed"
+                                ? "bg-amber-400/10 text-amber-400"
+                                : "bg-muted/20 text-muted-foreground",
+                        )}>
+                          {comparison.overall_assessment}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {comparison.summary}
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {comparison.deltas.map((d) => (
+                          <div key={d.metric} className="flex items-center gap-3 text-xs">
+                            <span className="w-28 text-muted-foreground truncate">
+                              {d.metric.replace(/_/g, " ")}
+                            </span>
+                            <span className="w-10 text-right tabular-nums text-muted-foreground">
+                              {d.baseline_value.toFixed(0)}
+                            </span>
+                            <span className="text-muted-foreground">→</span>
+                            <span className={cn(
+                              "w-10 text-right tabular-nums font-medium",
+                              d.improved ? "text-emerald-400" : d.delta !== 0 ? "text-red-400" : "text-muted-foreground",
+                            )}>
+                              {d.simulation_value.toFixed(0)}
+                            </span>
+                            {d.improved ? (
+                              <ArrowUpRight className="h-3 w-3 text-emerald-400" />
+                            ) : d.delta < 0 ? (
+                              <ArrowDownRight className="h-3 w-3 text-red-400" />
+                            ) : (
+                              <Minus className="h-3 w-3 text-muted-foreground" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {comparison.recommendation && (
+                        <p className="text-xs text-muted-foreground italic border-t border-inkos-purple/10 pt-2">
+                          {comparison.recommendation}
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
               {/* Rollback button */}
               {simulation.status === "completed" && (
-                <div className="pt-2">
+                <div className="pt-1">
                   <Button
                     size="sm"
                     variant="outline"
@@ -360,7 +481,11 @@ function SimulationCard({
                     }}
                     disabled={isRollingBack}
                   >
-                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    {isRollingBack ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    )}
                     Rollback
                   </Button>
                 </div>

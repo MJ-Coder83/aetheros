@@ -92,11 +92,11 @@ class AgentRegistry:
     def unregister(self, agent_id: str) -> None:
         self._agents.pop(agent_id, None)
 
-    def list_agents(self) -> list[AgentDescriptor]:
-        return list(self._agents.values())
-
     def get_agent(self, agent_id: str) -> AgentDescriptor | None:
         return self._agents.get(agent_id)
+
+    def list_agents(self) -> list[AgentDescriptor]:
+        return list(self._agents.values())
 
 
 class SkillRegistry:
@@ -110,6 +110,9 @@ class SkillRegistry:
 
     def unregister(self, skill_id: str) -> None:
         self._skills.pop(skill_id, None)
+
+    def get_skill(self, skill_id: str) -> SkillDescriptor | None:
+        return self._skills.get(skill_id)
 
     def list_skills(self) -> list[SkillDescriptor]:
         return list(self._skills.values())
@@ -126,6 +129,9 @@ class DomainRegistry:
 
     def unregister(self, domain_id: str) -> None:
         self._domains.pop(domain_id, None)
+
+    def get_domain(self, domain_id: str) -> DomainDescriptor | None:
+        return self._domains.get(domain_id)
 
     def list_domains(self) -> list[DomainDescriptor]:
         return list(self._domains.values())

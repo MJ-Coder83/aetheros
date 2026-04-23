@@ -875,7 +875,4 @@ class SkillEvolutionEngine:
 
     def _get_skill_or_skip(self, skill_id: str) -> SkillDescriptor | None:
         """Look up a skill, returning None instead of raising if missing."""
-        for s in self._skills.list_skills():
-            if s.skill_id == skill_id:
-                return s
-        return None
+        return self._skills.get_skill(skill_id)

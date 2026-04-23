@@ -1,48 +1,75 @@
-# AetherOS — Living Specification
+# InkosAI — Living Specification
 
 ## Project Vision
 
-AetherOS is the ultimate AI orchestration and management platform that combines the best ideas from AG2, CrewAI, LangGraph, DSPy, Pydantic AI, Hermes, Bub, and TradingAgents into one unified, self-improving system with a powerful meta-agent called **Prime**.
+InkosAI is the ultimate self-governing AI operating system. It combines powerful agent orchestration, version control (AetherGit), immutable memory (Tape), and a meta-agent called **Prime** that deeply understands and continuously improves the entire system.
 
-## Core Principles
+## Core Identity
 
-- Everything is versioned (AetherGit)
-- Every action is logged (Tape)
-- The system knows itself (Prime)
-- Continuous self-improvement
-- Beautiful and usable across web, desktop, and mobile
+- **Name**: InkosAI (from "Inkosi" = King/Chief in Zulu/Xhosa + AI)
+- **Positioning**: The first true Operating System for Agentic AI with built-in self-governance and supreme intelligence.
 
-## Current Status (as of April 23, 2026)
+## Key Differentiators
 
-- Initial monorepo scaffolding complete
-- Basic Pydantic models for AetherCommit and TapeEntry
-- FastAPI backend with health and tape endpoints
-- Repository: https://github.com/MJ-Coder83/aetheros
+- Self-aware meta-agent (Prime)
+- Built-in version control for agents, crews, and systems (AetherGit) — including Git Worktree support
+- Perfect immutable memory and auditability (Tape)
+- Continuous self-improvement and evolution
+- Native multi-platform experience
 
-## 90-Day Roadmap
+## Current Status (April 23, 2026)
 
-- **Weeks 1-2**: Foundation (Tape, AetherGit, Database, CLI)
-- **Weeks 3-8**: Core Intelligence (DSPy, Prime v1, Full AetherGit)
-- **Weeks 9-16**: Full Experience (Prime Console, Multi-platform UI)
-- **Weeks 17-26**: Production Readiness
+- Core Tape service with PostgreSQL persistence implemented
+- Clean architecture with abstract repository pattern
+- 15 passing tests, full linting and type checking
 
-## Priority Features (Week 1)
+## Development Roadmap
 
-1. Living Spec document
-2. Makefile + developer tooling
-3. PostgreSQL integration
-4. Tape service
-5. Basic AetherGit
+### Phase 0: Foundation (Completed)
+
+- Project renamed to InkosAI
+- Monorepo structure + development tooling
+
+### Phase 1: Prime Enhancements (Current Focus)
+
+- Deep System Introspection
+- Multi-Step Autonomous Planning
+- Self-Modification Proposals
+- Cross-Domain Knowledge Transfer
+- Personalized Intelligence Profile (v1)
+- Complete AetherGit v1 (including Git Worktree support)
+
+### Phase 2: Core Platform Superpowers
+
+- Advanced AetherGit (semantic search, intelligent merging, Git Worktrees)
+- Rich Tape Analytics + Natural Language Query
+- Real-Time Simulation Engine
+- Multi-Agent Debate Arena
+- Skill Evolution Engine
+- Autonomous Maintenance Loop
+
+### Phase 3: User Experience & Collaboration Boosters
+
+- Collaborative Prime Sessions
+- Voice + Multi-Modal Prime
+- Explainability Dashboard
+- One-Click Domain Creation
+- Advanced real-time visualization
+
+### Phase 4: Production Hardening & Launch
+
+- Security, performance, compliance
+- Full documentation and onboarding
+- Multi-platform polish (Web + Desktop + Mobile)
+- Public launch of v1.0
+
+## Success Metrics (End of Month 9)
+
+- Prime can deeply understand and autonomously improve the system
+- Users can create, version, simulate, and evolve complex agent systems
+- InkosAI continuously improves itself
+- Beautiful and usable experience across all platforms
 
 ## Tech Stack
 
-- Python 3.13+
-- FastAPI + LangGraph + Pydantic v2 + DSPy
-- PostgreSQL + Neo4j + Redis
-- Next.js (web), Tauri (desktop), React Native (mobile)
-
-## Success Metrics (End of Month 3)
-
-- Users can create, version, and rewind agent crews
-- Prime can explain the system and create simple domains
-- Full AetherGit functionality works reliably
+Python 3.13+, FastAPI, LangGraph, Pydantic v2, DSPy, PostgreSQL, Neo4j, Next.js 16, Tauri, React Native

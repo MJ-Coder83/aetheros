@@ -13,8 +13,24 @@ from packages.prime.proposals import (
     ProposalTransitionError,
     RiskLevel,
 )
+from packages.prime.skill_evolution import (
+    EvolutionNotApprovedError,
+    EvolutionProposalNotFoundError,
+    EvolutionResult,
+    EvolutionType,
+    RollbackError,
+    SkillAnalysis,
+    SkillEvolutionEngine,
+    SkillEvolutionError,
+    SkillEvolutionProposal,
+    SkillEvolutionStore,
+)
 
 __all__ = [
+    "EvolutionNotApprovedError",
+    "EvolutionProposalNotFoundError",
+    "EvolutionResult",
+    "EvolutionType",
     "ModificationType",
     "PrimeIntrospector",
     "Proposal",
@@ -26,5 +42,11 @@ __all__ = [
     "ProposalSummary",
     "ProposalTransitionError",
     "RiskLevel",
+    "RollbackError",
+    "SkillAnalysis",
+    "SkillEvolutionEngine",
+    "SkillEvolutionError",
+    "SkillEvolutionProposal",
+    "SkillEvolutionStore",
     "SystemSnapshot",
 ]

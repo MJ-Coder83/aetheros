@@ -500,10 +500,9 @@ class HistoricalAnalysis(BaseModel):
     patterns: list[EventPattern] = []
     trends: list[TrendAnalysis] = []
     event_type_distribution: dict[str, int] = Field(default_factory=dict)
-    agent_activity_ranking: list[tuple[str, int]] = []
+    agent_activity_ranking: list[dict[str, object]] = []
     anomaly_count: int = 0
 
-    model_config = {"arbitrary_types_allowed": True}
 
 
 # ---------------------------------------------------------------------------
@@ -669,7 +668,7 @@ class HistoricalAnalyzer:
     def rank_activity(
         self,
         entries: list[TapeEntry],
-    ) -> tuple[list[tuple[str, int]], list[tuple[str, int]]]:
+    ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
         """Rank event types and agents by activity frequency.
 
         Returns:
@@ -683,8 +682,16 @@ class HistoricalAnalyzer:
             if entry.agent_id is not None:
                 agent_counts[entry.agent_id] = agent_counts.get(entry.agent_id, 0) + 1
 
-        type_ranking = sorted(type_counts.items(), key=lambda x: x[1], reverse=True)
-        agent_ranking = sorted(agent_counts.items(), key=lambda x: x[1], reverse=True)
+        type_ranking = [
+            {"name": k, "count": v} for k, v in sorted(
+                type_counts.items(), key=lambda x: x[1], reverse=True
+            )
+        ]
+        agent_ranking = [
+            {"name": k, "count": v} for k, v in sorted(
+                agent_counts.items(), key=lambda x: x[1], reverse=True
+            )
+        ]
 
         return type_ranking, agent_ranking
 

@@ -216,8 +216,8 @@ class TestHistoricalAnalyzer:
             for i in range(10)
         ]
         type_ranking, agent_ranking = analyzer.rank_activity(entries)
-        assert type_ranking[0][0] == "type_a"
-        assert agent_ranking[0][0] == "agent_x"
+        assert type_ranking[0]["name"] == "type_a"
+        assert agent_ranking[0]["name"] == "agent_x"
 
     def test_compute_trend_stable(self) -> None:
         from packages.tape.models import TapeEntry

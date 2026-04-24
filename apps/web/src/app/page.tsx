@@ -1,384 +1,167 @@
 "use client";
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import {
-  Brain,
-  ScrollText,
-  Vote,
-  FlaskConical,
-  Cpu,
-  Activity,
-  Shield,
-  ArrowRight,
-  Zap,
-} from "lucide-react";
-import { StatCard } from "@/components/stat-card";
-import { StatusIndicator } from "@/components/status-indicator";
-import { SkeletonStat, SkeletonList, EmptyState } from "@/components/skeleton";
 import {
   useSystemSnapshot,
   useRecentTape,
   useProposals,
   useSimulations,
 } from "@/hooks/use-api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { formatDistanceToNow } from "date-fns";
+import { LeftRail } from "@/components/dashboard/left-rail";
+import { StatusStrip } from "@/components/dashboard/status-strip";
+import { MetricTile } from "@/components/dashboard/metric-tile";
+import { TapeTable } from "@/components/dashboard/tape-table";
+import { QueueSidebar } from "@/components/dashboard/queue-sidebar";
+import { AgentCard } from "@/components/dashboard/agent-card";
+import { DomainsStrip } from "@/components/dashboard/domains-strip";
+import { HealthSparklines } from "@/components/dashboard/health-sparklines";
 
-const stagger = {
-  animate: { transition: { staggerChildren: 0.05 } },
-};
+function deriveEventsPerMinute(entries: { timestamp: string }[]): number {
+  if (!entries || entries.length === 0) return 0;
+  const now = Date.now();
+  const oneMinuteAgo = now - 60000;
+  const recent = entries.filter(
+    (e) => new Date(e.timestamp).getTime() > oneMinuteAgo
+  );
+  return recent.length;
+}
 
-const item = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as const } },
-};
+function getCurrentTask(
+  agentId: string,
+  entries: { agent_id: string | null; event_type: string; payload: Record<string, string | number | boolean | null> }[]
+): string | undefined {
+  const entry = entries.find(
+    (e) => e.agent_id === agentId && e.event_type.includes("proposal")
+  );
+  if (!entry) return undefined;
+  const title = entry.payload?.title;
+  if (typeof title === "string") {
+    return title.length > 20 ? title.slice(0, 20) + "…" : title;
+  }
+  return undefined;
+}
 
 export default function DashboardPage() {
-  const {
-    data: snapshot,
-    isLoading: snapLoading,
-    isError: snapError,
-  } = useSystemSnapshot();
-  const { data: tapeEntries, isLoading: tapeLoading } = useRecentTape(8);
+  const { data: snapshot, isLoading: snapLoading, isError: snapError } = useSystemSnapshot();
+  const { data: tapeEntries, isLoading: tapeLoading } = useRecentTape(50);
   const { data: proposals, isLoading: propLoading } = useProposals();
   const { data: simulations, isLoading: simLoading } = useSimulations();
 
   const pendingProposals =
     proposals?.filter((p) => p.status === "pending_approval") ?? [];
-  const completedSims =
-    simulations?.filter((s) => s.status === "completed") ?? [];
   const runningSims = simulations?.filter((s) => s.status === "running") ?? [];
 
+  const agents = snapshot?.agents ?? [];
+  const skills = snapshot?.skills ?? [];
+  const domains = snapshot?.domains ?? [];
+
+  const eventsPerMin = deriveEventsPerMinute(tapeEntries ?? []);
+
+  const isLoading = snapLoading || tapeLoading || propLoading || simLoading;
+  const noData = snapLoading || snapError || !snapshot;
+  const val = <T extends string | number>(v: T): T | "—" => noData ? "—" : v;
+
+  const activeCount = agents.filter((a) => a.status === "active").length;
+  const idleCount = agents.filter((a) => a.status === "idle").length;
+  const offlineCount = agents.filter(
+    (a) => a.status === "offline" || a.status === "unknown"
+  ).length;
+
   return (
-    <motion.div
-      variants={stagger}
-      initial="initial"
-      animate="animate"
-      className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-8"
-    >
-      {/* Header */}
-      <motion.div variants={item} className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            <span className="text-inkos-cyan text-glow-cyan">Inkos</span>
-            <span className="text-inkos-teal-300 text-glow-teal">AI</span>{" "}
-            Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            System overview &amp; recent activity
-          </p>
+    <div className="flex flex-1 min-h-0 w-full overflow-hidden bg-background">
+      <LeftRail />
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <StatusStrip />
+
+        <div className="h-[110px] shrink-0 border-b border-border grid-texture flex items-center px-4 gap-3">
+          <MetricTile
+            label="AGENTS"
+            value={val(agents.length)}
+            accent="emerald"
+            sparklineData={agents.length > 0 ? [3, 4, 5, 4, 6, 5, 7] : undefined}
+          />
+          <MetricTile
+            label="SKILLS"
+            value={val(skills.length)}
+            accent="text"
+            sparklineData={skills.length > 0 ? [8, 9, 10, 9, 11, 10, 12] : undefined}
+          />
+          <MetricTile
+            label="DOMAINS"
+            value={val(domains.length)}
+            accent="text"
+            sparklineData={domains.length > 0 ? [1, 2, 2, 3, 2, 3, 3] : undefined}
+          />
+          <MetricTile
+            label="PENDING"
+            value={val(pendingProposals.length)}
+            accent={pendingProposals.length > 0 ? "amber" : "text"}
+            sparklineData={pendingProposals.length > 0 ? [0, 1, 1, 2, 1, 2, 2] : undefined}
+          />
+          <MetricTile
+            label="RUNNING SIMS"
+            value={val(runningSims.length)}
+            accent={runningSims.length > 0 ? "cyan" : "text"}
+            sparklineData={runningSims.length > 0 ? [0, 0, 1, 0, 1, 1, 1] : undefined}
+          />
+          <MetricTile
+            label="EVENTS/MIN"
+            value={noData ? "—" : eventsPerMin}
+            accent={eventsPerMin > 10 ? "emerald" : "text"}
+            sparklineData={eventsPerMin > 0 ? [5, 8, 6, 12, 9, 14, eventsPerMin] : undefined}
+          />
         </div>
-        <StatusIndicator />
-      </motion.div>
 
-      {/* Stats grid */}
-      <motion.div
-        variants={item}
-        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        {snapLoading || propLoading || simLoading ? (
-          <>
-            <SkeletonStat />
-            <SkeletonStat />
-            <SkeletonStat />
-            <SkeletonStat />
-          </>
-        ) : (
-          <>
-            <StatCard
-              label="Agents"
-              value={snapError ? "—" : snapshot?.agents.length ?? 0}
-              icon={<Cpu className="h-4 w-4" />}
-              accent="cyan"
-              sub={`${snapshot?.agents.filter((a) => a.status === "active").length ?? 0} active`}
-            />
-            <StatCard
-              label="Skills"
-              value={snapError ? "—" : snapshot?.skills.length ?? 0}
-              icon={<Brain className="h-4 w-4" />}
-              accent="teal"
-            />
-            <StatCard
-              label="Pending Proposals"
-              value={pendingProposals.length}
-              icon={<Vote className="h-4 w-4" />}
-              accent="amber"
-              sub="Awaiting human approval"
-            />
-            <StatCard
-              label="Simulations"
-              value={completedSims.length}
-              icon={<FlaskConical className="h-4 w-4" />}
-              accent="emerald"
-              sub={
-                runningSims.length > 0
-                  ? `${runningSims.length} running`
-                  : `${simulations?.length ?? 0} total`
-              }
-            />
-          </>
-        )}
-      </motion.div>
+        <div className="flex-1 flex overflow-hidden">
+          <TapeTable
+            entries={tapeEntries ?? []}
+            isLoading={isLoading}
+            isEmpty={!tapeEntries || tapeEntries.length === 0}
+          />
+          <QueueSidebar
+            proposals={proposals ?? []}
+            simulations={simulations ?? []}
+            isLoading={isLoading}
+          />
+        </div>
 
-      {/* Two-column: Tape + System health */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Recent Tape */}
-        <motion.div variants={item} className="lg:col-span-2">
-          <Card className="glass glass-hover border-inkos-cyan/8 h-full">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <div className="flex items-center gap-2">
-                <ScrollText className="h-4 w-4 text-inkos-cyan opacity-70" />
-                <CardTitle className="text-sm font-semibold">
-                  Recent Tape Events
-                </CardTitle>
-              </div>
-              <Link href="/tape">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  View all
-                  <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              {tapeLoading ? (
-                <SkeletonList rows={5} />
-              ) : !tapeEntries || tapeEntries.length === 0 ? (
-                <EmptyState
-                  icon={ScrollText}
-                  title="No Tape events yet"
-                  description="Start the backend API to begin recording system activity to the Tape."
-                  action={
-                    <a
-                      href="http://localhost:8000/docs"
-                      target="_blank"
-                      rel="noopener noreferrer"
+        <div className="h-[185px] shrink-0 border-t border-border flex">
+          <div className="flex-1 p-4 border-r border-border overflow-x-auto">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold text-foreground">AGENTS</span>
+              <span className="text-[10px] text-muted-foreground">
+                {agents.length} total · {activeCount} active · {idleCount} idle
+                {offlineCount > 0 ? ` · ${offlineCount} offline` : ""}
+              </span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {isLoading && agents.length === 0
+                ? Array.from({ length: 4 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="w-[170px] h-[100px] shrink-0 bg-card rounded border border-border p-2.5 flex flex-col"
                     >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-inkos-cyan/20 text-inkos-cyan hover:bg-inkos-cyan/10"
-                      >
-                        Open API Docs
-                      </Button>
-                    </a>
-                  }
-                />
-              ) : (
-                <ul className="divide-y divide-white/[0.03]">
-                  {tapeEntries.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="flex items-center justify-between py-2.5 text-sm group"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Badge
-                          variant="outline"
-                          className="shrink-0 text-[10px] font-mono border-inkos-cyan/15 text-inkos-cyan/80"
-                        >
-                          {entry.event_type}
-                        </Badge>
-                        <span className="truncate text-muted-foreground group-hover:text-foreground/80 transition-colors">
-                          {entry.agent_id ?? "system"}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-[11px] text-muted-foreground/60 tabular-nums">
-                        {formatDistanceToNow(new Date(entry.timestamp), {
-                          addSuffix: true,
-                        })}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* System Health */}
-        <motion.div variants={item}>
-          <Card className="glass glass-hover border-emerald-500/8 h-full">
-            <CardHeader className="flex flex-row items-center gap-2 pb-2">
-              <Activity className="h-4 w-4 text-emerald-400 opacity-70" />
-              <CardTitle className="text-sm font-semibold">
-                System Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {snapLoading ? (
-                <SkeletonList rows={5} />
-              ) : snapError ? (
-                <EmptyState
-                  icon={Activity}
-                  title="Backend not connected"
-                  description="Ensure the InkosAI API is running on port 8000."
-                />
-              ) : snapshot ? (
-                <>
-                  <HealthRow
-                    label="Status"
-                    value={snapshot.health_status}
-                    good={snapshot.health_status === "healthy"}
-                  />
-                  <HealthRow
-                    label="Tape entries"
-                    value={String(snapshot.tape_stats.total_entries ?? 0)}
-                    good
-                  />
-                  <HealthRow
-                    label="Domains"
-                    value={String(snapshot.domains.length)}
-                    good={snapshot.domains.length > 0}
-                  />
-                  <HealthRow
-                    label="Worktrees"
-                    value={String(snapshot.active_worktrees.length)}
-                    good
-                  />
-                  <HealthRow
-                    label="Python"
-                    value={
-                      snapshot.system_info.python_version?.split(" ")[0] ?? "—"
-                    }
-                    good
-                  />
-                </>
-              ) : null}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Pending Proposals preview */}
-      {propLoading ? null : pendingProposals.length > 0 ? (
-        <motion.div variants={item}>
-          <Card className="glass glass-hover border-amber-400/10">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-amber-400 opacity-70" />
-                <CardTitle className="text-sm font-semibold">
-                  Pending Proposals
-                </CardTitle>
-              </div>
-              <Link href="/proposals">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-amber-400/80 hover:text-amber-300 transition-colors"
-                >
-                  Review all
-                  <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y divide-white/[0.03]">
-                {pendingProposals.slice(0, 5).map((p) => (
-                  <li
-                    key={p.id}
-                    className="flex items-center justify-between py-2.5 text-sm group"
-                  >
-                    <span className="truncate font-medium text-foreground/90 group-hover:text-foreground transition-colors">
-                      {p.title}
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] font-mono border-white/[0.06] text-muted-foreground"
-                      >
-                        {Math.round(p.confidence_score * 100)}%
-                      </Badge>
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] border-amber-400/20 text-amber-400"
-                      >
-                        {p.risk_level}
-                      </Badge>
+                      <div className="h-3 w-20 bg-secondary animate-pulse rounded mb-2" />
+                      <div className="h-2 w-16 bg-secondary animate-pulse rounded mb-2" />
+                      <div className="mt-auto h-2 w-24 bg-secondary animate-pulse rounded" />
                     </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ) : null}
+                  ))
+                : agents.map((agent) => (
+                    <AgentCard
+                      key={agent.agent_id}
+                      agent={agent}
+                      currentTask={getCurrentTask(agent.agent_id, tapeEntries ?? [])}
+                    />
+                  ))}
+            </div>
+          </div>
 
-      {/* Running simulations */}
-      {simLoading ? null : runningSims.length > 0 ? (
-        <motion.div variants={item}>
-          <Card className="glass glass-hover border-inkos-cyan/10">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-              <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-inkos-cyan animate-pulse" />
-                <CardTitle className="text-sm font-semibold">
-                  Running Simulations
-                </CardTitle>
-              </div>
-              <Link href="/simulations">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-inkos-cyan/80 hover:text-inkos-cyan transition-colors"
-                >
-                  View
-                  <ArrowRight className="h-3 w-3 ml-1" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y divide-white/[0.03]">
-                {runningSims.map((sim) => (
-                  <li
-                    key={sim.id}
-                    className="flex items-center justify-between py-2.5 text-sm"
-                  >
-                    <span className="truncate font-medium text-foreground/90">
-                      {sim.scenario.name}
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] border-inkos-cyan/25 text-inkos-cyan animate-pulse-glow"
-                    >
-                      running
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ) : null}
-    </motion.div>
-  );
-}
-
-function HealthRow({
-  label,
-  value,
-  good,
-}: {
-  label: string;
-  value: string;
-  good: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between text-sm py-0.5">
-      <span className="text-muted-foreground">{label}</span>
-      <span
-        className={
-          good
-            ? "text-emerald-400 font-medium"
-            : "text-amber-400 font-medium"
-        }
-      >
-        {value}
-      </span>
+          <div className="w-[320px] p-4 flex flex-col shrink-0">
+            <DomainsStrip domains={domains} />
+            <HealthSparklines tapeEntries={tapeEntries ?? []} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -97,7 +97,7 @@ class TokenPayload(BaseModel):
     sub: str  # user ID
     username: str
     role: str
-    exp: datetime
+    exp: int  # POSIX integer timestamp — PyJWT requires int for exp
     iat: int  # POSIX integer timestamp — PyJWT requires int for iat
     jti: str = Field(default_factory=lambda: secrets.token_hex(8))
 
@@ -254,7 +254,7 @@ def _create_access_token(
         sub=str(user.id),
         username=user.username,
         role=user.role.value,
-        exp=expire,
+        exp=int(expire.timestamp()),
         iat=int(datetime.now(UTC).timestamp()),
     )
     return jwt.encode(payload.model_dump(), JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
@@ -269,7 +269,7 @@ def _create_refresh_token(user: User) -> tuple[str, str]:
         "username": user.username,
         "type": "refresh",
         "jti": jti,
-        "exp": expire,
+        "exp": int(expire.timestamp()),
         "iat": int(datetime.now(UTC).timestamp()),
     }
     token = jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)

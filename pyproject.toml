@@ -17,8 +17,8 @@ dependencies = [
     "bcrypt>=5.0.0",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=8.3.0",
     "ruff>=0.8.0",
     "mypy>=1.13.0",
@@ -72,3 +72,4 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+pythonpath = ["."]

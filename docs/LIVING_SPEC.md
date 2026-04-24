@@ -52,6 +52,11 @@ Delivered the foundational intelligence and safety systems:
 - Real-Time Simulation Engine with full isolation
 - Multi-Agent Debate Arena (Standard, Socratic, Adversarial formats)
 - Semantic Tape Querying (natural language interface)
+- **InkosGraph (Project Knowledge Graph)** — Persistent, semantic knowledge graph built on top of Tape + AetherGit
+  - Automatically extracts and connects entities across commits, Tape events, agents, skills, canvases, simulations, debates, UI elements, and plugin states
+  - Enables powerful semantic search and natural language queries over the entire project history
+  - Powers deeper Prime introspection, cross-domain knowledge reuse, and intelligent recommendations
+  - Integrates directly with the Domain Canvas for visual graph exploration and navigation
 
 ### Phase 3: User Experience & Collaboration (Current Focus)
 

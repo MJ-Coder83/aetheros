@@ -149,6 +149,47 @@ Godot, Unity, Unreal, Blender, DaVinci Resolve, Adobe Suite, VS Code, and any pr
 - **Heuristic Ceiling**: The ArgumentQualityScorer and BiasDetector currently rely on regex-based logic. While effective for V1, the system's reasoning intelligence will eventually plateau. Plan to upgrade these to semantic embedding comparisons or LLM-based evaluators for higher-quality debate analysis and bias detection.
 - **Tape Memory Growth**: As an event-sourced system, the immutable Tape will grow indefinitely over time. Implement a snapshotting mechanism (periodic state collapse into a single record) to maintain performance while preserving full auditability of the event log.
 
+## One-Click Domain Creation
+
+InkosAI enables instant creation of complete, specialised domains from a simple natural language description. This feature unifies blueprint generation, folder-tree scaffolding, Prime validation, and AetherGit versioning into a single, auditable workflow.
+
+### Core Flow
+
+1. **Blueprint Generation** — Parse the natural language description and auto-generate a complete `DomainBlueprint` with agents, skills, workflows, and configuration.
+2. **Validation** — Run the `BlueprintValidator` to check completeness, safety, uniqueness, and naming conventions.
+3. **Proposal Submission** — Submit the blueprint as a Proposal for human approval (with automatic risk assessment).
+4. **Registration** — Upon approval, register the domain, create the canonical folder tree, run Prime's Folder Thinking Mode validation, and commit the tree to AetherGit.
+
+### Architecture
+
+```
+DomainCreationEngine
+├── generate_domain_blueprint()      — NL → DomainBlueprint
+├── create_domain_from_description() — Full pipeline (generate + validate + propose)
+├── register_domain()                — Blueprint → DomainRegistry + FolderTree + AetherGit
+├── validate_blueprint()             — Standalone validation
+├── list_domains() / get_domain()    — Registry queries
+└── get_blueprint() / list_blueprints() — Blueprint store queries
+```
+
+### Integration Points
+
+| System | Integration |
+|--------|-------------|
+| **Prime / Introspector** | Folder Thinking Mode validates the generated tree structure (`folder_navigate`, `folder_read`, `folder_search`) |
+| **Folder Tree** | Canonical folder tree is generated automatically during registration (`FolderTreeService.create_tree`) |
+| **AetherGit** | Each registered domain gets an initial AetherGit commit on its own branch (`domain/{domain_id}`) |
+| **Tape** | Every step is logged: `domain.blueprint_generated`, `domain.creation_requested`, `domain.registered`, `prime.folder_tree_created` |
+| **Proposals** | All new domains require Proposal approval before registration (configurable via `DomainConfig.requires_human_approval`) |
+
+### Safety Guarantees
+
+- Duplicate domain names and IDs are prevented
+- Generated content is validated for completeness and safety
+- All creation events are logged to the immutable Tape
+- Both fully-automatic and human-guided creation modes are supported
+- High-risk domains (legal, healthcare, finance) automatically require human approval
+
 ## Success Metrics (End of Month 9)
 
 - Prime can autonomously understand, propose, evolve, simulate, debate, and explain the entire system

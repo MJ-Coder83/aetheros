@@ -5,6 +5,8 @@ Run with: pytest tests/test_domain_creation.py -v
 
 import pytest
 
+from packages.aethergit.advanced import AdvancedAetherGit
+from packages.folder_tree import FolderTreeService, NodeType
 from packages.prime.domain_creation import (
     AgentBlueprint,
     AgentRole,
@@ -28,6 +30,7 @@ from packages.prime.domain_creation import (
 from packages.prime.introspection import (
     DomainDescriptor,
     DomainRegistry,
+    FolderThinkingError,
     PrimeIntrospector,
     SkillDescriptor,
 )
@@ -968,3 +971,242 @@ class TestDomainCreationIntegration:
         # Try to create the same domain again
         with pytest.raises(BlueprintValidationError):
             await engine.create_domain_from_description(LEGAL_DESCRIPTION)
+
+
+
+@pytest.fixture()
+def aethergit(tape_svc: TapeService) -> AdvancedAetherGit:
+    return AdvancedAetherGit(tape_service=tape_svc)
+
+
+@pytest.fixture()
+def engine_with_full_integration(
+    tape_svc: TapeService,
+    introspector: PrimeIntrospector,
+    proposal_engine: ProposalEngine,
+    aethergit: AdvancedAetherGit,
+) -> DomainCreationEngine:
+    folder_svc = FolderTreeService(tape_service=tape_svc)
+    introspector_with_folders = PrimeIntrospector(
+        tape_service=tape_svc,
+        folder_tree_service=folder_svc,
+    )
+    return DomainCreationEngine(
+        tape_service=tape_svc,
+        introspector=introspector_with_folders,
+        proposal_engine=proposal_engine,
+        folder_tree_service=folder_svc,
+        aethergit=aethergit,
+    )
+
+
+class TestAetherGitIntegration:
+    """Tests for AetherGit commit creation during domain registration."""
+
+    @pytest.mark.asyncio
+    async def test_register_creates_aethergit_commit(
+        self,
+        engine_with_full_integration: DomainCreationEngine,
+    ) -> None:
+        """Domain registration should create an AetherGit commit."""
+        result = await engine_with_full_integration.create_domain_from_description(
+            LEGAL_DESCRIPTION,
+        )
+        assert result.proposal_id is not None
+        assert engine_with_full_integration._proposal_engine is not None
+        await engine_with_full_integration._proposal_engine.approve(
+            result.proposal_id, reviewer="alice",
+        )
+        await engine_with_full_integration.register_domain(
+            result.blueprint.id, reviewer="alice",
+        )
+
+        aethergit = engine_with_full_integration._aethergit
+        assert aethergit is not None
+        commits = await aethergit.get_commit_history(
+            branch=f"domain/{result.blueprint.domain_id}",
+        )
+        assert len(commits) == 1
+        commit = commits[0]
+        assert commit.message == f"Create domain: {result.blueprint.domain_name}"
+        assert commit.commit_type == "domain_creation"
+        assert commit.scope == result.blueprint.domain_id
+        assert commit.performance_metrics["agent_count"] == len(result.blueprint.agents)
+        assert commit.performance_metrics["skill_count"] == len(result.blueprint.skills)
+        assert commit.evolution_approved is True
+
+    @pytest.mark.asyncio
+    async def test_register_without_aethergit_still_works(
+        self,
+        tape_svc: TapeService,
+        introspector: PrimeIntrospector,
+        proposal_engine: ProposalEngine,
+    ) -> None:
+        """Domain registration works even without AetherGit."""
+        engine = DomainCreationEngine(
+            tape_service=tape_svc,
+            introspector=introspector,
+            proposal_engine=proposal_engine,
+            aethergit=None,
+        )
+        result = await engine.create_domain_from_description(LEGAL_DESCRIPTION)
+        assert result.proposal_id is not None
+        assert engine._proposal_engine is not None
+        await engine._proposal_engine.approve(result.proposal_id, reviewer="alice")
+        domain = await engine.register_domain(result.blueprint.id, reviewer="alice")
+        assert domain.domain_id == result.blueprint.domain_id
+
+
+class TestFolderThinkingModeIntegration:
+    """Tests for Folder Thinking Mode during domain creation."""
+
+    @pytest.mark.asyncio
+    async def test_folder_thinking_mode_validates_tree(
+        self,
+        engine_with_full_integration: DomainCreationEngine,
+    ) -> None:
+        """Folder Thinking Mode should be able to navigate the generated tree."""
+        result = await engine_with_full_integration.create_domain_from_description(
+            LEGAL_DESCRIPTION,
+        )
+        assert result.proposal_id is not None
+        assert engine_with_full_integration._proposal_engine is not None
+        await engine_with_full_integration._proposal_engine.approve(
+            result.proposal_id, reviewer="alice",
+        )
+        await engine_with_full_integration.register_domain(
+            result.blueprint.id, reviewer="alice",
+        )
+
+        introspector = engine_with_full_integration._introspector
+        assert introspector is not None
+        children = await introspector.folder_navigate(result.blueprint.domain_id, "")
+        assert len(children) > 0
+
+    @pytest.mark.asyncio
+    async def test_folder_thinking_reads_agent_role(
+        self,
+        engine_with_full_integration: DomainCreationEngine,
+    ) -> None:
+        """Prime should be able to read agent role files via Folder Thinking Mode."""
+        result = await engine_with_full_integration.create_domain_from_description(
+            LEGAL_DESCRIPTION,
+        )
+        assert result.proposal_id is not None
+        assert engine_with_full_integration._proposal_engine is not None
+        await engine_with_full_integration._proposal_engine.approve(
+            result.proposal_id, reviewer="alice",
+        )
+        await engine_with_full_integration.register_domain(
+            result.blueprint.id, reviewer="alice",
+        )
+
+        introspector = engine_with_full_integration._introspector
+        assert introspector is not None
+        agents_dir = await introspector.folder_navigate(
+            result.blueprint.domain_id, "agents",
+        )
+        assert len(agents_dir) > 0
+        first_agent = agents_dir[0]
+        role_file = await introspector.folder_read(
+            result.blueprint.domain_id, f"agents/{first_agent.name}/role.md",
+        )
+        assert role_file.node_type == NodeType.FILE
+        assert first_agent.name.replace("_", " ").title() in role_file.content
+
+    @pytest.mark.asyncio
+    async def test_folder_thinking_without_service_raises_error(
+        self,
+        tape_svc: TapeService,
+        introspector: PrimeIntrospector,
+        proposal_engine: ProposalEngine,
+    ) -> None:
+        """Folder Thinking Mode raises error when service not configured."""
+        engine = DomainCreationEngine(
+            tape_service=tape_svc,
+            introspector=introspector,
+            proposal_engine=proposal_engine,
+            folder_tree_service=None,
+        )
+        result = await engine.create_domain_from_description(LEGAL_DESCRIPTION)
+        assert result.proposal_id is not None
+        assert engine._proposal_engine is not None
+        await engine._proposal_engine.approve(result.proposal_id, reviewer="alice")
+        await engine.register_domain(result.blueprint.id, reviewer="alice")
+
+        with pytest.raises(FolderThinkingError):
+            await introspector.folder_navigate(result.blueprint.domain_id, "")
+
+
+class TestFullIntegrationPipeline:
+    """End-to-end integration tests for all systems working together."""
+
+    @pytest.mark.asyncio
+    async def test_full_pipeline_with_all_integrations(
+        self,
+        engine_with_full_integration: DomainCreationEngine,
+    ) -> None:
+        """Complete pipeline: create → approve → register → verify tree + commit."""
+        result = await engine_with_full_integration.create_domain_from_description(
+            LEGAL_DESCRIPTION, created_by="test-user",
+        )
+        assert result.proposal_id is not None
+        assert result.blueprint.status == DomainStatus.PROPOSED
+
+        assert engine_with_full_integration._proposal_engine is not None
+        await engine_with_full_integration._proposal_engine.approve(
+            result.proposal_id, reviewer="alice",
+        )
+
+        domain = await engine_with_full_integration.register_domain(
+            result.blueprint.id, reviewer="alice",
+        )
+        assert domain.domain_id == result.blueprint.domain_id
+
+        folder_svc = engine_with_full_integration._folder_tree_service
+        assert folder_svc is not None
+        tree = await folder_svc.get_tree(result.blueprint.domain_id)
+        assert tree.domain_id == result.blueprint.domain_id
+        assert len(tree.nodes) > 0
+
+        aethergit = engine_with_full_integration._aethergit
+        assert aethergit is not None
+        commits = await aethergit.get_commit_history(
+            branch=f"domain/{result.blueprint.domain_id}",
+        )
+        assert len(commits) == 1
+
+        tape = engine_with_full_integration._tape
+        gen = await tape.get_entries(event_type="domain.blueprint_generated")
+        created = await tape.get_entries(event_type="domain.creation_requested")
+        registered = await tape.get_entries(event_type="domain.registered")
+        assert len(gen) >= 1
+        assert len(created) >= 1
+        assert len(registered) >= 1
+
+    @pytest.mark.asyncio
+    async def test_multiple_domains_with_aethergit(
+        self,
+        engine_with_full_integration: DomainCreationEngine,
+    ) -> None:
+        """Multiple domains each get their own AetherGit branch."""
+        descriptions = [LEGAL_DESCRIPTION, RESEARCH_DESCRIPTION]
+        domain_ids: list[str] = []
+
+        for desc in descriptions:
+            result = await engine_with_full_integration.create_domain_from_description(desc)
+            assert result.proposal_id is not None
+            assert engine_with_full_integration._proposal_engine is not None
+            await engine_with_full_integration._proposal_engine.approve(
+                result.proposal_id, reviewer="alice",
+            )
+            await engine_with_full_integration.register_domain(
+                result.blueprint.id, reviewer="alice",
+            )
+            domain_ids.append(result.blueprint.domain_id)
+
+        aethergit = engine_with_full_integration._aethergit
+        assert aethergit is not None
+        for domain_id in domain_ids:
+            commits = await aethergit.get_commit_history(branch=f"domain/{domain_id}")
+            assert len(commits) == 1

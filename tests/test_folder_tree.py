@@ -36,7 +36,7 @@ from packages.prime.introspection import (
     PrimeIntrospector,
 )
 from packages.prime.proposals import ModificationType, ProposalEngine, RiskLevel
-from packages.prime.skill_evolution import SkillEvolutionProposal
+from packages.prime.skill_evolution import EvolutionType, SkillEvolutionProposal
 from packages.tape.repository import InMemoryTapeRepository
 from packages.tape.service import TapeService
 
@@ -129,7 +129,7 @@ class TestFolderTreeGenerator:
             Workflow("wf-1", "Full Contract Review", "sequential", ["Gather", "Review", "Approve"]),
         ]
 
-    def test_generate_creates_root_directory(self):
+    def test_generate_creates_root_directory(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -145,7 +145,7 @@ class TestFolderTreeGenerator:
         assert root is not None
         assert root.node_type == NodeType.DIRECTORY
 
-    def test_generate_creates_agents_directory(self):
+    def test_generate_creates_agents_directory(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -161,7 +161,7 @@ class TestFolderTreeGenerator:
         assert agents_node.node_type == NodeType.DIRECTORY
         assert len(agents_node.children) == 2  # Two agents
 
-    def test_generate_creates_agent_role_file(self):
+    def test_generate_creates_agent_role_file(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -177,7 +177,7 @@ class TestFolderTreeGenerator:
         assert role_node.node_type == NodeType.FILE
         assert "Contract Analyst" in role_node.content
 
-    def test_generate_creates_skills_files(self):
+    def test_generate_creates_skills_files(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -192,7 +192,7 @@ class TestFolderTreeGenerator:
         skill_node = tree.nodes[skill_path]
         assert skill_node.node_type == NodeType.FILE
 
-    def test_generate_creates_workflows_directory(self):
+    def test_generate_creates_workflows_directory(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -207,7 +207,7 @@ class TestFolderTreeGenerator:
         wf_json = f"{wf_path}/workflow.json"
         assert wf_json in tree.nodes
 
-    def test_generate_creates_config_directory(self):
+    def test_generate_creates_config_directory(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -220,7 +220,7 @@ class TestFolderTreeGenerator:
         config_path = "Legal_Research_Domain/config/domain_config.json"
         assert config_path in tree.nodes
 
-    def test_generate_creates_readme(self):
+    def test_generate_creates_readme(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -234,7 +234,7 @@ class TestFolderTreeGenerator:
         assert readme_path in tree.nodes
         assert "Legal Research Domain" in tree.nodes[readme_path].content
 
-    def test_generate_creates_data_sources_directory(self):
+    def test_generate_creates_data_sources_directory(self) -> None:
         gen = FolderTreeGenerator()
         tree = gen.generate(
             domain_id="legal-research",
@@ -260,8 +260,8 @@ class TestFolderTreeService:
         """Create a basic tree for CRUD tests."""
         import asyncio
 
-        async def _create():
-            return await folder_tree_svc.create_tree(
+        async def _create() -> None:
+            await folder_tree_svc.create_tree(
                 domain_id="test-domain",
                 domain_name="Test Domain",
                 description="A test domain",
@@ -273,7 +273,7 @@ class TestFolderTreeService:
         asyncio.get_event_loop().run_until_complete(_create())
 
     @pytest.mark.asyncio
-    async def test_create_tree(self, folder_tree_svc: FolderTreeService):
+    async def test_create_tree(self, folder_tree_svc: FolderTreeService) -> None:
         tree = await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -287,7 +287,7 @@ class TestFolderTreeService:
         assert tree.version == 1
 
     @pytest.mark.asyncio
-    async def test_list_directory_root(self, folder_tree_svc: FolderTreeService):
+    async def test_list_directory_root(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -300,7 +300,7 @@ class TestFolderTreeService:
         assert len(children) > 0
 
     @pytest.mark.asyncio
-    async def test_read_file(self, folder_tree_svc: FolderTreeService):
+    async def test_read_file(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -314,7 +314,7 @@ class TestFolderTreeService:
         assert "Test Domain" in node.content
 
     @pytest.mark.asyncio
-    async def test_read_file_not_found(self, folder_tree_svc: FolderTreeService):
+    async def test_read_file_not_found(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -327,7 +327,7 @@ class TestFolderTreeService:
             await folder_tree_svc.read_file("test-domain", "nonexistent.md")
 
     @pytest.mark.asyncio
-    async def test_write_file_new(self, folder_tree_svc: FolderTreeService):
+    async def test_write_file_new(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -343,7 +343,7 @@ class TestFolderTreeService:
         assert node.node_type == NodeType.FILE
 
     @pytest.mark.asyncio
-    async def test_write_file_update(self, folder_tree_svc: FolderTreeService):
+    async def test_write_file_update(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -359,7 +359,7 @@ class TestFolderTreeService:
         assert node.content == "# Updated"
 
     @pytest.mark.asyncio
-    async def test_create_directory(self, folder_tree_svc: FolderTreeService):
+    async def test_create_directory(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -375,7 +375,7 @@ class TestFolderTreeService:
         assert node.name == "new_section"
 
     @pytest.mark.asyncio
-    async def test_create_directory_already_exists(self, folder_tree_svc: FolderTreeService):
+    async def test_create_directory_already_exists(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -388,7 +388,7 @@ class TestFolderTreeService:
             await folder_tree_svc.create_directory("test-domain", "agents")
 
     @pytest.mark.asyncio
-    async def test_move_path(self, folder_tree_svc: FolderTreeService):
+    async def test_move_path(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -403,7 +403,7 @@ class TestFolderTreeService:
         assert node.name == "INTRO.md"
 
     @pytest.mark.asyncio
-    async def test_move_path_not_found(self, folder_tree_svc: FolderTreeService):
+    async def test_move_path_not_found(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -418,7 +418,7 @@ class TestFolderTreeService:
             )
 
     @pytest.mark.asyncio
-    async def test_delete_path(self, folder_tree_svc: FolderTreeService):
+    async def test_delete_path(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -432,7 +432,7 @@ class TestFolderTreeService:
             await folder_tree_svc.read_file("test-domain", "README.md")
 
     @pytest.mark.asyncio
-    async def test_delete_path_not_found(self, folder_tree_svc: FolderTreeService):
+    async def test_delete_path_not_found(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -445,7 +445,7 @@ class TestFolderTreeService:
             await folder_tree_svc.delete_path("test-domain", "nonexistent.md")
 
     @pytest.mark.asyncio
-    async def test_search_by_name(self, folder_tree_svc: FolderTreeService):
+    async def test_search_by_name(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -459,7 +459,7 @@ class TestFolderTreeService:
         assert any("README" in r.name for r in results)
 
     @pytest.mark.asyncio
-    async def test_search_by_content(self, folder_tree_svc: FolderTreeService):
+    async def test_search_by_content(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -472,7 +472,7 @@ class TestFolderTreeService:
         assert len(results) > 0
 
     @pytest.mark.asyncio
-    async def test_get_tree(self, folder_tree_svc: FolderTreeService):
+    async def test_get_tree(self, folder_tree_svc: FolderTreeService) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -485,12 +485,12 @@ class TestFolderTreeService:
         assert tree.domain_id == "test-domain"
 
     @pytest.mark.asyncio
-    async def test_get_tree_not_found(self, folder_tree_svc: FolderTreeService):
+    async def test_get_tree_not_found(self, folder_tree_svc: FolderTreeService) -> None:
         with pytest.raises(DomainTreeNotFoundError):
             await folder_tree_svc.get_tree("nonexistent")
 
     @pytest.mark.asyncio
-    async def test_domain_not_found(self, folder_tree_svc: FolderTreeService):
+    async def test_domain_not_found(self, folder_tree_svc: FolderTreeService) -> None:
         with pytest.raises(DomainTreeNotFoundError):
             await folder_tree_svc.list_directory("nonexistent", "")
 
@@ -505,7 +505,7 @@ class TestFolderThinkingMode:
     @pytest.mark.asyncio
     async def test_folder_navigate_without_service(
         self, introspector: PrimeIntrospector
-    ):
+    ) -> None:
         """Folder Thinking Mode raises error when service not configured."""
         with pytest.raises(FolderThinkingError):
             await introspector.folder_navigate("test-domain")
@@ -513,14 +513,14 @@ class TestFolderThinkingMode:
     @pytest.mark.asyncio
     async def test_folder_read_without_service(
         self, introspector: PrimeIntrospector
-    ):
+    ) -> None:
         with pytest.raises(FolderThinkingError):
             await introspector.folder_read("test-domain", "README.md")
 
     @pytest.mark.asyncio
     async def test_folder_search_without_service(
         self, introspector: PrimeIntrospector
-    ):
+    ) -> None:
         with pytest.raises(FolderThinkingError):
             await introspector.folder_search("test-domain", "test")
 
@@ -528,7 +528,7 @@ class TestFolderThinkingMode:
     async def test_folder_navigate_with_service(
         self, introspector_with_folders: PrimeIntrospector,
         folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         """Folder Thinking Mode works when service is configured."""
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
@@ -545,7 +545,7 @@ class TestFolderThinkingMode:
     async def test_folder_read_with_service(
         self, introspector_with_folders: PrimeIntrospector,
         folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -561,7 +561,7 @@ class TestFolderThinkingMode:
     async def test_folder_search_with_service(
         self, introspector_with_folders: PrimeIntrospector,
         folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -584,7 +584,7 @@ class TestDomainCreationFolderTree:
     @pytest.mark.asyncio
     async def test_domain_creation_generates_folder_tree(
         self, domain_engine: DomainCreationEngine, tape_svc: TapeService,
-    ):
+    ) -> None:
         """Domain creation with folder_tree_service generates a tree."""
         result = await domain_engine.create_domain_from_description(
             description="Create a Legal Research Domain for contract analysis",
@@ -606,7 +606,7 @@ class TestDomainCreationFolderTree:
     async def test_domain_creation_without_folder_service_still_works(
         self, tape_svc: TapeService, introspector: PrimeIntrospector,
         proposal_engine: ProposalEngine,
-    ):
+    ) -> None:
         """Domain creation works even without folder_tree_service."""
         engine = DomainCreationEngine(
             tape_service=tape_svc,
@@ -631,7 +631,7 @@ class TestCanvasSync:
     @pytest.mark.asyncio
     async def test_sync_create_operation(
         self, folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -655,7 +655,7 @@ class TestCanvasSync:
     @pytest.mark.asyncio
     async def test_sync_edit_operation(
         self, folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -678,7 +678,7 @@ class TestCanvasSync:
     @pytest.mark.asyncio
     async def test_sync_delete_operation(
         self, folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -700,7 +700,7 @@ class TestCanvasSync:
     @pytest.mark.asyncio
     async def test_sync_multiple_operations(
         self, folder_tree_svc: FolderTreeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -735,7 +735,7 @@ class TestProposalFolderOperations:
     @pytest.mark.asyncio
     async def test_proposal_with_folder_operations(
         self, proposal_engine: ProposalEngine,
-    ):
+    ) -> None:
         """Proposals can include folder operations."""
         proposal = await proposal_engine.propose(
             title="Add new agent role",
@@ -755,7 +755,7 @@ class TestProposalFolderOperations:
     @pytest.mark.asyncio
     async def test_proposal_without_folder_operations(
         self, proposal_engine: ProposalEngine,
-    ):
+    ) -> None:
         """Proposals work without folder operations (backward compatible)."""
         proposal = await proposal_engine.propose(
             title="Simple change",
@@ -776,11 +776,11 @@ class TestProposalFolderOperations:
 class TestSkillEvolutionFolderOperations:
     """Tests for folder operations in skill evolution proposals."""
 
-    def test_evolution_proposal_with_folder_operations(self):
+    def test_evolution_proposal_with_folder_operations(self) -> None:
         """Skill evolution proposals can include folder operations."""
         proposal = SkillEvolutionProposal(
             proposal_id=uuid4(),
-            evolution_type="enhance",
+            evolution_type=EvolutionType.ENHANCE,
             target_skill_ids=["skill-1"],
             reasoning="Improve skill",
             folder_operations=[
@@ -789,11 +789,11 @@ class TestSkillEvolutionFolderOperations:
         )
         assert len(proposal.folder_operations) == 1
 
-    def test_evolution_proposal_without_folder_operations(self):
+    def test_evolution_proposal_without_folder_operations(self) -> None:
         """Skill evolution proposals work without folder operations (backward compatible)."""
         proposal = SkillEvolutionProposal(
             proposal_id=uuid4(),
-            evolution_type="create",
+            evolution_type=EvolutionType.CREATE,
             target_skill_ids=[],
             reasoning="New skill",
         )
@@ -810,7 +810,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_create_tree_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -826,7 +826,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_read_file_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -842,7 +842,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_list_directory_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -858,7 +858,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_write_file_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -874,7 +874,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_delete_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -890,7 +890,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_search_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",
@@ -906,7 +906,7 @@ class TestFolderTreeTapeLogging:
     @pytest.mark.asyncio
     async def test_canvas_sync_logs_to_tape(
         self, folder_tree_svc: FolderTreeService, tape_svc: TapeService,
-    ):
+    ) -> None:
         await folder_tree_svc.create_tree(
             domain_id="test-domain",
             domain_name="Test Domain",

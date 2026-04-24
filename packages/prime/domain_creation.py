@@ -75,6 +75,8 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.aethergit.advanced import AdvancedAetherGit
+from packages.core.models import AetherCommit
 from packages.folder_tree import FolderTreeService
 from packages.prime.introspection import (
     AgentDescriptor,
@@ -893,6 +895,7 @@ class DomainCreationEngine:
         generator: BlueprintGenerator | None = None,
         validator: BlueprintValidator | None = None,
         folder_tree_service: FolderTreeService | None = None,
+        aethergit: AdvancedAetherGit | None = None,
     ) -> None:
         self._tape = tape_service
         self._introspector = introspector
@@ -902,6 +905,7 @@ class DomainCreationEngine:
         self._generator = generator or BlueprintGenerator()
         self._validator = validator or BlueprintValidator()
         self._folder_tree_service = folder_tree_service
+        self._aethergit = aethergit
 
     # ------------------------------------------------------------------
     # generate_domain_blueprint
@@ -1147,9 +1151,10 @@ class DomainCreationEngine:
 
         # Generate the folder tree (canonical source of truth)
         # Folder tree is an enhancement — don't fail registration on error.
+        tree = None
         if self._folder_tree_service is not None:
             with contextlib.suppress(Exception):
-                await self._folder_tree_service.create_tree(
+                tree = await self._folder_tree_service.create_tree(
                     domain_id=blueprint.domain_id,
                     domain_name=blueprint.domain_name,
                     description=blueprint.description,
@@ -1158,6 +1163,31 @@ class DomainCreationEngine:
                     workflows=blueprint.workflows,
                     config=blueprint.config,
                 )
+
+        # Folder Thinking Mode — Prime validates the generated tree structure
+        if tree is not None and self._introspector is not None:
+            with contextlib.suppress(Exception):
+                await self._introspector.folder_navigate(blueprint.domain_id, "")
+
+        # Commit the folder tree to AetherGit for version control
+        if tree is not None and self._aethergit is not None:
+            with contextlib.suppress(Exception):
+                commit = AetherCommit(
+                    author="domain-creation-engine",
+                    message=f"Create domain: {blueprint.domain_name}",
+                    commit_type="domain_creation",
+                    scope=blueprint.domain_id,
+                    performance_metrics={
+                        "agent_count": len(blueprint.agents),
+                        "skill_count": len(blueprint.skills),
+                        "workflow_count": len(blueprint.workflows),
+                        "node_count": len(tree.nodes),
+                    },
+                    confidence_score=1.0,
+                    proposed_by=reviewer or blueprint.created_by,
+                    evolution_approved=True,
+                )
+                self._aethergit.add_commit(commit, branch=f"domain/{blueprint.domain_id}")
 
         # Register agents in the introspector's agent registry
         if self._introspector is not None:

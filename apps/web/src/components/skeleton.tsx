@@ -1,11 +1,13 @@
 /** Reusable skeleton loading components. */
-
 import { cn } from "@/lib/utils";
 
-export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function Skeleton({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("animate-pulse rounded-md bg-muted/40", className)}
+      className={cn("animate-pulse rounded-md bg-white/[0.04]", className)}
       {...props}
     />
   );
@@ -13,7 +15,7 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
 
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="glass rounded-xl p-5 space-y-3 border border-inkos-purple/10">
+    <div className="glass rounded-xl p-5 space-y-3 border border-white/[0.04]">
       <Skeleton className="h-4 w-1/3" />
       {Array.from({ length: lines }).map((_, i) => (
         <Skeleton
@@ -28,10 +30,10 @@ export function SkeletonCard({ lines = 3 }: { lines?: number }) {
 
 export function SkeletonStat() {
   return (
-    <div className="glass rounded-xl p-5 space-y-3 border border-inkos-purple/10">
+    <div className="glass rounded-xl p-5 space-y-3 border border-white/[0.04]">
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-20" />
-        <Skeleton className="h-5 w-5 rounded-full" />
+        <Skeleton className="h-8 w-8 rounded-lg" />
       </div>
       <Skeleton className="h-8 w-16" />
       <Skeleton className="h-3 w-28" />
@@ -46,7 +48,9 @@ export function SkeletonRow({ cols = 3 }: { cols?: number }) {
         <Skeleton
           key={i}
           className="h-4"
-          style={{ width: i === 0 ? "40%" : i === 1 ? "30%" : "20%" }}
+          style={{
+            width: i === 0 ? "40%" : i === 1 ? "30%" : "20%",
+          }}
         />
       ))}
     </div>
@@ -55,7 +59,7 @@ export function SkeletonRow({ cols = 3 }: { cols?: number }) {
 
 export function SkeletonList({ rows = 5 }: { rows?: number }) {
   return (
-    <div className="divide-y divide-border/20">
+    <div className="divide-y divide-white/[0.03]">
       {Array.from({ length: rows }).map((_, i) => (
         <SkeletonRow key={i} />
       ))}
@@ -76,11 +80,13 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="h-14 w-14 rounded-2xl bg-inkos-purple/10 border border-inkos-purple/20 flex items-center justify-center mb-4">
-        <Icon className="h-7 w-7 text-inkos-purple-400" />
+      <div className="h-14 w-14 rounded-2xl bg-inkos-cyan/[0.06] border border-inkos-cyan/10 flex items-center justify-center mb-5">
+        <Icon className="h-7 w-7 text-inkos-cyan opacity-60" />
       </div>
-      <h3 className="text-lg font-semibold mb-1">{title}</h3>
-      <p className="text-sm text-muted-foreground max-w-sm mb-4">
+      <h3 className="text-base font-semibold mb-1.5 text-foreground">
+        {title}
+      </h3>
+      <p className="text-sm text-muted-foreground max-w-sm mb-5 leading-relaxed">
         {description}
       </p>
       {action}

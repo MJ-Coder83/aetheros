@@ -25,11 +25,11 @@ export function Providers({ children }: { children: ReactNode }) {
         <Toaster
           position="bottom-right"
           toastOptions={{
-            className: "glass-strong !border-inkos-purple/30",
+            className: "glass-strong !border-inkos-cyan/15",
             style: {
-              background: "rgba(15, 22, 41, 0.9)",
-              color: "#E2E8F0",
-              border: "1px solid rgba(124, 58, 237, 0.3)",
+              background: "rgba(15, 22, 41, 0.85)",
+              color: "#E8ECF4",
+              border: "1px solid rgba(34, 211, 238, 0.12)",
             },
           }}
           theme="dark"

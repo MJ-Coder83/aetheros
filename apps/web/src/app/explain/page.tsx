@@ -90,14 +90,14 @@ function FactorBar({ factor }: { factor: KeyFactor }) {
       ? "bg-emerald-500/70"
       : factor.direction === "opposing"
         ? "bg-red-500/70"
-        : "bg-inkos-purple/50";
+        : "bg-inkos-cyan/[0.02]";
 
   const dirBadge =
     factor.direction === "supporting"
       ? "text-emerald-400 border-emerald-400/30"
       : factor.direction === "opposing"
         ? "text-red-400 border-red-400/30"
-        : "text-muted-foreground border-inkos-purple/30";
+        : "text-muted-foreground border-inkos-cyan/12";
 
   return (
     <div className="space-y-1.5">
@@ -133,7 +133,7 @@ function FactorBar({ factor }: { factor: KeyFactor }) {
           {factor.evidence.map((e, i) => (
             <span
               key={i}
-              className="text-[10px] px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-purple/10"
+              className="text-[10px] px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-white/[0.04]"
             >
               {e}
             </span>
@@ -150,7 +150,7 @@ function DecisionTimeline({ trace }: { trace: DecisionTrace }) {
   return (
     <div className="relative pl-6">
       {/* Vertical line */}
-      <div className="absolute left-2.5 top-1 bottom-1 w-px bg-inkos-purple/20" />
+      <div className="absolute left-2.5 top-1 bottom-1 w-px bg-inkos-cyan/10" />
 
       {trace.steps.map((step, i) => (
         <motion.div
@@ -220,10 +220,10 @@ function ExplanationDetail({ explanation }: { explanation: Explanation }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-xl border border-inkos-purple/20 overflow-hidden"
+      className="glass rounded-xl border border-inkos-cyan/8 overflow-hidden"
     >
       {/* Header */}
-      <div className="px-6 py-4 border-b border-inkos-purple/10 flex items-start justify-between gap-4">
+      <div className="px-6 py-4 border-b border-white/[0.04] flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <Lightbulb className="h-4 w-4 text-inkos-cyan" />
@@ -241,7 +241,7 @@ function ExplanationDetail({ explanation }: { explanation: Explanation }) {
       </div>
 
       {/* Simplified summary */}
-      <div className="px-6 py-3 bg-inkos-navy-800/20 border-b border-inkos-purple/10">
+      <div className="px-6 py-3 bg-inkos-navy-800/20 border-b border-white/[0.04]">
         <div className="flex items-start gap-2">
           <Info className="h-4 w-4 text-inkos-cyan mt-0.5 shrink-0" />
           <p className="text-sm leading-relaxed">{explanation.simplified_summary}</p>
@@ -249,7 +249,7 @@ function ExplanationDetail({ explanation }: { explanation: Explanation }) {
       </div>
 
       {/* Tab switcher */}
-      <div className="px-6 pt-3 flex gap-1 border-b border-inkos-purple/10">
+      <div className="px-6 pt-3 flex gap-1 border-b border-white/[0.04]">
         {(
           [
             { key: "factors", label: "Key Factors", icon: BarChart3 },
@@ -263,7 +263,7 @@ function ExplanationDetail({ explanation }: { explanation: Explanation }) {
             className={cn(
               "flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-md transition-all",
               activeTab === tab.key
-                ? "bg-inkos-purple/15 text-inkos-cyan border-b-2 border-inkos-cyan"
+                ? "bg-inkos-cyan/8 text-inkos-cyan border-b-2 border-inkos-cyan"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -307,14 +307,14 @@ function ExplanationDetail({ explanation }: { explanation: Explanation }) {
 
               {/* Assumptions */}
               {explanation.decision_trace.assumptions.length > 0 && (
-                <div className="mt-4 pt-3 border-t border-inkos-purple/10">
+                <div className="mt-4 pt-3 border-t border-white/[0.04]">
                   <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
                     Assumptions
                   </h4>
                   <ul className="space-y-1">
                     {explanation.decision_trace.assumptions.map((a, i) => (
                       <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
-                        <span className="text-inkos-purple">&#8226;</span>
+                        <span className="text-inkos-cyan">&#8226;</span>
                         {a}
                       </li>
                     ))}
@@ -324,7 +324,7 @@ function ExplanationDetail({ explanation }: { explanation: Explanation }) {
 
               {/* Limitations */}
               {explanation.decision_trace.limitations.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-inkos-purple/10">
+                <div className="mt-3 pt-3 border-t border-white/[0.04]">
                   <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
                     Limitations
                   </h4>
@@ -393,13 +393,15 @@ export default function ExplainPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 page-transition">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Lightbulb className="h-8 w-8 text-inkos-cyan text-glow-cyan" />
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-inkos-cyan/8 border border-inkos-cyan/15 flex items-center justify-center">
+            <Lightbulb className="h-5 w-5 text-inkos-cyan" />
+          </div>
           <span>
-            <span className="text-inkos-purple text-glow-purple">Explain</span>ability
+            <span className="text-inkos-cyan text-glow-cyan">Explain</span>ability
           </span>
         </h1>
         <p className="text-muted-foreground mt-1">
@@ -409,7 +411,7 @@ export default function ExplainPage() {
       </div>
 
       {/* Generate explanation form */}
-      <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-4">
+      <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-4">
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Generate Explanation
         </h2>
@@ -419,13 +421,13 @@ export default function ExplainPage() {
             value={actionId}
             onChange={(e) => setActionId(e.target.value)}
             placeholder="Enter action ID (e.g. proposal-abc123)"
-            className="flex-1 rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
+            className="flex-1 rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
             onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
           />
           <select
             value={actionType}
             onChange={(e) => setActionType(e.target.value as ActionType)}
-            className="rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm focus:border-inkos-cyan focus:outline-none"
+            className="rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm focus:border-inkos-cyan focus:outline-none"
           >
             {ACTION_TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -439,7 +441,7 @@ export default function ExplainPage() {
             className={cn(
               "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all",
               actionId.trim() && !generateMutation.isPending
-                ? "bg-inkos-purple text-white hover:bg-inkos-purple/80"
+                ? "bg-inkos-cyan text-white hover:bg-inkos-cyan/80"
                 : "bg-inkos-navy-800/40 text-muted-foreground cursor-not-allowed",
             )}
           >
@@ -487,7 +489,7 @@ export default function ExplainPage() {
               });
             }}
             disabled={!actionId.trim() || factorsMutation.isPending}
-            className="text-xs px-3 py-1.5 rounded border border-inkos-purple/20 text-inkos-purple hover:bg-inkos-purple/10 transition-all disabled:opacity-50"
+            className="text-xs px-3 py-1.5 rounded border border-inkos-cyan/8 text-inkos-cyan hover:bg-inkos-cyan/[0.04] transition-all disabled:opacity-50"
           >
             <BarChart3 className="h-3 w-3 inline mr-1" />
             Key Factors
@@ -514,9 +516,9 @@ export default function ExplainPage() {
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-3"
+          className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-3"
         >
-          <h3 className="text-sm font-medium text-inkos-purple mb-2 flex items-center gap-2">
+          <h3 className="text-sm font-medium text-inkos-cyan mb-2 flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Key Factors
           </h3>
@@ -529,7 +531,7 @@ export default function ExplainPage() {
       {/* Explanations list */}
       <div>
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-inkos-purple" />
+          <ShieldCheck className="h-5 w-5 text-inkos-cyan" />
           Past Explanations
         </h2>
 
@@ -538,12 +540,12 @@ export default function ExplainPage() {
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
-                className="h-20 rounded-xl bg-inkos-navy-800/30 animate-pulse border border-inkos-purple/10"
+                className="h-20 rounded-xl bg-inkos-navy-800/30 animate-pulse border border-white/[0.04]"
               />
             ))}
           </div>
         ) : explanations.length === 0 ? (
-          <div className="glass rounded-xl border border-inkos-purple/10 p-12 text-center">
+          <div className="glass rounded-xl border border-white/[0.04] p-12 text-center">
             <Lightbulb className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
             <p className="text-muted-foreground text-sm">
               No explanations yet. Generate one above to get started.
@@ -561,7 +563,7 @@ export default function ExplainPage() {
                 }
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="w-full text-left glass rounded-xl border border-inkos-purple/20 p-4 hover:border-inkos-purple/40 transition-all"
+                className="w-full text-left glass rounded-xl border border-inkos-cyan/8 p-4 hover:border-inkos-cyan/15 transition-all"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -598,7 +600,7 @@ export default function ExplainPage() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="mt-4 pt-4 border-t border-inkos-purple/10">
+                      <div className="mt-4 pt-4 border-t border-white/[0.04]">
                         <ExplanationDetail explanation={exp} />
                       </div>
                     </motion.div>

@@ -20,8 +20,21 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/skeleton";
-import type { SystemSnapshot, TapeEntry, Proposal, SimulationRun, WhatIfScenario } from "@/types";
-import { useSystemSnapshot, useTapeEntries, useProposals, useSimulations, useSimulationScenarios, useRunSimulation } from "@/hooks/use-api";
+import type {
+  SystemSnapshot,
+  TapeEntry,
+  Proposal,
+  SimulationRun,
+  WhatIfScenario,
+} from "@/types";
+import {
+  useSystemSnapshot,
+  useTapeEntries,
+  useProposals,
+  useSimulations,
+  useSimulationScenarios,
+  useRunSimulation,
+} from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -52,6 +65,7 @@ export default function PrimePage() {
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
   const { data: snapshot, isLoading, refetch } = useSystemSnapshot();
   const { data: tapeEntries } = useTapeEntries({ limit: 50 });
   const { data: proposals } = useProposals();
@@ -103,11 +117,16 @@ export default function PrimePage() {
     setInput("");
     setIsProcessing(true);
 
-    // Generate the response based on current data
     const responseId = `prime-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
-      { id: responseId, role: "prime", content: "", timestamp: new Date(), isTyping: true },
+      {
+        id: responseId,
+        role: "prime",
+        content: "",
+        timestamp: new Date(),
+        isTyping: true,
+      },
     ]);
 
     // Small delay to simulate thinking
@@ -127,17 +146,19 @@ export default function PrimePage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 page-transition">
       <div className="mb-6 flex items-center gap-3">
         <div className="relative">
-          <Brain className="h-8 w-8 text-inkos-purple" />
+          <div className="h-10 w-10 rounded-xl bg-inkos-cyan/8 border border-inkos-cyan/15 flex items-center justify-center">
+            <Brain className="h-5 w-5 text-inkos-cyan" />
+          </div>
           {isProcessing && (
-            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-inkos-cyan animate-pulse" />
+            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-inkos-teal-300 animate-pulse ring-2 ring-background" />
           )}
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-inkos-purple text-glow-purple">
-            Prime Console
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <span className="text-inkos-cyan">Prime</span> Console
           </h1>
           <p className="text-sm text-muted-foreground">
             {isProcessing ? "Thinking..." : "Interact with the Prime meta-agent"}
@@ -147,27 +168,31 @@ export default function PrimePage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Chat panel */}
-        <div className="lg:col-span-2 flex flex-col glass rounded-xl border border-inkos-purple/20 h-[calc(100vh-200px)] min-h-[400px]">
+        <div className="lg:col-span-2 flex flex-col glass rounded-xl border border-inkos-cyan/8 h-[calc(100vh-200px)] min-h-[400px]">
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
+          >
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                   className={cn(
-                    "max-w-[85%] rounded-xl px-4 py-3 text-sm",
+                    "max-w-[85%] rounded-xl px-4 py-3 text-sm leading-relaxed",
                     msg.role === "user"
-                      ? "ml-auto bg-inkos-purple/20 border border-inkos-purple/30 text-foreground"
+                      ? "ml-auto bg-inkos-cyan/8 border border-inkos-cyan/15 text-foreground"
                       : msg.role === "system"
-                        ? "mx-auto bg-inkos-cyan/5 border border-inkos-cyan/20 text-muted-foreground italic text-xs"
-                        : "mr-auto glass-strong border border-inkos-cyan/20",
+                        ? "mx-auto bg-white/[0.02] border border-white/[0.04] text-muted-foreground italic text-xs"
+                        : "mr-auto glass-strong border border-inkos-teal-300/10",
                   )}
                 >
                   <div className="whitespace-pre-wrap prose-sm">
                     {msg.content || (
-                      <span className="flex items-center gap-2 text-inkos-purple-400">
+                      <span className="flex items-center gap-2 text-inkos-cyan">
                         <Loader2 className="h-3 w-3 animate-spin" />
                         Thinking...
                       </span>
@@ -176,10 +201,10 @@ export default function PrimePage() {
                       <span className="inline-block w-1.5 h-4 bg-inkos-cyan animate-pulse-glow ml-0.5 align-bottom rounded-sm" />
                     )}
                   </div>
-                  <span className="mt-1.5 block text-[10px] text-muted-foreground">
+                  <span className="mt-1.5 block text-[10px] text-muted-foreground/50">
                     {msg.role === "prime" ? (
                       <span className="flex items-center gap-1">
-                        <Sparkles className="h-2.5 w-2.5 text-inkos-purple-400" />
+                        <Sparkles className="h-2.5 w-2.5 text-inkos-cyan" />
                         Prime
                       </span>
                     ) : msg.role === "user" ? (
@@ -200,7 +225,7 @@ export default function PrimePage() {
                   <button
                     key={action.label}
                     onClick={() => handleSend(action.query)}
-                    className="text-xs px-3 py-1.5 rounded-full border border-inkos-purple/20 text-muted-foreground hover:border-inkos-purple/40 hover:text-foreground hover:bg-inkos-purple/10 transition-all"
+                    className="text-xs px-3 py-1.5 rounded-full border border-inkos-cyan/15 text-muted-foreground hover:border-inkos-cyan/30 hover:text-foreground hover:bg-inkos-cyan/[0.06] transition-all duration-200"
                   >
                     {action.label}
                   </button>
@@ -210,7 +235,7 @@ export default function PrimePage() {
           </div>
 
           {/* Input */}
-          <Separator className="bg-inkos-purple/15" />
+          <Separator className="bg-white/[0.04]" />
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -223,12 +248,12 @@ export default function PrimePage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask Prime anything... (⌘+Enter to send)"
               disabled={isProcessing}
-              className="flex-1 bg-inkos-navy-800/50 border-inkos-purple/20 placeholder:text-muted-foreground/50 focus-visible:ring-inkos-purple/40"
+              className="flex-1 bg-white/[0.02] border-white/[0.06] placeholder:text-muted-foreground/40 focus-visible:border-inkos-cyan/25 focus-visible:ring-inkos-cyan/15"
             />
             <Button
               type="submit"
               size="icon"
-              className="bg-inkos-purple hover:bg-inkos-purple-700 shrink-0 disabled:opacity-50"
+              className="bg-inkos-cyan/15 text-inkos-cyan hover:bg-inkos-cyan/25 border border-inkos-cyan/20 shrink-0 disabled:opacity-40 transition-colors"
               disabled={isProcessing || !input.trim()}
             >
               {isProcessing ? (
@@ -242,10 +267,10 @@ export default function PrimePage() {
 
         {/* Sidebar: Introspection */}
         <div className="space-y-4">
-          <Card className="glass border-inkos-cyan/20">
+          <Card className="glass glass-hover border-inkos-cyan/8">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Activity className="h-4 w-4 text-inkos-cyan-400" />
+                <Activity className="h-4 w-4 text-inkos-cyan opacity-70" />
                 System Snapshot
               </CardTitle>
               <Button
@@ -307,10 +332,10 @@ export default function PrimePage() {
           </Card>
 
           {/* Live Tape count */}
-          <Card className="glass border-inkos-purple/20">
+          <Card className="glass glass-hover border-inkos-cyan/8">
             <CardContent className="py-3 flex items-center justify-between text-sm">
               <span className="text-muted-foreground text-xs">Live Tape events</span>
-              <span className="text-inkos-cyan-400 font-mono tabular-nums">
+              <span className="text-inkos-cyan font-mono tabular-nums text-sm">
                 {tapeEntries?.length ?? "—"}
               </span>
             </CardContent>
@@ -334,15 +359,13 @@ function SnapshotSection({
     <div>
       <div className="flex items-center gap-1.5 mb-1.5 text-muted-foreground">
         {icon}
-        <span className="text-xs font-medium uppercase tracking-wider">
+        <span className="text-[11px] font-medium uppercase tracking-widest">
           {title}
         </span>
-        <span className="ml-auto text-[10px] tabular-nums">
-          {items.length}
-        </span>
+        <span className="ml-auto text-[10px] tabular-nums">{items.length}</span>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-muted-foreground/60 pl-5">None registered</p>
+        <p className="text-xs text-muted-foreground/50 pl-5">None registered</p>
       ) : (
         <ul className="space-y-1 pl-5">
           {items.map((item) => (
@@ -354,12 +377,12 @@ function SnapshotSection({
               <Badge
                 variant="outline"
                 className={cn(
-                  "text-[9px] font-mono border-inkos-purple/20 shrink-0 ml-2",
+                  "text-[9px] font-mono shrink-0 ml-2",
                   item.badge === "active" || item.badge === "healthy"
-                    ? "text-emerald-400 border-emerald-400/20"
+                    ? "text-emerald-400 border-emerald-500/15"
                     : item.badge === "idle"
-                      ? "text-amber-400 border-amber-400/20"
-                      : "text-muted-foreground",
+                      ? "text-amber-400 border-amber-400/15"
+                      : "border-white/[0.06] text-muted-foreground",
                 )}
               >
                 {item.badge}
@@ -380,7 +403,12 @@ async function generatePrimeResponse(
   proposals: Proposal[],
   simulations: SimulationRun[],
   scenarios: WhatIfScenario[],
-  _runSimMutation: { mutateAsync: (vars: { scenario: WhatIfScenario; timeout?: number }) => Promise<unknown> },
+  _runSimMutation: {
+    mutateAsync: (vars: {
+      scenario: WhatIfScenario;
+      timeout?: number;
+    }) => Promise<unknown>;
+  },
 ): Promise<string> {
   const q = query.toLowerCase();
 
@@ -390,11 +418,18 @@ async function generatePrimeResponse(
 
   // System health
   if (q.includes("health") || q.includes("status")) {
-    const activeAgents = snapshot.agents.filter((a) => a.status === "active").length;
-    const idleAgents = snapshot.agents.filter((a) => a.status === "idle").length;
-    const errorTypes = tapeEntries.filter((e) => e.event_type.includes("error") || e.event_type.includes("fail"));
-
-    return `**System Status: ${snapshot.health_status.toUpperCase()}**\n\n` +
+    const activeAgents = snapshot.agents.filter(
+      (a) => a.status === "active",
+    ).length;
+    const idleAgents = snapshot.agents.filter(
+      (a) => a.status === "idle",
+    ).length;
+    const errorTypes = tapeEntries.filter(
+      (e) =>
+        e.event_type.includes("error") || e.event_type.includes("fail"),
+    );
+    return (
+      `**System Status: ${snapshot.health_status.toUpperCase()}**\n\n` +
       `📊 **Overview**\n` +
       `• ${snapshot.agents.length} agents (${activeAgents} active, ${idleAgents} idle)\n` +
       `• ${snapshot.skills.length} skills registered\n` +
@@ -403,7 +438,8 @@ async function generatePrimeResponse(
       `• ${snapshot.active_worktrees.length} worktrees active\n\n` +
       (errorTypes.length > 0
         ? `⚠️ **${errorTypes.length} error events** detected in recent Tape activity. Consider running a reliability simulation.`
-        : `✅ No recent errors detected in the Tape.`);
+        : `✅ No recent errors detected in the Tape.`)
+    );
   }
 
   // Skills
@@ -424,15 +460,18 @@ async function generatePrimeResponse(
     }
     const agentList = snapshot.agents
       .map((a) => {
-        const statusEmoji = a.status === "active" ? "🟢" : a.status === "idle" ? "🟡" : "⚪";
+        const statusEmoji =
+          a.status === "active" ? "🟢" : a.status === "idle" ? "🟡" : "⚪";
         return `${statusEmoji} **${a.name}** — ${a.status} (capabilities: ${a.capabilities.join(", ") || "none"})`;
       })
       .join("\n");
     const idleAgents = snapshot.agents.filter((a) => a.status === "idle");
-    return `**${snapshot.agents.length} Agents:**\n\n${agentList}` +
+    return (
+      `**${snapshot.agents.length} Agents:**\n\n${agentList}` +
       (idleAgents.length > 0
         ? `\n\n⚠️ ${idleAgents.length} idle agent(s) detected. I can propose reassigning them to active domains.`
-        : "");
+        : "")
+    );
   }
 
   // Domains
@@ -441,37 +480,53 @@ async function generatePrimeResponse(
       return "No domains are configured yet. Domains define problem spaces for agents to work in.";
     }
     const domainList = snapshot.domains
-      .map((d) => `• **${d.name}** — ${d.agent_count} agents (${d.description || "No description"})`)
+      .map(
+        (d) =>
+          `• **${d.name}** — ${d.agent_count} agents (${d.description || "No description"})`,
+      )
       .join("\n");
-    const emptyDomains = snapshot.domains.filter((d) => d.agent_count === 0);
-    return `**${snapshot.domains.length} Domains:**\n\n${domainList}` +
+    const emptyDomains = snapshot.domains.filter(
+      (d) => d.agent_count === 0,
+    );
+    return (
+      `**${snapshot.domains.length} Domains:**\n\n${domainList}` +
       (emptyDomains.length > 0
         ? `\n\n⚠️ ${emptyDomains.length} empty domain(s) need agent assignments.`
-        : "");
+        : "")
+    );
   }
 
   // Proposals
   if (q.includes("proposal")) {
-    const pending = proposals.filter((p) => p.status === "pending_approval");
+    const pending = proposals.filter(
+      (p) => p.status === "pending_approval",
+    );
     const approved = proposals.filter((p) => p.status === "approved");
-    const implemented = proposals.filter((p) => p.status === "implemented");
-
-    return `**Proposal Summary:**\n\n` +
+    const implemented = proposals.filter(
+      (p) => p.status === "implemented",
+    );
+    return (
+      `**Proposal Summary:**\n\n` +
       `• ${pending.length} pending approval\n` +
       `• ${approved.length} approved\n` +
       `• ${implemented.length} implemented\n` +
       `• ${proposals.length} total\n\n` +
       (pending.length > 0
         ? `⚠️ **${pending.length} proposals need your review.** Visit the Proposals page to approve or reject them.`
-        : `✅ No proposals pending review.`);
+        : `✅ No proposals pending review.`)
+    );
   }
 
   // Simulation
-  if (q.includes("simulat") || q.includes("what-if") || q.includes("scenario")) {
+  if (
+    q.includes("simulat") ||
+    q.includes("what-if") ||
+    q.includes("scenario")
+  ) {
     const running = simulations.filter((s) => s.status === "running");
     const completed = simulations.filter((s) => s.status === "completed");
-
-    let response = `**Simulation Overview:**\n\n` +
+    let response =
+      `**Simulation Overview:**\n\n` +
       `• ${running.length} currently running\n` +
       `• ${completed.length} completed\n` +
       `• ${simulations.length} total runs\n\n`;
@@ -488,7 +543,6 @@ async function generatePrimeResponse(
     } else {
       response += `No scenarios generated yet. I'll suggest some once more system activity is recorded.`;
     }
-
     return response;
   }
 
@@ -496,22 +550,30 @@ async function generatePrimeResponse(
   if (q.includes("tape") || q.includes("audit") || q.includes("log")) {
     const eventTypes = new Map<string, number>();
     tapeEntries.forEach((e) => {
-      eventTypes.set(e.event_type, (eventTypes.get(e.event_type) ?? 0) + 1);
+      eventTypes.set(
+        e.event_type,
+        (eventTypes.get(e.event_type) ?? 0) + 1,
+      );
     });
     const topEvents = Array.from(eventTypes.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    return `**Tape Activity:**\n\n` +
+    return (
+      `**Tape Activity:**\n\n` +
       `• ${tapeEntries.length} events in recent history\n\n` +
       `**Top event types:**\n` +
-      topEvents.map(([type, count]) => `• \`${type}\` — ${count} events`).join("\n") +
-      `\n\nVisit the Tape Viewer for full search and filtering.`;
+      topEvents
+        .map(([type, count]) => `• \`${type}\` — ${count} events`)
+        .join("\n") +
+      `\n\nVisit the Tape Viewer for full search and filtering.`
+    );
   }
 
   // Help
   if (q.includes("help") || q.includes("what can you do")) {
-    return `I can help you with:\n\n` +
+    return (
+      `I can help you with:\n\n` +
       `🔍 **Introspection**\n` +
       `• "What's the system health?" — Full system status\n` +
       `• "Show me the skills" — List all registered skills\n` +
@@ -524,10 +586,10 @@ async function generatePrimeResponse(
       `🧪 **Simulations**\n` +
       `• "Run a simulation" — Available what-if scenarios\n` +
       `• "What-if scenarios" — Scenario listing\n\n` +
-      `💡 **Tip:** Use \`⌘K\` to quickly navigate anywhere in the app.`;
+      `💡 **Tip:** Use \`⌘K\` to quickly navigate anywhere in the app.`
+    );
   }
 
   // Default
   return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
 }
-

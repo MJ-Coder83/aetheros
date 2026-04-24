@@ -24,31 +24,70 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { SkeletonCard, EmptyState } from "@/components/skeleton";
-import { useSimulations, useSimulationScenarios, useRunSimulation, useRollbackSimulation, useComparisonReport } from "@/hooks/use-api";
+import {
+  useSimulations,
+  useSimulationScenarios,
+  useRunSimulation,
+  useRollbackSimulation,
+  useComparisonReport,
+} from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import type { SimulationRun, SimulationStatus, WhatIfScenario, OutcomeDelta } from "@/types";
+import type {
+  SimulationRun,
+  SimulationStatus,
+  WhatIfScenario,
+  OutcomeDelta,
+} from "@/types";
 
-const SIM_STATUS_CONFIG: Record<SimulationStatus, { icon: React.ElementType; colour: string; label: string }> = {
-  pending: { icon: Clock, colour: "border-amber-400/40 text-amber-400", label: "Pending" },
-  running: { icon: Zap, colour: "border-inkos-cyan/40 text-inkos-cyan-400", label: "Running" },
-  completed: { icon: CheckCircle2, colour: "border-emerald-400/40 text-emerald-400", label: "Completed" },
-  failed: { icon: XCircle, colour: "border-red-400/40 text-red-400", label: "Failed" },
-  aborted: { icon: AlertTriangle, colour: "border-amber-400/40 text-amber-400", label: "Aborted" },
-  rolled_back: { icon: RotateCcw, colour: "border-muted-foreground/40 text-muted-foreground", label: "Rolled Back" },
+const SIM_STATUS_CONFIG: Record<
+  SimulationStatus,
+  { icon: React.ElementType; colour: string; label: string }
+> = {
+  pending: {
+    icon: Clock,
+    colour: "border-amber-400/25 text-amber-400",
+    label: "Pending",
+  },
+  running: {
+    icon: Zap,
+    colour: "border-inkos-cyan/25 text-inkos-cyan",
+    label: "Running",
+  },
+  completed: {
+    icon: CheckCircle2,
+    colour: "border-emerald-500/25 text-emerald-400",
+    label: "Completed",
+  },
+  failed: {
+    icon: XCircle,
+    colour: "border-red-400/25 text-red-400",
+    label: "Failed",
+  },
+  aborted: {
+    icon: AlertTriangle,
+    colour: "border-amber-400/25 text-amber-400",
+    label: "Aborted",
+  },
+  rolled_back: {
+    icon: RotateCcw,
+    colour: "border-white/[0.06] text-muted-foreground",
+    label: "Rolled Back",
+  },
 };
 
 const SCENARIO_TYPE_COLOURS: Record<string, string> = {
-  skill_evolution: "border-inkos-purple/40 text-inkos-purple-400",
-  agent_reconfig: "border-inkos-cyan/40 text-inkos-cyan-400",
-  domain_change: "border-emerald-400/40 text-emerald-400",
-  custom: "border-amber-400/40 text-amber-400",
+  skill_evolution: "border-inkos-cyan/25 text-inkos-cyan",
+  agent_reconfig: "border-inkos-teal-300/25 text-inkos-teal-300",
+  domain_change: "border-emerald-500/25 text-emerald-400",
+  custom: "border-amber-400/25 text-amber-400",
 };
 
 export default function SimulationsPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showScenarios, setShowScenarios] = useState(false);
   const [compareId, setCompareId] = useState<string | null>(null);
+
   const { data: simulations, isLoading } = useSimulations();
   const { data: scenarios } = useSimulationScenarios();
   const runMutation = useRunSimulation();
@@ -65,18 +104,21 @@ export default function SimulationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6 page-transition">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="flex items-center justify-between"
       >
         <div className="flex items-center gap-3">
-          <FlaskConical className="h-7 w-7 text-inkos-cyan" />
+          <div className="h-9 w-9 rounded-lg bg-inkos-cyan/8 border border-inkos-cyan/15 flex items-center justify-center">
+            <FlaskConical className="h-5 w-5 text-inkos-cyan" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-inkos-cyan text-glow-cyan">
-              Simulations
+            <h1 className="text-2xl font-bold tracking-tight">
+              <span className="text-inkos-cyan">Simulations</span>
             </h1>
             <p className="text-sm text-muted-foreground">
               Safe, isolated what-if testing — {simulations?.length ?? 0} runs
@@ -85,7 +127,7 @@ export default function SimulationsPage() {
         </div>
         <Button
           onClick={() => setShowScenarios(!showScenarios)}
-          className="bg-inkos-purple hover:bg-inkos-purple-700"
+          className="bg-inkos-cyan/15 text-inkos-cyan hover:bg-inkos-cyan/25 border border-inkos-cyan/20"
         >
           {runMutation.isPending ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -104,10 +146,10 @@ export default function SimulationsPage() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <Card className="glass border-inkos-purple/20 mb-4">
+            <Card className="glass border-inkos-cyan/8 mb-4">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-inkos-purple-400" />
+                  <Zap className="h-4 w-4 text-inkos-cyan opacity-70" />
                   Available Scenarios
                 </CardTitle>
               </CardHeader>
@@ -140,7 +182,7 @@ export default function SimulationsPage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.1, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="space-y-3"
       >
         {isLoading ? (
@@ -150,7 +192,7 @@ export default function SimulationsPage() {
             <SkeletonCard lines={5} />
           </div>
         ) : !simulations || simulations.length === 0 ? (
-          <Card className="glass border-inkos-purple/20">
+          <Card className="glass border-inkos-cyan/8">
             <CardContent>
               <EmptyState
                 icon={FlaskConical}
@@ -160,7 +202,7 @@ export default function SimulationsPage() {
                   <Button
                     onClick={() => setShowScenarios(true)}
                     size="sm"
-                    className="bg-inkos-purple hover:bg-inkos-purple-700"
+                    className="bg-inkos-cyan/15 text-inkos-cyan hover:bg-inkos-cyan/25 border border-inkos-cyan/20"
                   >
                     <Play className="h-3.5 w-3.5 mr-1.5" />
                     Run Your First Simulation
@@ -180,8 +222,12 @@ export default function SimulationsPage() {
               }
               onRollback={() => handleRollback(sim.id)}
               isRollingBack={rollbackMutation.isPending}
-              comparison={compareId === sim.id ? comparison ?? null : null}
-              onCompare={() => setCompareId(compareId === sim.id ? null : sim.id)}
+              comparison={
+                compareId === sim.id ? comparison ?? null : null
+              }
+              onCompare={() =>
+                setCompareId(compareId === sim.id ? null : sim.id)
+              }
             />
           ))
         )}
@@ -200,14 +246,14 @@ function ScenarioCard({
   isRunning: boolean;
 }) {
   return (
-    <div className="glass rounded-lg p-4 border border-inkos-purple/15 space-y-3">
+    <div className="glass rounded-lg p-4 border border-inkos-cyan/8 space-y-3 glass-hover">
       <div className="flex items-center gap-2">
         <Badge
           variant="outline"
           className={cn(
             "text-[10px] shrink-0",
             SCENARIO_TYPE_COLOURS[scenario.scenario_type] ??
-              "border-border text-muted-foreground",
+              "border-white/[0.06] text-muted-foreground",
           )}
         >
           {scenario.scenario_type.replace(/_/g, " ")}
@@ -217,22 +263,22 @@ function ScenarioCard({
           className={cn(
             "text-[10px] shrink-0",
             scenario.risk_level === "low"
-              ? "border-emerald-400/30 text-emerald-400"
+              ? "border-emerald-500/20 text-emerald-400"
               : scenario.risk_level === "medium"
-                ? "border-amber-400/30 text-amber-400"
-                : "border-red-400/30 text-red-400",
+                ? "border-amber-400/20 text-amber-400"
+                : "border-red-400/20 text-red-400",
           )}
         >
           {scenario.risk_level}
         </Badge>
       </div>
       <p className="text-sm font-medium">{scenario.name}</p>
-      <p className="text-xs text-muted-foreground line-clamp-2">
+      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
         {scenario.description}
       </p>
       <Button
         size="sm"
-        className="w-full bg-inkos-purple/80 hover:bg-inkos-purple text-xs"
+        className="w-full bg-inkos-cyan/10 text-inkos-cyan hover:bg-inkos-cyan/20 border border-inkos-cyan/15 text-xs"
         onClick={onRun}
         disabled={isRunning}
       >
@@ -261,7 +307,12 @@ function SimulationCard({
   onToggle: () => void;
   onRollback: () => void;
   isRollingBack: boolean;
-  comparison: { deltas: OutcomeDelta[]; overall_assessment: string; recommendation: string; summary: string } | null;
+  comparison: {
+    deltas: OutcomeDelta[];
+    overall_assessment: string;
+    recommendation: string;
+    summary: string;
+  } | null;
   onCompare: () => void;
 }) {
   const config = SIM_STATUS_CONFIG[simulation.status];
@@ -270,12 +321,18 @@ function SimulationCard({
   const result = simulation.result;
 
   return (
-    <Card className="glass border-inkos-purple/20 overflow-hidden">
+    <Card className="glass glass-hover border-inkos-cyan/8 overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-inkos-purple/5 transition-colors"
+        className="w-full text-left px-5 py-4 flex items-center gap-4 hover:bg-inkos-cyan/[0.02] transition-colors duration-150"
       >
-        <StatusIcon className={cn("h-5 w-5 shrink-0", isRunning && "animate-spin text-inkos-cyan", config.colour.split(" ")[1])} />
+        <StatusIcon
+          className={cn(
+            "h-5 w-5 shrink-0",
+            isRunning && "animate-spin text-inkos-cyan",
+            config.colour.split(" ")[1],
+          )}
+        />
         <div className="flex-1 min-w-0">
           <p className="font-medium text-sm truncate">
             {simulation.scenario.name}
@@ -289,7 +346,10 @@ function SimulationCard({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className={cn("text-[10px]", config.colour)}>
+          <Badge
+            variant="outline"
+            className={cn("text-[10px]", config.colour)}
+          >
             {config.label}
           </Badge>
           {expanded ? (
@@ -308,25 +368,28 @@ function SimulationCard({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
           >
-            <Separator className="bg-inkos-purple/15" />
+            <Separator className="bg-white/[0.04]" />
             <div className="px-5 py-4 space-y-4 text-sm">
               {/* Metrics */}
               {Object.keys(result.metrics).length > 0 && (
                 <div>
-                  <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-                    <BarChart3 className="h-3.5 w-3.5" /> Metrics
+                  <h4 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+                    <BarChart3 className="h-3.5 w-3.5" />
+                    Metrics
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {Object.entries(result.metrics).map(([key, value]) => (
                       <div
                         key={key}
-                        className="rounded-lg bg-inkos-navy-800/50 px-3 py-2"
+                        className="rounded-lg bg-white/[0.02] px-3 py-2 border border-white/[0.04]"
                       >
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
                           {key.replace(/_/g, " ")}
                         </p>
                         <p className="text-lg font-bold tabular-nums">
-                          {typeof value === "number" ? value.toFixed(2) : value}
+                          {typeof value === "number"
+                            ? value.toFixed(2)
+                            : value}
                         </p>
                       </div>
                     ))}
@@ -337,7 +400,7 @@ function SimulationCard({
               {/* Outcome probabilities */}
               {Object.keys(result.outcome_probabilities).length > 0 && (
                 <div>
-                  <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                  <h4 className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
                     Outcome Probabilities
                   </h4>
                   <div className="space-y-1.5">
@@ -347,20 +410,20 @@ function SimulationCard({
                           <span className="text-xs text-muted-foreground w-32 truncate">
                             {key.replace(/_/g, " ")}
                           </span>
-                          <div className="flex-1 h-2 rounded-full bg-inkos-navy-800 overflow-hidden">
+                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.04] overflow-hidden">
                             <div
                               className={cn(
                                 "h-full rounded-full transition-all duration-500",
                                 key.includes("success")
                                   ? "bg-inkos-cyan"
-                                  : "bg-red-400/60",
+                                  : "bg-red-400/50",
                               )}
                               style={{
                                 width: `${Math.round(value * 100)}%`,
                               }}
                             />
                           </div>
-                          <span className="text-xs tabular-nums w-12 text-right">
+                          <span className="text-xs tabular-nums w-12 text-right text-muted-foreground">
                             {Math.round(value * 100)}%
                           </span>
                         </div>
@@ -373,10 +436,10 @@ function SimulationCard({
               {/* Decision trace */}
               {result.decision_trace.length > 0 && (
                 <details className="group">
-                  <summary className="text-xs font-medium uppercase tracking-wider text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
+                  <summary className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground cursor-pointer hover:text-foreground transition-colors flex items-center gap-1.5">
                     Decision Trace ({result.decision_trace.length} steps)
                   </summary>
-                  <pre className="mt-2 text-[11px] font-mono text-muted-foreground/70 bg-inkos-navy-800/50 rounded-lg p-3 overflow-x-auto max-h-40">
+                  <pre className="mt-2 text-[11px] font-mono text-muted-foreground/60 bg-white/[0.02] rounded-lg p-3 overflow-x-auto max-h-40 border border-white/[0.03]">
                     {JSON.stringify(result.decision_trace, null, 2)}
                   </pre>
                 </details>
@@ -384,7 +447,7 @@ function SimulationCard({
 
               {/* Error */}
               {result.error_message && (
-                <div className="flex items-start gap-2 text-xs text-red-400 bg-red-400/5 rounded-md px-3 py-2 border border-red-400/20">
+                <div className="flex items-start gap-2 text-xs text-red-400 bg-red-400/[0.04] rounded-md px-3 py-2 border border-red-400/12">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   {result.error_message}
                 </div>
@@ -397,8 +460,8 @@ function SimulationCard({
                     size="sm"
                     variant="outline"
                     className={cn(
-                      "border-inkos-cyan/30 text-inkos-cyan-400 hover:bg-inkos-cyan/10 text-xs",
-                      comparison && "bg-inkos-cyan/10",
+                      "border-inkos-cyan/20 text-inkos-cyan hover:bg-inkos-cyan/10 text-xs",
+                      comparison && "bg-inkos-cyan/8",
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -408,24 +471,25 @@ function SimulationCard({
                     <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
                     {comparison ? "Hide Comparison" : "Compare vs Baseline"}
                   </Button>
-
                   {comparison && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: "auto" }}
-                      className="bg-inkos-navy-800/30 rounded-lg p-4 space-y-3 border border-inkos-cyan/10"
+                      className="bg-white/[0.02] rounded-lg p-4 space-y-3 border border-inkos-cyan/8"
                     >
                       <div className="flex items-center justify-between">
-                        <span className={cn(
-                          "text-xs font-medium px-2 py-1 rounded-full",
-                          comparison.overall_assessment === "positive"
-                            ? "bg-emerald-400/10 text-emerald-400"
-                            : comparison.overall_assessment === "negative"
-                              ? "bg-red-400/10 text-red-400"
-                              : comparison.overall_assessment === "mixed"
-                                ? "bg-amber-400/10 text-amber-400"
-                                : "bg-muted/20 text-muted-foreground",
-                        )}>
+                        <span
+                          className={cn(
+                            "text-xs font-medium px-2 py-1 rounded-full",
+                            comparison.overall_assessment === "positive"
+                              ? "bg-emerald-500/8 text-emerald-400"
+                              : comparison.overall_assessment === "negative"
+                                ? "bg-red-400/8 text-red-400"
+                                : comparison.overall_assessment === "mixed"
+                                  ? "bg-amber-400/8 text-amber-400"
+                                  : "bg-white/[0.03] text-muted-foreground",
+                          )}
+                        >
                           {comparison.overall_assessment}
                         </span>
                         <span className="text-[10px] text-muted-foreground">
@@ -434,18 +498,27 @@ function SimulationCard({
                       </div>
                       <div className="space-y-1.5">
                         {comparison.deltas.map((d) => (
-                          <div key={d.metric} className="flex items-center gap-3 text-xs">
+                          <div
+                            key={d.metric}
+                            className="flex items-center gap-3 text-xs"
+                          >
                             <span className="w-28 text-muted-foreground truncate">
                               {d.metric.replace(/_/g, " ")}
                             </span>
                             <span className="w-10 text-right tabular-nums text-muted-foreground">
                               {d.baseline_value.toFixed(0)}
                             </span>
-                            <span className="text-muted-foreground">→</span>
-                            <span className={cn(
-                              "w-10 text-right tabular-nums font-medium",
-                              d.improved ? "text-emerald-400" : d.delta !== 0 ? "text-red-400" : "text-muted-foreground",
-                            )}>
+                            <span className="text-muted-foreground/40">→</span>
+                            <span
+                              className={cn(
+                                "w-10 text-right tabular-nums font-medium",
+                                d.improved
+                                  ? "text-emerald-400"
+                                  : d.delta !== 0
+                                    ? "text-red-400"
+                                    : "text-muted-foreground",
+                              )}
+                            >
                               {d.simulation_value.toFixed(0)}
                             </span>
                             {d.improved ? (
@@ -459,7 +532,7 @@ function SimulationCard({
                         ))}
                       </div>
                       {comparison.recommendation && (
-                        <p className="text-xs text-muted-foreground italic border-t border-inkos-purple/10 pt-2">
+                        <p className="text-xs text-muted-foreground italic border-t border-white/[0.04] pt-2">
                           {comparison.recommendation}
                         </p>
                       )}
@@ -474,7 +547,7 @@ function SimulationCard({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-inkos-purple/30 text-inkos-purple-400 hover:bg-inkos-purple/10"
+                    className="border-white/[0.06] text-muted-foreground hover:bg-white/[0.03] hover:text-foreground"
                     onClick={(e) => {
                       e.stopPropagation();
                       onRollback();

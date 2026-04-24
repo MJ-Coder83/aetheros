@@ -112,10 +112,10 @@ function RecommendationCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="glass rounded-lg border border-inkos-purple/20 p-4 space-y-3">
+    <div className="glass rounded-lg border border-inkos-cyan/8 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ArrowRight className="h-4 w-4 text-inkos-purple" />
+          <ArrowRight className="h-4 w-4 text-inkos-cyan" />
           <span className="font-medium">{rec.source_domain_id}</span>
           <span className="text-muted-foreground text-xs">
             {rec.compatible_items} compatible items
@@ -155,7 +155,7 @@ function RecommendationCard({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="space-y-1.5 pt-2 border-t border-inkos-purple/10">
+            <div className="space-y-1.5 pt-2 border-t border-inkos-cyan/4">
               {rec.top_items.map((item, i) => (
                 <div
                   key={i}
@@ -166,7 +166,7 @@ function RecommendationCard({
                   <span className="text-muted-foreground">
                     {Math.round(item.compatibility * 100)}%
                   </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-purple/10">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-cyan/4">
                     {item.adaptation}
                   </span>
                 </div>
@@ -174,7 +174,7 @@ function RecommendationCard({
             </div>
             <button
               onClick={() => onTransfer(rec.source_domain_id)}
-              className="mt-3 flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium bg-inkos-purple/80 text-white hover:bg-inkos-purple transition-all"
+              className="mt-3 flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium bg-inkos-cyan/80 text-white hover:bg-inkos-cyan transition-all"
             >
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Transfer from {rec.source_domain_id}
@@ -190,7 +190,7 @@ function RecommendationCard({
 
 function TransferHistoryCard({ record }: { record: TransferRecord }) {
   return (
-    <div className="glass rounded-lg border border-inkos-purple/15 p-3">
+    <div className="glass rounded-lg border border-inkos-cyan/8 p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 text-sm">
           <span className="font-medium">{record.source_domain_id}</span>
@@ -338,13 +338,13 @@ export default function KnowledgeTransferPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 page-transition">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <ArrowRightLeft className="h-8 w-8 text-inkos-purple text-glow-purple" />
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+          <ArrowRightLeft className="h-8 w-8 text-inkos-cyan text-glow-teal" />
           <span>
-            <span className="text-inkos-purple text-glow-purple">
+            <span className="text-inkos-cyan text-glow-teal">
               Cross-Domain
             </span>{" "}
             Knowledge Transfer
@@ -357,7 +357,7 @@ export default function KnowledgeTransferPage() {
       </div>
 
       {/* Transfer form */}
-      <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-4">
+      <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-4">
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Initiate Transfer
         </h2>
@@ -372,14 +372,14 @@ export default function KnowledgeTransferPage() {
               value={sourceDomain}
               onChange={(e) => setSourceDomain(e.target.value)}
               placeholder="e.g. legal-research"
-              className="w-full rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
+              className="w-full rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
             />
             <div className="flex flex-wrap gap-1 mt-1.5">
               {EXAMPLE_DOMAINS.map((d) => (
                 <button
                   key={d}
                   onClick={() => setSourceDomain(d)}
-                  className="text-[10px] px-1.5 py-0.5 rounded border border-inkos-purple/15 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/30 transition-all"
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-inkos-cyan/8 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/20 transition-all"
                 >
                   {d}
                 </button>
@@ -395,14 +395,14 @@ export default function KnowledgeTransferPage() {
               value={targetDomain}
               onChange={(e) => setTargetDomain(e.target.value)}
               placeholder="e.g. finance-ops"
-              className="w-full rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
+              className="w-full rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
             />
             <div className="flex flex-wrap gap-1 mt-1.5">
               {EXAMPLE_DOMAINS.map((d) => (
                 <button
                   key={d}
                   onClick={() => setTargetDomain(d)}
-                  className="text-[10px] px-1.5 py-0.5 rounded border border-inkos-purple/15 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/30 transition-all"
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-inkos-cyan/8 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/20 transition-all"
                 >
                   {d}
                 </button>
@@ -424,8 +424,8 @@ export default function KnowledgeTransferPage() {
                 className={cn(
                   "text-xs px-2.5 py-1 rounded-md border transition-all",
                   selectedTypes.includes(t)
-                    ? "bg-inkos-purple/30 border-inkos-purple/40 text-inkos-purple"
-                    : "bg-inkos-navy-800/30 border-inkos-purple/10 text-muted-foreground hover:border-inkos-purple/20",
+                    ? "bg-inkos-cyan/30 border-inkos-cyan/15 text-inkos-cyan"
+                    : "bg-inkos-navy-800/30 border-inkos-cyan/4 text-muted-foreground hover:border-inkos-cyan/8",
                 )}
               >
                 {typeIcons[t]} {t.replace("_", " ")}
@@ -445,7 +445,7 @@ export default function KnowledgeTransferPage() {
             className={cn(
               "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all",
               sourceDomain.trim() && targetDomain.trim() && !isTransferring
-                ? "bg-inkos-purple/80 text-white hover:bg-inkos-purple"
+                ? "bg-inkos-cyan/80 text-white hover:bg-inkos-cyan"
                 : "bg-inkos-navy-800/40 text-muted-foreground cursor-not-allowed",
             )}
           >

@@ -71,11 +71,11 @@ interface Blueprint {
 
 const roleIcons: Record<string, React.ReactNode> = {
   coordinator: <Shield className="h-4 w-4 text-inkos-cyan" />,
-  analyst: <Sparkles className="h-4 w-4 text-inkos-purple" />,
+  analyst: <Sparkles className="h-4 w-4 text-inkos-cyan" />,
   executor: <Wrench className="h-4 w-4 text-emerald-400" />,
   reviewer: <CheckCircle2 className="h-4 w-4 text-amber-400" />,
   researcher: <Layers className="h-4 w-4 text-inkos-cyan" />,
-  specialist: <Sparkles className="h-4 w-4 text-inkos-purple" />,
+  specialist: <Sparkles className="h-4 w-4 text-inkos-cyan" />,
   monitor: <Clock className="h-4 w-4 text-amber-400" />,
   communicator: <Users className="h-4 w-4 text-emerald-400" />,
 };
@@ -98,13 +98,13 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-xl border border-inkos-purple/20 overflow-hidden"
+      className="glass rounded-xl border border-inkos-cyan/8 overflow-hidden"
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-inkos-purple/10 flex items-start justify-between gap-3">
+      <div className="px-5 py-4 border-b border-inkos-cyan/4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Layers className="h-5 w-5 text-inkos-purple shrink-0" />
+            <Layers className="h-5 w-5 text-inkos-cyan shrink-0" />
             <h3 className="text-lg font-semibold truncate">
               {blueprint.domain_name}
             </h3>
@@ -127,14 +127,14 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
       </div>
 
       {/* Stats bar */}
-      <div className="px-5 py-3 flex gap-4 border-b border-inkos-purple/10 bg-inkos-navy-800/20">
+      <div className="px-5 py-3 flex gap-4 border-b border-inkos-cyan/4 bg-inkos-navy-800/20">
         <div className="flex items-center gap-1.5 text-xs">
           <Users className="h-3.5 w-3.5 text-inkos-cyan" />
           <span className="font-medium">{blueprint.agents.length}</span>
           <span className="text-muted-foreground">agents</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs">
-          <Wrench className="h-3.5 w-3.5 text-inkos-purple" />
+          <Wrench className="h-3.5 w-3.5 text-inkos-cyan" />
           <span className="font-medium">{blueprint.skills.length}</span>
           <span className="text-muted-foreground">skills</span>
         </div>
@@ -161,11 +161,11 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
       </div>
 
       {/* Collapsible sections */}
-      <div className="divide-y divide-inkos-purple/10">
+      <div className="divide-y divide-white/[0.03]">
         {/* Agents section */}
         <button
           onClick={() => toggle("agents")}
-          className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-inkos-purple/5 transition-colors"
+          className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-inkos-cyan/[0.02] transition-colors"
         >
           <span className="text-sm font-medium flex items-center gap-2">
             <Users className="h-4 w-4 text-inkos-cyan" />
@@ -189,12 +189,12 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
                 {blueprint.agents.map((agent) => (
                   <div
                     key={agent.agent_id}
-                    className="rounded-lg bg-inkos-navy-800/30 border border-inkos-purple/10 p-3"
+                    className="rounded-lg bg-inkos-navy-800/30 border border-inkos-cyan/4 p-3"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       {roleIcons[agent.role] ?? <Users className="h-4 w-4" />}
                       <span className="text-sm font-medium">{agent.name}</span>
-                      <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-inkos-purple/10 text-inkos-purple border border-inkos-purple/20">
+                      <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-inkos-cyan/[0.04] text-inkos-cyan border border-inkos-cyan/8">
                         {agent.role}
                       </span>
                     </div>
@@ -203,7 +203,7 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
                       {agent.capabilities.map((c) => (
                         <span
                           key={c}
-                          className="text-[10px] px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-purple/10"
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-cyan/4"
                         >
                           {c}
                         </span>
@@ -219,10 +219,10 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
         {/* Skills section */}
         <button
           onClick={() => toggle("skills")}
-          className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-inkos-purple/5 transition-colors"
+          className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-inkos-cyan/[0.02] transition-colors"
         >
           <span className="text-sm font-medium flex items-center gap-2">
-            <Wrench className="h-4 w-4 text-inkos-purple" />
+            <Wrench className="h-4 w-4 text-inkos-cyan" />
             Skills ({blueprint.skills.length})
           </span>
           {openSection === "skills" ? (
@@ -247,7 +247,7 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
                       "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border",
                       skill.is_reused
                         ? "bg-inkos-cyan/10 border-inkos-cyan/20 text-inkos-cyan"
-                        : "bg-inkos-purple/10 border-inkos-purple/20 text-inkos-purple",
+                        : "bg-inkos-cyan/[0.04] border-inkos-cyan/8 text-inkos-cyan",
                     )}
                   >
                     {skill.is_reused && (
@@ -264,7 +264,7 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
         {/* Workflows section */}
         <button
           onClick={() => toggle("workflows")}
-          className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-inkos-purple/5 transition-colors"
+          className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-inkos-cyan/[0.02] transition-colors"
         >
           <span className="text-sm font-medium flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-emerald-400" />
@@ -288,7 +288,7 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
                 {blueprint.workflows.map((wf) => (
                   <div
                     key={wf.workflow_id}
-                    className="rounded-lg bg-inkos-navy-800/30 border border-inkos-purple/10 p-3"
+                    className="rounded-lg bg-inkos-navy-800/30 border border-inkos-cyan/4 p-3"
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <GitBranch className="h-3.5 w-3.5 text-emerald-400" />
@@ -320,7 +320,7 @@ function BlueprintPreview({ blueprint }: { blueprint: Blueprint }) {
       {/* Validation */}
       {(blueprint.validation_errors.length > 0 ||
         blueprint.validation_warnings.length > 0) && (
-        <div className="px-5 py-3 border-t border-inkos-purple/10 space-y-1">
+        <div className="px-5 py-3 border-t border-inkos-cyan/4 space-y-1">
           {blueprint.validation_errors.map((e, i) => (
             <div
               key={`err-${i}`}
@@ -422,13 +422,13 @@ export default function DomainsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 page-transition">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Layers className="h-8 w-8 text-inkos-purple text-glow-purple" />
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+          <Layers className="h-8 w-8 text-inkos-cyan text-glow-teal" />
           <span>
-            <span className="text-inkos-purple text-glow-purple">Domain</span>{" "}
+            <span className="text-inkos-cyan text-glow-teal">Domain</span>{" "}
             Creator
           </span>
         </h1>
@@ -439,7 +439,7 @@ export default function DomainsPage() {
       </div>
 
       {/* Creation form */}
-      <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-4">
+      <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-4">
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Create New Domain
         </h2>
@@ -451,7 +451,7 @@ export default function DomainsPage() {
             value={domainName}
             onChange={(e) => setDomainName(e.target.value)}
             placeholder="Domain name (optional — auto-generated if empty)"
-            className="w-full rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
+            className="w-full rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
           />
 
           {/* Description */}
@@ -460,7 +460,7 @@ export default function DomainsPage() {
             onChange={(e) => setDescription(e.target.value)}
             placeholder='e.g. "Create a Legal Research Domain for contract analysis and compliance checking"'
             rows={3}
-            className="w-full rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan resize-none"
+            className="w-full rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan resize-none"
           />
 
           {/* Example chips */}
@@ -472,7 +472,7 @@ export default function DomainsPage() {
               <button
                 key={ex}
                 onClick={() => setDescription(ex)}
-                className="text-[10px] px-2 py-1 rounded border border-inkos-purple/15 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/30 transition-all truncate max-w-[200px]"
+                className="text-[10px] px-2 py-1 rounded border border-inkos-cyan/8 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/20 transition-all truncate max-w-[200px]"
               >
                 {ex}
               </button>
@@ -488,7 +488,7 @@ export default function DomainsPage() {
             className={cn(
               "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all",
               description.trim() && !isGenerating
-                ? "bg-inkos-purple/80 text-white hover:bg-inkos-purple"
+                ? "bg-inkos-cyan/80 text-white hover:bg-inkos-cyan"
                 : "bg-inkos-navy-800/40 text-muted-foreground cursor-not-allowed",
             )}
           >

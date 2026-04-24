@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar";
 import { CommandPalette } from "@/components/command-palette";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { GlobalShortcuts } from "@/components/global-shortcuts";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,13 +35,15 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <Providers>
-          <GlobalShortcuts />
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <CommandPalette />
-          <SettingsDialog />
-        </Providers>
+        <ErrorBoundary>
+          <Providers>
+            <GlobalShortcuts />
+            <Navbar />
+            <main className="flex-1 page-transition">{children}</main>
+            <CommandPalette />
+            <SettingsDialog />
+          </Providers>
+        </ErrorBoundary>
       </body>
     </html>
   );

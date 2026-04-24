@@ -12,32 +12,45 @@ import {
   Shield,
   ArrowRight,
   Zap,
+  TrendingUp,
 } from "lucide-react";
 import { StatCard } from "@/components/stat-card";
 import { StatusIndicator } from "@/components/status-indicator";
 import { SkeletonStat, SkeletonList, EmptyState } from "@/components/skeleton";
-import { useSystemSnapshot, useRecentTape, useProposals, useSimulations } from "@/hooks/use-api";
+import {
+  useSystemSnapshot,
+  useRecentTape,
+  useProposals,
+  useSimulations,
+} from "@/hooks/use-api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 
 const stagger = {
-  animate: { transition: { staggerChildren: 0.06 } },
+  animate: { transition: { staggerChildren: 0.05 } },
 };
+
 const item = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] as const } },
 };
 
 export default function DashboardPage() {
-  const { data: snapshot, isLoading: snapLoading, isError: snapError } = useSystemSnapshot();
+  const {
+    data: snapshot,
+    isLoading: snapLoading,
+    isError: snapError,
+  } = useSystemSnapshot();
   const { data: tapeEntries, isLoading: tapeLoading } = useRecentTape(8);
   const { data: proposals, isLoading: propLoading } = useProposals();
   const { data: simulations, isLoading: simLoading } = useSimulations();
 
-  const pendingProposals = proposals?.filter((p) => p.status === "pending_approval") ?? [];
-  const completedSims = simulations?.filter((s) => s.status === "completed") ?? [];
+  const pendingProposals =
+    proposals?.filter((p) => p.status === "pending_approval") ?? [];
+  const completedSims =
+    simulations?.filter((s) => s.status === "completed") ?? [];
   const runningSims = simulations?.filter((s) => s.status === "running") ?? [];
 
   return (
@@ -50,9 +63,9 @@ export default function DashboardPage() {
       {/* Header */}
       <motion.div variants={item} className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-inkos-purple text-glow-purple">Inkos</span>
-            <span className="text-inkos-cyan text-glow-cyan">AI</span>{" "}
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <span className="text-inkos-cyan text-glow-cyan">Inkos</span>
+            <span className="text-inkos-teal-300 text-glow-teal">AI</span>{" "}
             Dashboard
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -63,8 +76,11 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* Stats grid */}
-      <motion.div variants={item} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {(snapLoading || propLoading || simLoading) ? (
+      <motion.div
+        variants={item}
+        className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        {snapLoading || propLoading || simLoading ? (
           <>
             <SkeletonStat />
             <SkeletonStat />
@@ -76,56 +92,65 @@ export default function DashboardPage() {
             <StatCard
               label="Agents"
               value={snapError ? "—" : snapshot?.agents.length ?? 0}
-              icon={<Cpu className="h-5 w-5" />}
-              accent="purple"
+              icon={<Cpu className="h-4 w-4" />}
+              accent="cyan"
               sub={`${snapshot?.agents.filter((a) => a.status === "active").length ?? 0} active`}
             />
             <StatCard
               label="Skills"
               value={snapError ? "—" : snapshot?.skills.length ?? 0}
-              icon={<Brain className="h-5 w-5" />}
-              accent="cyan"
+              icon={<Brain className="h-4 w-4" />}
+              accent="teal"
             />
             <StatCard
               label="Pending Proposals"
               value={pendingProposals.length}
-              icon={<Vote className="h-5 w-5" />}
+              icon={<Vote className="h-4 w-4" />}
               accent="amber"
               sub="Awaiting human approval"
             />
             <StatCard
               label="Simulations"
               value={completedSims.length}
-              icon={<FlaskConical className="h-5 w-5" />}
+              icon={<FlaskConical className="h-4 w-4" />}
               accent="emerald"
-              sub={runningSims.length > 0 ? `${runningSims.length} running` : `${simulations?.length ?? 0} total`}
+              sub={
+                runningSims.length > 0
+                  ? `${runningSims.length} running`
+                  : `${simulations?.length ?? 0} total`
+              }
             />
           </>
-      )}
+        )}
       </motion.div>
 
       {/* Two-column: Tape + System health */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Recent Tape */}
         <motion.div variants={item} className="lg:col-span-2">
-          <Card className="glass border-inkos-purple/20 h-full">
+          <Card className="glass glass-hover border-inkos-cyan/8 h-full">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <div className="flex items-center gap-2">
-                <ScrollText className="h-4 w-4 text-inkos-purple-400" />
-                <CardTitle className="text-base font-semibold">
+                <ScrollText className="h-4 w-4 text-inkos-cyan opacity-70" />
+                <CardTitle className="text-sm font-semibold">
                   Recent Tape Events
                 </CardTitle>
               </div>
               <Link href="/tape">
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-                  View all <ArrowRight className="h-3 w-3 ml-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  View all
+                  <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               </Link>
             </CardHeader>
             <CardContent>
               {tapeLoading ? (
                 <SkeletonList rows={5} />
-              ) : (!tapeEntries || tapeEntries.length === 0) ? (
+              ) : !tapeEntries || tapeEntries.length === 0 ? (
                 <EmptyState
                   icon={ScrollText}
                   title="No Tape events yet"
@@ -136,31 +161,35 @@ export default function DashboardPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Button variant="outline" size="sm" className="border-inkos-purple/30 text-inkos-purple-400">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-inkos-cyan/20 text-inkos-cyan hover:bg-inkos-cyan/10"
+                      >
                         Open API Docs
                       </Button>
                     </a>
                   }
                 />
               ) : (
-                <ul className="divide-y divide-border/30">
+                <ul className="divide-y divide-white/[0.03]">
                   {tapeEntries.map((entry) => (
                     <li
                       key={entry.id}
-                      className="flex items-center justify-between py-2.5 text-sm"
+                      className="flex items-center justify-between py-2.5 text-sm group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <Badge
                           variant="outline"
-                          className="shrink-0 text-[10px] font-mono border-inkos-purple/30 text-inkos-purple-400"
+                          className="shrink-0 text-[10px] font-mono border-inkos-cyan/15 text-inkos-cyan/80"
                         >
                           {entry.event_type}
                         </Badge>
-                        <span className="truncate text-muted-foreground">
+                        <span className="truncate text-muted-foreground group-hover:text-foreground/80 transition-colors">
                           {entry.agent_id ?? "system"}
                         </span>
                       </div>
-                      <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                      <span className="shrink-0 text-[11px] text-muted-foreground/60 tabular-nums">
                         {formatDistanceToNow(new Date(entry.timestamp), {
                           addSuffix: true,
                         })}
@@ -175,10 +204,10 @@ export default function DashboardPage() {
 
         {/* System Health */}
         <motion.div variants={item}>
-          <Card className="glass border-inkos-cyan/20 h-full">
+          <Card className="glass glass-hover border-emerald-500/8 h-full">
             <CardHeader className="flex flex-row items-center gap-2 pb-2">
-              <Activity className="h-4 w-4 text-inkos-cyan-400" />
-              <CardTitle className="text-base font-semibold">
+              <Activity className="h-4 w-4 text-emerald-400 opacity-70" />
+              <CardTitle className="text-sm font-semibold">
                 System Health
               </CardTitle>
             </CardHeader>
@@ -215,7 +244,9 @@ export default function DashboardPage() {
                   />
                   <HealthRow
                     label="Python"
-                    value={snapshot.system_info.python_version?.split(" ")[0] ?? "—"}
+                    value={
+                      snapshot.system_info.python_version?.split(" ")[0] ?? "—"
+                    }
                     good
                   />
                 </>
@@ -228,38 +259,45 @@ export default function DashboardPage() {
       {/* Pending Proposals preview */}
       {propLoading ? null : pendingProposals.length > 0 ? (
         <motion.div variants={item}>
-          <Card className="glass border-amber-400/20">
+          <Card className="glass glass-hover border-amber-400/10">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-amber-400" />
-                <CardTitle className="text-base font-semibold">
+                <Shield className="h-4 w-4 text-amber-400 opacity-70" />
+                <CardTitle className="text-sm font-semibold">
                   Pending Proposals
                 </CardTitle>
               </div>
               <Link href="/proposals">
-                <Button variant="ghost" size="sm" className="text-xs text-amber-400 hover:text-amber-300">
-                  Review all <ArrowRight className="h-3 w-3 ml-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-amber-400/80 hover:text-amber-300 transition-colors"
+                >
+                  Review all
+                  <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               </Link>
             </CardHeader>
             <CardContent>
-              <ul className="divide-y divide-border/30">
+              <ul className="divide-y divide-white/[0.03]">
                 {pendingProposals.slice(0, 5).map((p) => (
                   <li
                     key={p.id}
-                    className="flex items-center justify-between py-2.5 text-sm"
+                    className="flex items-center justify-between py-2.5 text-sm group"
                   >
-                    <span className="truncate font-medium">{p.title}</span>
+                    <span className="truncate font-medium text-foreground/90 group-hover:text-foreground transition-colors">
+                      {p.title}
+                    </span>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge
                         variant="outline"
-                        className="text-[10px] font-mono border-inkos-purple/20 text-muted-foreground"
+                        className="text-[10px] font-mono border-white/[0.06] text-muted-foreground"
                       >
                         {Math.round(p.confidence_score * 100)}%
                       </Badge>
                       <Badge
                         variant="outline"
-                        className="text-[10px] border-amber-400/30 text-amber-400"
+                        className="text-[10px] border-amber-400/20 text-amber-400"
                       >
                         {p.risk_level}
                       </Badge>
@@ -275,33 +313,38 @@ export default function DashboardPage() {
       {/* Running simulations */}
       {simLoading ? null : runningSims.length > 0 ? (
         <motion.div variants={item}>
-          <Card className="glass border-inkos-cyan/20">
+          <Card className="glass glass-hover border-inkos-cyan/10">
             <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
               <div className="flex items-center gap-2">
                 <Zap className="h-4 w-4 text-inkos-cyan animate-pulse" />
-                <CardTitle className="text-base font-semibold">
+                <CardTitle className="text-sm font-semibold">
                   Running Simulations
                 </CardTitle>
               </div>
               <Link href="/simulations">
-                <Button variant="ghost" size="sm" className="text-xs text-inkos-cyan hover:text-inkos-cyan-300">
-                  View <ArrowRight className="h-3 w-3 ml-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-inkos-cyan/80 hover:text-inkos-cyan transition-colors"
+                >
+                  View
+                  <ArrowRight className="h-3 w-3 ml-1" />
                 </Button>
               </Link>
             </CardHeader>
             <CardContent>
-              <ul className="divide-y divide-border/30">
+              <ul className="divide-y divide-white/[0.03]">
                 {runningSims.map((sim) => (
                   <li
                     key={sim.id}
                     className="flex items-center justify-between py-2.5 text-sm"
                   >
-                    <span className="truncate font-medium">
+                    <span className="truncate font-medium text-foreground/90">
                       {sim.scenario.name}
                     </span>
                     <Badge
                       variant="outline"
-                      className="text-[10px] border-inkos-cyan/40 text-inkos-cyan animate-pulse-glow"
+                      className="text-[10px] border-inkos-cyan/25 text-inkos-cyan animate-pulse-glow"
                     >
                       running
                     </Badge>
@@ -326,9 +369,15 @@ function HealthRow({
   good: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between text-sm">
+    <div className="flex items-center justify-between text-sm py-0.5">
       <span className="text-muted-foreground">{label}</span>
-      <span className={good ? "text-inkos-cyan-400" : "text-amber-400"}>
+      <span
+        className={
+          good
+            ? "text-emerald-400 font-medium"
+            : "text-amber-400 font-medium"
+        }
+      >
         {value}
       </span>
     </div>

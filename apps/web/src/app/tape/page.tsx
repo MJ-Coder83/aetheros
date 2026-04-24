@@ -16,31 +16,32 @@ import { formatDistanceToNow, format } from "date-fns";
 const PAGE_SIZE = 20;
 
 const EVENT_TYPE_COLOURS: Record<string, string> = {
-  "prime.introspection": "border-inkos-purple/40 text-inkos-purple-400",
-  "prime.tape_query": "border-inkos-purple/40 text-inkos-purple-400",
-  "prime.agent_lookup": "border-inkos-purple/40 text-inkos-purple-400",
-  "prime.skill_list": "border-inkos-purple/40 text-inkos-purple-400",
-  "prime.domain_list": "border-inkos-purple/40 text-inkos-purple-400",
-  "prime.proposal_created": "border-inkos-cyan/40 text-inkos-cyan-400",
-  "prime.proposal_approved": "border-emerald-400/40 text-emerald-400",
-  "prime.proposal_rejected": "border-red-400/40 text-red-400",
-  "prime.proposal_implemented": "border-emerald-400/40 text-emerald-400",
-  "prime.skill_analysis": "border-inkos-purple/40 text-inkos-purple-400",
-  "prime.skill_evolution_applied": "border-inkos-cyan/40 text-inkos-cyan-400",
-  "prime.skill_evolution_rollback": "border-amber-400/40 text-amber-400",
-  "simulation.started": "border-amber-400/40 text-amber-400",
-  "simulation.completed": "border-emerald-400/40 text-emerald-400",
-  "simulation.timeout": "border-red-400/40 text-red-400",
-  "simulation.failed": "border-red-400/40 text-red-400",
-  "simulation.comparison": "border-inkos-cyan/40 text-inkos-cyan-400",
-  "simulation.rolled_back": "border-amber-400/40 text-amber-400",
-  "simulation.scenarios_generated": "border-inkos-purple/40 text-inkos-purple-400",
+  "prime.introspection": "border-inkos-cyan/20 text-inkos-cyan",
+  "prime.tape_query": "border-inkos-cyan/20 text-inkos-cyan",
+  "prime.agent_lookup": "border-inkos-cyan/20 text-inkos-cyan",
+  "prime.skill_list": "border-inkos-cyan/20 text-inkos-cyan",
+  "prime.domain_list": "border-inkos-cyan/20 text-inkos-cyan",
+  "prime.proposal_created": "border-inkos-teal-300/20 text-inkos-teal-300",
+  "prime.proposal_approved": "border-emerald-500/20 text-emerald-400",
+  "prime.proposal_rejected": "border-red-400/20 text-red-400",
+  "prime.proposal_implemented": "border-emerald-500/20 text-emerald-400",
+  "prime.skill_analysis": "border-inkos-cyan/20 text-inkos-cyan",
+  "prime.skill_evolution_applied": "border-inkos-teal-300/20 text-inkos-teal-300",
+  "prime.skill_evolution_rollback": "border-amber-400/20 text-amber-400",
+  "simulation.started": "border-amber-400/20 text-amber-400",
+  "simulation.completed": "border-emerald-500/20 text-emerald-400",
+  "simulation.timeout": "border-red-400/20 text-red-400",
+  "simulation.failed": "border-red-400/20 text-red-400",
+  "simulation.comparison": "border-inkos-teal-300/20 text-inkos-teal-300",
+  "simulation.rolled_back": "border-amber-400/20 text-amber-400",
+  "simulation.scenarios_generated": "border-inkos-cyan/20 text-inkos-cyan",
 };
 
 export default function TapePage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+
   const { data: entries, isLoading } = useTapeEntries({ limit: 200 });
 
   const eventTypes = useMemo(() => {
@@ -73,20 +74,24 @@ export default function TapePage() {
   const paged = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-6 page-transition">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="flex items-center gap-3"
       >
-        <ScrollText className="h-7 w-7 text-inkos-cyan" />
+        <div className="h-9 w-9 rounded-lg bg-inkos-cyan/8 border border-inkos-cyan/15 flex items-center justify-center">
+          <ScrollText className="h-5 w-5 text-inkos-cyan" />
+        </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-inkos-cyan text-glow-cyan">
-            Tape Viewer
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <span className="text-inkos-cyan">Tape</span> Viewer
           </h1>
           <p className="text-sm text-muted-foreground">
-            Immutable audit trail — {filtered.length} event{filtered.length !== 1 ? "s" : ""}
+            Immutable audit trail — {filtered.length} event
+            {filtered.length !== 1 ? "s" : ""}{" "}
             {filterType && ` (filtered by ${filterType})`}
           </p>
         </div>
@@ -96,7 +101,7 @@ export default function TapePage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.08, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
         className="space-y-3"
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -109,10 +114,9 @@ export default function TapePage() {
                 setPage(0);
               }}
               placeholder="Search events, agents, or payload..."
-              className="pl-9 bg-inkos-navy-800/50 border-inkos-purple/20 placeholder:text-muted-foreground/50"
+              className="pl-9 bg-white/[0.02] border-white/[0.06] placeholder:text-muted-foreground/40 focus-visible:border-inkos-cyan/25 focus-visible:ring-inkos-cyan/15"
             />
           </div>
-
           <div className="flex items-center gap-2 flex-wrap">
             <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             <button
@@ -121,16 +125,17 @@ export default function TapePage() {
                 setPage(0);
               }}
               className={cn(
-                "text-xs px-2.5 py-1 rounded-full border transition-all",
+                "text-xs px-2.5 py-1 rounded-full border transition-all duration-200",
                 !filterType
-                  ? "bg-inkos-purple/20 border-inkos-purple/40 text-inkos-purple-400"
-                  : "border-border text-muted-foreground hover:border-inkos-purple/30",
+                  ? "bg-inkos-cyan/10 border-inkos-cyan/25 text-inkos-cyan"
+                  : "border-white/[0.06] text-muted-foreground hover:border-inkos-cyan/20",
               )}
             >
               All ({entries?.length ?? 0})
             </button>
             {eventTypes.map((type) => {
-              const count = entries?.filter((e) => e.event_type === type).length ?? 0;
+              const count =
+                entries?.filter((e) => e.event_type === type).length ?? 0;
               return (
                 <button
                   key={type}
@@ -139,10 +144,10 @@ export default function TapePage() {
                     setPage(0);
                   }}
                   className={cn(
-                    "text-xs px-2.5 py-1 rounded-full border transition-all truncate max-w-[180px]",
+                    "text-xs px-2.5 py-1 rounded-full border transition-all duration-200 truncate max-w-[180px]",
                     filterType === type
-                      ? "bg-inkos-purple/20 border-inkos-purple/40 text-inkos-purple-400"
-                      : "border-border text-muted-foreground hover:border-inkos-purple/30",
+                      ? "bg-inkos-cyan/10 border-inkos-cyan/25 text-inkos-cyan"
+                      : "border-white/[0.06] text-muted-foreground hover:border-inkos-cyan/20",
                   )}
                 >
                   {type} ({count})
@@ -157,12 +162,14 @@ export default function TapePage() {
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+        transition={{ delay: 0.12, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        <Card className="glass border-inkos-purple/20">
+        <Card className="glass border-inkos-cyan/8">
           <CardContent className="p-0">
             {isLoading ? (
-              <div className="p-6"><SkeletonList rows={8} /></div>
+              <div className="p-6">
+                <SkeletonList rows={8} />
+              </div>
             ) : filtered.length === 0 ? (
               <EmptyState
                 icon={ScrollText}
@@ -177,21 +184,22 @@ export default function TapePage() {
               <ScrollArea className="max-h-[calc(100vh-340px)]">
                 <div className="relative">
                   {/* Timeline line */}
-                  <div className="absolute left-5 top-0 bottom-0 w-px bg-inkos-purple/20" />
-
+                  <div className="absolute left-5 top-0 bottom-0 w-px bg-inkos-cyan/8" />
                   <ul>
                     {paged.map((entry, idx) => (
-                      <li key={entry.id} className="relative pl-12 pr-4 py-3 hover:bg-inkos-purple/5 transition-colors">
+                      <li
+                        key={entry.id}
+                        className="relative pl-12 pr-4 py-3 hover:bg-inkos-cyan/[0.02] transition-colors duration-150"
+                      >
                         {/* Dot */}
                         <div
                           className={cn(
                             "absolute left-[14px] top-5 h-2.5 w-2.5 rounded-full border-2",
                             safePage === 0 && idx === 0
-                              ? "bg-inkos-cyan border-inkos-cyan shadow-sm shadow-inkos-cyan/50"
-                              : "bg-inkos-navy-900 border-inkos-purple/40",
+                              ? "bg-inkos-cyan border-inkos-cyan shadow-sm shadow-inkos-cyan/30"
+                              : "bg-inkos-navy-900 border-inkos-cyan/15",
                           )}
                         />
-
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             <Badge
@@ -199,7 +207,7 @@ export default function TapePage() {
                               className={cn(
                                 "shrink-0 text-[10px] font-mono",
                                 EVENT_TYPE_COLOURS[entry.event_type] ??
-                                  "border-border text-muted-foreground",
+                                  "border-white/[0.06] text-muted-foreground",
                               )}
                             >
                               {entry.event_type}
@@ -211,7 +219,7 @@ export default function TapePage() {
                             )}
                           </div>
                           <span
-                            className="text-[11px] text-muted-foreground tabular-nums shrink-0"
+                            className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0"
                             title={format(new Date(entry.timestamp), "PPpp")}
                           >
                             {formatDistanceToNow(new Date(entry.timestamp), {
@@ -219,14 +227,13 @@ export default function TapePage() {
                             })}
                           </span>
                         </div>
-
                         {/* Payload preview */}
                         {Object.keys(entry.payload).length > 0 && (
                           <details className="mt-1 group">
-                            <summary className="text-[11px] text-muted-foreground/60 cursor-pointer hover:text-muted-foreground transition-colors">
+                            <summary className="text-[11px] text-muted-foreground/40 cursor-pointer hover:text-muted-foreground transition-colors">
                               View payload
                             </summary>
-                            <pre className="mt-1 text-[11px] text-muted-foreground/70 font-mono bg-inkos-navy-800/50 rounded-md p-2 overflow-x-auto max-h-40">
+                            <pre className="mt-1 text-[11px] text-muted-foreground/60 font-mono bg-white/[0.02] rounded-md p-2 overflow-x-auto max-h-40 border border-white/[0.03]">
                               {JSON.stringify(entry.payload, null, 2)}
                             </pre>
                           </details>
@@ -249,13 +256,15 @@ export default function TapePage() {
           className="flex items-center justify-between text-sm"
         >
           <p className="text-xs text-muted-foreground">
-            Showing {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+            Showing {safePage * PAGE_SIZE + 1}–
+            {Math.min((safePage + 1) * PAGE_SIZE, filtered.length)} of{" "}
+            {filtered.length}
           </p>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs border-inkos-purple/20"
+              className="h-7 text-xs border-white/[0.06] hover:border-inkos-cyan/20"
               disabled={safePage === 0}
               onClick={() => setPage((p) => p - 1)}
             >
@@ -268,7 +277,7 @@ export default function TapePage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-7 text-xs border-inkos-purple/20"
+              className="h-7 text-xs border-white/[0.06] hover:border-inkos-cyan/20"
               disabled={safePage >= totalPages - 1}
               onClick={() => setPage((p) => p + 1)}
             >

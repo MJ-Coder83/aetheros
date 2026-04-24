@@ -82,7 +82,6 @@ export function CommandPalette() {
     if (cmd.href) {
       router.push(cmd.href);
     } else if (cmd.action === "settings") {
-      // Dispatch custom event to open settings
       window.dispatchEvent(new CustomEvent("open-settings"));
     }
   }
@@ -96,21 +95,21 @@ export function CommandPalette() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
 
           {/* Palette */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            initial={{ opacity: 0, scale: 0.97, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
-            transition={{ duration: 0.15 }}
-            className="fixed left-1/2 top-[20%] z-[101] w-full max-w-lg -translate-x-1/2"
+            exit={{ opacity: 0, scale: 0.97, y: -8 }}
+            transition={{ duration: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="fixed left-1/2 top-[18%] z-[101] w-full max-w-lg -translate-x-1/2"
           >
-            <div className="glass-strong rounded-2xl border border-inkos-purple/30 overflow-hidden shadow-2xl glow-purple">
+            <div className="glass-strong rounded-2xl border border-inkos-cyan/12 overflow-hidden shadow-2xl glow-cyan">
               {/* Input */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-inkos-purple/15">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.04]">
                 <Search className="h-5 w-5 text-muted-foreground shrink-0" />
                 <input
                   ref={inputRef}
@@ -120,9 +119,9 @@ export function CommandPalette() {
                     setSelected(0);
                   }}
                   placeholder="Type a command or search..."
-                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
+                  className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 outline-none"
                 />
-                <kbd className="text-[10px] font-mono text-muted-foreground bg-inkos-navy-800/60 px-1.5 py-0.5 rounded border border-inkos-purple/20">
+                <kbd className="text-[10px] font-mono text-muted-foreground bg-inkos-navy-800/60 px-1.5 py-0.5 rounded border border-white/[0.06]">
                   ESC
                 </kbd>
               </div>
@@ -140,10 +139,10 @@ export function CommandPalette() {
                       onClick={() => executeCommand(cmd)}
                       onMouseEnter={() => setSelected(idx)}
                       className={cn(
-                        "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                        "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
                         idx === selected
-                          ? "bg-inkos-purple/20 text-foreground"
-                          : "text-muted-foreground hover:bg-inkos-purple/10",
+                          ? "bg-inkos-cyan/10 text-foreground"
+                          : "text-muted-foreground hover:bg-white/[0.03]",
                       )}
                     >
                       <cmd.icon className="h-4 w-4 shrink-0" />
@@ -157,15 +156,24 @@ export function CommandPalette() {
               </div>
 
               {/* Footer hint */}
-              <div className="px-4 py-2 border-t border-inkos-purple/15 flex items-center gap-4 text-[10px] text-muted-foreground">
+              <div className="px-4 py-2 border-t border-white/[0.04] flex items-center gap-4 text-[10px] text-muted-foreground">
                 <span>
-                  <kbd className="font-mono bg-inkos-navy-800/60 px-1 py-0.5 rounded border border-inkos-purple/20">↑↓</kbd> navigate
+                  <kbd className="font-mono bg-inkos-navy-800/60 px-1 py-0.5 rounded border border-white/[0.06]">
+                    ↑↓
+                  </kbd>{" "}
+                  navigate
                 </span>
                 <span>
-                  <kbd className="font-mono bg-inkos-navy-800/60 px-1 py-0.5 rounded border border-inkos-purple/20">↵</kbd> select
+                  <kbd className="font-mono bg-inkos-navy-800/60 px-1 py-0.5 rounded border border-white/[0.06]">
+                    ↵
+                  </kbd>{" "}
+                  select
                 </span>
                 <span>
-                  <kbd className="font-mono bg-inkos-navy-800/60 px-1 py-0.5 rounded border border-inkos-purple/20">⌘K</kbd> toggle
+                  <kbd className="font-mono bg-inkos-navy-800/60 px-1 py-0.5 rounded border border-white/[0.06]">
+                    ⌘K
+                  </kbd>{" "}
+                  toggle
                 </span>
               </div>
             </div>

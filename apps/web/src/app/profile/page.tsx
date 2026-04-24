@@ -91,7 +91,7 @@ function ExpertiseBar({ exp }: { exp: DomainExp }) {
       <span className="w-32 truncate font-medium">{exp.domain_id}</span>
       <div className="flex-1 h-2 rounded-full bg-inkos-navy-800/30 overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-inkos-purple to-inkos-cyan"
+          className="h-full bg-gradient-to-r from-inkos-teal-300 to-inkos-cyan"
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.5 }}
@@ -215,13 +215,13 @@ export default function IntelligenceProfilePage() {
   const summary = profile?.interaction_summary;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 page-transition">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Brain className="h-8 w-8 text-inkos-purple text-glow-purple" />
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+          <Brain className="h-8 w-8 text-inkos-cyan text-glow-teal" />
           <span>
-            <span className="text-inkos-purple text-glow-purple">
+            <span className="text-inkos-cyan text-glow-teal">
               Intelligence
             </span>{" "}
             Profile
@@ -234,7 +234,7 @@ export default function IntelligenceProfilePage() {
       </div>
 
       {/* User ID input */}
-      <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-4">
+      <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-4">
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Load or Create Profile
         </h2>
@@ -245,7 +245,7 @@ export default function IntelligenceProfilePage() {
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             placeholder="Enter user ID (e.g. alice)"
-            className="flex-1 rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
+            className="flex-1 rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan"
           />
           <button
             onClick={handleLoadProfile}
@@ -253,7 +253,7 @@ export default function IntelligenceProfilePage() {
             className={cn(
               "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all",
               userId.trim() && !isLoading
-                ? "bg-inkos-purple/80 text-white hover:bg-inkos-purple"
+                ? "bg-inkos-cyan/80 text-white hover:bg-inkos-cyan"
                 : "bg-inkos-navy-800/40 text-muted-foreground cursor-not-allowed",
             )}
           >
@@ -268,7 +268,7 @@ export default function IntelligenceProfilePage() {
 
         {/* Quick interaction buttons */}
         {userId.trim() && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-inkos-purple/10">
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-inkos-cyan/4">
             <span className="text-[10px] uppercase text-muted-foreground self-center mr-1">
               Record:
             </span>
@@ -278,7 +278,7 @@ export default function IntelligenceProfilePage() {
                   key={type}
                   onClick={() => handleRecordInteraction(type)}
                   disabled={isRecording}
-                  className="text-[10px] px-2 py-1 rounded border border-inkos-purple/15 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/30 transition-all"
+                  className="text-[10px] px-2 py-1 rounded border border-inkos-cyan/8 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/20 transition-all"
                 >
                   {type}
                 </button>
@@ -304,7 +304,7 @@ export default function IntelligenceProfilePage() {
         >
           {/* Overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="glass rounded-lg border border-inkos-purple/15 p-3 text-center">
+            <div className="glass rounded-lg border border-inkos-cyan/8 p-3 text-center">
               <div className="text-2xl font-bold text-inkos-cyan">
                 {summary?.total_interactions ?? 0}
               </div>
@@ -312,15 +312,15 @@ export default function IntelligenceProfilePage() {
                 Interactions
               </div>
             </div>
-            <div className="glass rounded-lg border border-inkos-purple/15 p-3 text-center">
-              <div className="text-2xl font-bold text-inkos-purple">
+            <div className="glass rounded-lg border border-inkos-cyan/8 p-3 text-center">
+              <div className="text-2xl font-bold text-inkos-cyan">
                 {domainExps.length}
               </div>
               <div className="text-[10px] uppercase text-muted-foreground mt-1">
                 Domains
               </div>
             </div>
-            <div className="glass rounded-lg border border-inkos-purple/15 p-3 text-center">
+            <div className="glass rounded-lg border border-inkos-cyan/8 p-3 text-center">
               <div className="text-2xl font-bold text-amber-400">
                 {Math.round((summary?.avg_depth ?? 0) * 100)}%
               </div>
@@ -328,7 +328,7 @@ export default function IntelligenceProfilePage() {
                 Avg Depth
               </div>
             </div>
-            <div className="glass rounded-lg border border-inkos-purple/15 p-3 text-center">
+            <div className="glass rounded-lg border border-inkos-cyan/8 p-3 text-center">
               <div className="text-2xl font-bold text-emerald-400">
                 {Math.round((summary?.approval_rate ?? 0) * 100)}%
               </div>
@@ -340,7 +340,7 @@ export default function IntelligenceProfilePage() {
 
           {/* Domain expertise */}
           {domainExps.length > 0 && (
-            <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-3">
+            <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-3">
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Star className="h-4 w-4 text-amber-400" />
                 Domain Expertise
@@ -355,7 +355,7 @@ export default function IntelligenceProfilePage() {
 
           {/* Preferences */}
           {prefs.length > 0 && (
-            <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-4">
+            <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-4">
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Settings2 className="h-4 w-4 text-inkos-cyan" />
                 Inferred Preferences
@@ -370,9 +370,9 @@ export default function IntelligenceProfilePage() {
 
           {/* Interaction breakdown */}
           {summary && (
-            <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-3">
+            <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-3">
               <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-inkos-purple" />
+                <BarChart3 className="h-4 w-4 text-inkos-cyan" />
                 Interaction Breakdown
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -380,7 +380,7 @@ export default function IntelligenceProfilePage() {
                   ([type, count]) => (
                     <div
                       key={type}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-inkos-navy-800/30 border border-inkos-purple/10"
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-inkos-navy-800/30 border border-inkos-cyan/4"
                     >
                       <span className="text-xs text-muted-foreground">
                         {type}

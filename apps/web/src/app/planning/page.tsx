@@ -90,7 +90,7 @@ function StepCard({ step }: { step: PlanStep }) {
     <div
       className={cn(
         "rounded-lg border p-3 transition-all",
-        stepStatusBg[step.status] ?? "bg-inkos-navy-800/30 border-inkos-purple/10",
+        stepStatusBg[step.status] ?? "bg-inkos-navy-800/30 border-inkos-cyan/4",
       )}
     >
       <button
@@ -99,7 +99,7 @@ function StepCard({ step }: { step: PlanStep }) {
       >
         {stepStatusIcons[step.status] ?? <Clock className="h-4 w-4" />}
         <span className="text-sm font-medium flex-1">{step.name}</span>
-        <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-purple/10">
+        <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-cyan/4">
           {step.action}
         </span>
         {expanded ? (
@@ -117,7 +117,7 @@ function StepCard({ step }: { step: PlanStep }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-2 pt-2 border-t border-inkos-purple/10 space-y-1.5 text-xs">
+            <div className="mt-2 pt-2 border-t border-inkos-cyan/4 space-y-1.5 text-xs">
               {step.description && (
                 <p className="text-muted-foreground">{step.description}</p>
               )}
@@ -127,7 +127,7 @@ function StepCard({ step }: { step: PlanStep }) {
                   {step.dependencies.map((dep) => (
                     <span
                       key={dep}
-                      className="px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-purple/10"
+                      className="px-1.5 py-0.5 rounded bg-inkos-navy-800/40 text-muted-foreground border border-inkos-cyan/4"
                     >
                       {dep}
                     </span>
@@ -174,13 +174,13 @@ function PlanCard({ plan }: { plan: Plan }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-xl border border-inkos-purple/20 overflow-hidden"
+      className="glass rounded-xl border border-inkos-cyan/8 overflow-hidden"
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-inkos-purple/10 flex items-start justify-between gap-3">
+      <div className="px-5 py-4 border-b border-inkos-cyan/4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <Target className="h-5 w-5 text-inkos-purple shrink-0" />
+            <Target className="h-5 w-5 text-inkos-cyan shrink-0" />
             <h3 className="text-lg font-semibold truncate">{plan.goal}</h3>
             <span
               className={cn(
@@ -209,7 +209,7 @@ function PlanCard({ plan }: { plan: Plan }) {
       {/* Progress bar */}
       <div className="h-1 bg-inkos-navy-800/30">
         <motion.div
-          className="h-full bg-gradient-to-r from-inkos-purple to-inkos-cyan"
+          className="h-full bg-gradient-to-r from-inkos-teal-300 to-inkos-cyan"
           initial={{ width: 0 }}
           animate={{ width: `${plan.progress_pct}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
@@ -224,7 +224,7 @@ function PlanCard({ plan }: { plan: Plan }) {
       </div>
 
       {/* Footer info */}
-      <div className="px-5 py-2.5 border-t border-inkos-purple/10 flex items-center gap-4 text-[10px] text-muted-foreground bg-inkos-navy-800/20">
+      <div className="px-5 py-2.5 border-t border-inkos-cyan/4 flex items-center gap-4 text-[10px] text-muted-foreground bg-inkos-navy-800/20">
         <span>Policy: {plan.failure_policy}</span>
         <span>Priority: {plan.priority}</span>
         <span className="ml-auto">
@@ -324,13 +324,13 @@ export default function PlanningPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 page-transition">
       {/* Page header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-          <Route className="h-8 w-8 text-inkos-purple text-glow-purple" />
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+          <Route className="h-8 w-8 text-inkos-cyan text-glow-teal" />
           <span>
-            <span className="text-inkos-purple text-glow-purple">
+            <span className="text-inkos-cyan text-glow-teal">
               Multi-Step
             </span>{" "}
             Planning
@@ -343,7 +343,7 @@ export default function PlanningPage() {
       </div>
 
       {/* Generation form */}
-      <div className="glass rounded-xl border border-inkos-purple/20 p-5 space-y-4">
+      <div className="glass rounded-xl border border-inkos-cyan/8 p-5 space-y-4">
         <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
           Generate Plan from Goal
         </h2>
@@ -353,7 +353,7 @@ export default function PlanningPage() {
           onChange={(e) => setGoal(e.target.value)}
           placeholder='e.g. "Reduce system error rate below 5%"'
           rows={2}
-          className="w-full rounded-md border border-inkos-purple/20 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan resize-none"
+          className="w-full rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-3 py-2 text-sm placeholder:text-muted-foreground/50 focus:border-inkos-cyan focus:outline-none focus:ring-1 focus:ring-inkos-cyan resize-none"
         />
 
         {/* Example chips */}
@@ -365,7 +365,7 @@ export default function PlanningPage() {
             <button
               key={ex}
               onClick={() => setGoal(ex)}
-              className="text-[10px] px-2 py-1 rounded border border-inkos-purple/15 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/30 transition-all truncate max-w-[200px]"
+              className="text-[10px] px-2 py-1 rounded border border-inkos-cyan/8 text-muted-foreground hover:text-inkos-cyan hover:border-inkos-cyan/20 transition-all truncate max-w-[200px]"
             >
               {ex}
             </button>
@@ -378,7 +378,7 @@ export default function PlanningPage() {
           className={cn(
             "flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all",
             goal.trim() && !isGenerating
-              ? "bg-inkos-purple/80 text-white hover:bg-inkos-purple"
+              ? "bg-inkos-cyan/80 text-white hover:bg-inkos-cyan"
               : "bg-inkos-navy-800/40 text-muted-foreground cursor-not-allowed",
           )}
         >

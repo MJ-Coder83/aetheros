@@ -1,5 +1,5 @@
 [project]
-name = "aetheros"
+name = "inkosai"
 version = "0.1.0"
 description = "The Ultimate AI Orchestration Platform"
 requires-python = ">=3.13"
@@ -13,6 +13,8 @@ dependencies = [
     "redis>=5.2.0",
     "sqlalchemy[asyncio]>=2.0.0",
     "asyncpg>=0.30.0",
+    "pyjwt>=2.12.1",
+    "bcrypt>=5.0.0",
 ]
 
 [tool.uv]

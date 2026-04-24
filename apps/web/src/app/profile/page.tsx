@@ -8,14 +8,7 @@ import {
   Star,
   BarChart3,
   Settings2,
-  Camera,
-  RotateCw,
-  ChevronDown,
-  ChevronRight,
   Shield,
-  TrendingUp,
-  Target,
-  Zap,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -187,7 +180,7 @@ export default function IntelligenceProfilePage() {
           user_id: userId.trim(),
           interaction_type: type,
           domain: "general",
-          depth: 0.5 + Math.random() * 0.5,
+          depth: 0.75,
           approved: type === "approval",
         }),
       });

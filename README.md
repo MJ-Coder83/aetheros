@@ -1,8 +1,8 @@
-# AetherOS
+# InkosAI
 
 > The Ultimate AI Orchestration Platform — unify, version, and evolve your AI agents.
 
-AetherOS combines the best ideas from AG2, CrewAI, LangGraph, DSPy, Pydantic AI, Hermes, Bub, and TradingAgents into one **unified, self-improving system** powered by a meta-agent called **Prime**.
+InkosAI combines the best ideas from AG2, CrewAI, LangGraph, DSPy, Pydantic AI, Hermes, Bub, and TradingAgents into one **unified, self-improving system** powered by a meta-agent called **Prime**.
 
 ## Core Concepts
 
@@ -16,8 +16,8 @@ AetherOS combines the best ideas from AG2, CrewAI, LangGraph, DSPy, Pydantic AI,
 
 ```bash
 # Clone the repository
-git clone https://github.com/MJ-Coder83/aetheros.git
-cd aetheros
+git clone https://github.com/MJ-Coder83/inkosai.git
+cd inkosai
 
 # Install dependencies (requires uv)
 uv sync
@@ -41,7 +41,7 @@ make lint && make format
 ## Project Structure
 
 ```
-aetheros/
+inkosai/
 ├── apps/web/              # Next.js web application
 ├── packages/
 │   ├── core/              # Core models (AetherCommit)

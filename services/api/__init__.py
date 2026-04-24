@@ -1,4 +1,4 @@
-"""AetherOS API service package."""
+"""InkosAI API service package."""
 
 from services.api.database import Base, get_db, init_db
 

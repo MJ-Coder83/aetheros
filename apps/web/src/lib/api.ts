@@ -6,8 +6,8 @@
 
 const API_URL = ""; // Requests go through Next.js API proxy
 
-// Direct backend URL (used only if you bypass the proxy)
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Direct backend URL — referenced when bypassing the Next.js proxy.
+// const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 class ApiClientError extends Error {
   constructor(

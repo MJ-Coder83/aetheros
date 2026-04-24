@@ -1,4 +1,4 @@
-"""AetherOS Core — Domain models for AetherGit commits."""
+"""InkosAI Core — Domain models for AetherGit commits."""
 
 from datetime import UTC, datetime
 from uuid import UUID, uuid4

@@ -13,6 +13,10 @@ export function Skeleton({
   );
 }
 
+// Fixed skeleton widths — avoid calling Math.random() during render which
+// violates React's purity rules and causes unstable hydration.
+const SKELETON_WIDTHS = ["55%", "80%", "65%", "90%", "70%", "60%", "75%"];
+
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   return (
     <div className="glass rounded-xl p-5 space-y-3 border border-white/[0.04]">
@@ -21,7 +25,7 @@ export function SkeletonCard({ lines = 3 }: { lines?: number }) {
         <Skeleton
           key={i}
           className="h-3"
-          style={{ width: `${50 + Math.random() * 40}%` }}
+          style={{ width: SKELETON_WIDTHS[i % SKELETON_WIDTHS.length] }}
         />
       ))}
     </div>

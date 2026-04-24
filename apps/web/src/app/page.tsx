@@ -12,7 +12,6 @@ import {
   Shield,
   ArrowRight,
   Zap,
-  TrendingUp,
 } from "lucide-react";
 import { StatCard } from "@/components/stat-card";
 import { StatusIndicator } from "@/components/status-indicator";

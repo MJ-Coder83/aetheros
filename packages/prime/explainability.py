@@ -997,10 +997,10 @@ class ExplanationGenerator:
         risk = self._determine_risk(factors, ctx)
 
         # Generate summaries
-        technical = self._generate_technical_summary(
+        technical = await self._generate_technical_summary(
             action_id, action_type, factors, trace, ctx,
         )
-        simplified = self._generate_simplified_summary(
+        simplified = await self._generate_simplified_summary(
             action_id, action_type, factors, trace, ctx,
         )
 
@@ -1055,7 +1055,7 @@ class ExplanationGenerator:
             return "medium"
         return "low"
 
-    def _generate_technical_summary(
+    async def _generate_technical_summary(
         self,
         action_id: str,
         action_type: ActionType,
@@ -1063,6 +1063,9 @@ class ExplanationGenerator:
         trace: DecisionTrace,
         context: dict[str, object],
     ) -> str:
+        """Generate a technical summary, optionally enhanced by LLM."""
+        from packages.llm import get_llm_provider, is_llm_enabled
+
         parts: list[str] = []
 
         # Opening: action description
@@ -1096,9 +1099,24 @@ class ExplanationGenerator:
         if trace.limitations:
             parts.append(f"Limitations: {'; '.join(trace.limitations[:2])}.")
 
-        return " ".join(parts)
+        base_summary = " ".join(parts)
 
-    def _generate_simplified_summary(
+        if is_llm_enabled():
+            llm = get_llm_provider()
+            prompt = (
+                f"Rewrite the following technical summary into a concise, "
+                f"professional paragraph (max 3 sentences):\n\n{base_summary}"
+            )
+            try:
+                enhanced = await llm.generate(prompt, max_tokens=256)
+                if enhanced.strip():
+                    return enhanced.strip()
+            except Exception:
+                pass  # Fall back to base summary
+
+        return base_summary
+
+    async def _generate_simplified_summary(
         self,
         action_id: str,
         action_type: ActionType,
@@ -1106,6 +1124,9 @@ class ExplanationGenerator:
         trace: DecisionTrace,
         context: dict[str, object],
     ) -> str:
+        """Generate a plain-English summary, optionally enhanced by LLM."""
+        from packages.llm import get_llm_provider, is_llm_enabled
+
         # Human-friendly action description
         action_labels: dict[str, str] = {
             ActionType.PROPOSAL_CREATED: "a new change proposal was created",
@@ -1162,7 +1183,23 @@ class ExplanationGenerator:
         elif risk == "medium":
             parts.append("This action carries moderate risk.")
 
-        return " ".join(parts)
+        base_summary = " ".join(parts)
+
+        if is_llm_enabled():
+            llm = get_llm_provider()
+            prompt = (
+                f"Rewrite the following summary into plain English that a "
+                f"non-technical person can understand (max 3 sentences):\n\n"
+                f"{base_summary}"
+            )
+            try:
+                enhanced = await llm.generate(prompt, max_tokens=256)
+                if enhanced.strip():
+                    return enhanced.strip()
+            except Exception:
+                pass  # Fall back to base summary
+
+        return base_summary
 
     def _build_alternative_comparison(
         self,

@@ -580,7 +580,7 @@ class TestRunSimulationTimeout:
             await asyncio.sleep(10)  # Simulate long-running
             return await original_execute(run)
 
-        engine._execute_simulation = slow_execute  # type: ignore[assignment]
+        engine._execute_simulation = slow_execute  # type: ignore[method-assign]
 
         result = await engine.run_simulation(slow_scenario, timeout_seconds=0.1)
         assert result.status == SimulationStatus.ABORTED
@@ -605,7 +605,7 @@ class TestRunSimulationTimeout:
                 status=SimulationStatus.COMPLETED,
             )
 
-        engine._execute_simulation = slow_execute  # type: ignore[assignment]
+        engine._execute_simulation = slow_execute  # type: ignore[method-assign]
 
         await engine.run_simulation(slow_scenario, timeout_seconds=0.1)
         timeout_entries = await tape_svc.get_entries(event_type="simulation.timeout")

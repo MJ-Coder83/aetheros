@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/skeleton";
 import type {
@@ -33,7 +32,7 @@ import {
   useProposals,
   useSimulations,
   useSimulationScenarios,
-  useRunSimulation,
+
 } from "@/hooks/use-api";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +70,6 @@ export default function PrimePage() {
   const { data: proposals } = useProposals();
   const { data: simulations } = useSimulations();
   const { data: scenarios } = useSimulationScenarios();
-  const runSimMutation = useRunSimulation();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -108,7 +106,7 @@ export default function PrimePage() {
     if (!query || isProcessing) return;
 
     const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
+      id: `user-${crypto.randomUUID()}`,
       role: "user",
       content: query,
       timestamp: new Date(),
@@ -117,7 +115,7 @@ export default function PrimePage() {
     setInput("");
     setIsProcessing(true);
 
-    const responseId = `prime-${Date.now()}`;
+    const responseId = `prime-${crypto.randomUUID()}`;
     setMessages((prev) => [
       ...prev,
       {
@@ -139,7 +137,6 @@ export default function PrimePage() {
       proposals ?? [],
       simulations ?? [],
       scenarios ?? [],
-      runSimMutation,
     );
 
     streamResponse(responseId, fullContent);
@@ -403,12 +400,6 @@ async function generatePrimeResponse(
   proposals: Proposal[],
   simulations: SimulationRun[],
   scenarios: WhatIfScenario[],
-  _runSimMutation: {
-    mutateAsync: (vars: {
-      scenario: WhatIfScenario;
-      timeout?: number;
-    }) => Promise<unknown>;
-  },
 ): Promise<string> {
   const q = query.toLowerCase();
 

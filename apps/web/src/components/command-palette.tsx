@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -50,12 +50,16 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Focus input when opened
+  // Reset query/selection and focus input when the palette opens.
+  // The resets are deferred via setTimeout to avoid synchronous setState
+  // inside an effect body (which can cause cascading renders).
   useEffect(() => {
     if (open) {
-      setQuery("");
-      setSelected(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => {
+        setQuery("");
+        setSelected(0);
+        inputRef.current?.focus();
+      }, 0);
     }
   }, [open]);
 

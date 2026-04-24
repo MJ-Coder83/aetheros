@@ -11,7 +11,8 @@
 
 import { useEffect, useRef } from "react";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/ws";
+// WS_URL will be used when the backend WebSocket endpoint is enabled.
+// const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:8000/ws";
 
 interface UseWebSocketOptions {
   /** Enable the WebSocket connection (default: false while backend has no WS) */
@@ -22,6 +23,9 @@ interface UseWebSocketOptions {
 
 export function useWebSocket(_options: UseWebSocketOptions = {}) {
   const wsRef = useRef<WebSocket | null>(null);
+  // readyState is stored in a ref to avoid stale ref reads during render.
+  // When the backend WebSocket is enabled, update this via setState.
+  const readyState = WebSocket.CONNECTING;
 
   useEffect(() => {
     // WebSocket support is not yet enabled on the backend.
@@ -31,17 +35,18 @@ export function useWebSocket(_options: UseWebSocketOptions = {}) {
     //
     // const ws = new WebSocket(WS_URL);
     // wsRef.current = ws;
+    // setReadyState(ws.readyState);
     //
+    // ws.onopen = () => { /* update readyState state here */ };
+    // ws.onclose = () => {
+    //   setTimeout(() => { /* reconnect */ }, 3000);
+    // };
+    // ws.onerror = () => { /* handle error */ };
     // ws.onmessage = (event) => {
     //   try {
     //     const data = JSON.parse(event.data);
     //     _options.onMessage?.(data);
     //   } catch { /* ignore non-JSON */ }
-    // };
-    //
-    // ws.onerror = () => { /* reconnect logic */ };
-    // ws.onclose = () => {
-    //   setTimeout(() => { /* reconnect */ }, 3000);
     // };
     //
     // return () => {
@@ -59,7 +64,7 @@ export function useWebSocket(_options: UseWebSocketOptions = {}) {
         wsRef.current.send(JSON.stringify(data));
       }
     },
-    /** Current connection state. */
-    readyState: wsRef.current?.readyState ?? WebSocket.CONNECTING,
+    /** Current connection state (reactive). */
+    readyState,
   };
 }

@@ -79,7 +79,16 @@ from packages.prime.intelligence_profile import (
     SnapshotNotFoundError,
     UserPreference,
 )
-from packages.prime.introspection import PrimeIntrospector, SystemSnapshot
+from packages.prime.introspection import (
+    EventPattern,
+    HistoricalAnalysis,
+    HistoricalAnalyzer,
+    PrimeIntrospector,
+    SystemSnapshot,
+    TemporalBucket,
+    TrendAnalysis,
+    TrendPoint,
+)
 from packages.prime.knowledge_transfer import (
     AdaptationType,
     CompatibilityAssessor,
@@ -101,6 +110,17 @@ from packages.prime.knowledge_transfer import (
 )
 from packages.prime.knowledge_transfer import (
     DomainNotFoundError as KTDomainNotFoundError,
+)
+from packages.prime.llm_planning import (
+    DecompositionResult,
+    DecompositionStrategy,
+    DSPyProvider,
+    LangGraphProvider,
+    LLMPlanner,
+    LLMProvider,
+    LLMProviderType,
+    LLMStepSuggestion,
+    MockLLMProvider,
 )
 from packages.prime.planning import (
     CyclicDependencyError,
@@ -162,6 +182,7 @@ __all__ = [
     "CompatibilityLevel",
     "CreationMode",
     "CyclicDependencyError",
+    "DSPyProvider",
     "Debate",
     "DebateAlreadyConcludedError",
     "DebateArena",
@@ -179,6 +200,8 @@ __all__ = [
     "DebateStore",
     "DecisionStep",
     "DecisionTrace",
+    "DecompositionResult",
+    "DecompositionStrategy",
     "DomainBlueprint",
     "DomainConfig",
     "DomainCreationEngine",
@@ -188,6 +211,7 @@ __all__ = [
     "DomainNotApprovedError",
     "DomainStatus",
     "DuplicateDomainError",
+    "EventPattern",
     "EvolutionNotApprovedError",
     "EvolutionProposalNotFoundError",
     "EvolutionResult",
@@ -204,6 +228,8 @@ __all__ = [
     "FactorCategory",
     "FactorExtractor",
     "FailurePolicy",
+    "HistoricalAnalysis",
+    "HistoricalAnalyzer",
     "IncompatibleKnowledgeError",
     "IntelligenceProfile",
     "IntelligenceProfileEngine",
@@ -217,6 +243,12 @@ __all__ = [
     "KnowledgeTransferEngine",
     "KnowledgeTransferError",
     "KnowledgeType",
+    "LLMPlanner",
+    "LLMProvider",
+    "LLMProviderType",
+    "LLMStepSuggestion",
+    "LangGraphProvider",
+    "MockLLMProvider",
     "ModificationType",
     "NoParticipantsError",
     "ParticipantRole",
@@ -262,6 +294,7 @@ __all__ = [
     "StepResult",
     "StepStatus",
     "SystemSnapshot",
+    "TemporalBucket",
     "TraceBuilder",
     "TransferNotFoundError",
     "TransferRecord",
@@ -270,6 +303,8 @@ __all__ = [
     "TransferStore",
     "TransferTransitionError",
     "TransferValidationError",
+    "TrendAnalysis",
+    "TrendPoint",
     "UserPreference",
     "WorkflowBlueprint",
     "WorkflowType",

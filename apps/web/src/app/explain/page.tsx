@@ -7,9 +7,7 @@ import {
   Search,
   ChevronRight,
   ShieldCheck,
-  TrendingUp,
   AlertTriangle,
-  ArrowRight,
   Info,
   BarChart3,
   Clock,
@@ -387,10 +385,6 @@ export default function ExplainPage() {
       action_type: actionType,
     });
   };
-
-  const selectedExplanation = explanations.find(
-    (e) => e.id === expandedId,
-  );
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8 page-transition">

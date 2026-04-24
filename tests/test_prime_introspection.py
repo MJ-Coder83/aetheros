@@ -269,7 +269,10 @@ class TestPrimeIntrospectorQueryTape:
         await introspector.query_tape(event_type="test")
         entries = await tape_svc.get_entries(event_type="prime.tape_query")
         assert len(entries) == 1
-        assert entries[0].payload["filters"]["event_type"] == "test"
+        payload: dict[str, object] = entries[0].payload
+        filters = payload["filters"]
+        assert isinstance(filters, dict)
+        assert filters["event_type"] == "test"
 
     @pytest.mark.asyncio
     async def test_query_tape_with_agent_filter(

@@ -7,8 +7,8 @@ export interface TapeEntry {
   timestamp: string;
   event_type: string;
   agent_id: string | null;
-  payload: Record<string, unknown>;
-  metadata: Record<string, unknown>;
+  payload: Record<string, string | number | boolean | null>;
+  metadata: Record<string, string | number | boolean | null>;
   commit_id: string | null;
 }
 
@@ -95,7 +95,7 @@ export interface SystemSnapshot {
   skills: SkillDescriptor[];
   domains: DomainDescriptor[];
   active_worktrees: string[];
-  health_status: string;
+  health_status: "healthy" | "degraded" | "unhealthy" | "unknown";
 }
 
 /* ── Simulation ───────────────────────────────────────────────── */
@@ -113,7 +113,7 @@ export interface WhatIfScenario {
   name: string;
   description: string;
   scenario_type: string;
-  modifications: Record<string, unknown>;
+  modifications: Record<string, string | number | boolean | null>;
   expected_outcome: string;
   risk_level: RiskLevel;
   source: string;
@@ -124,7 +124,7 @@ export interface SimulationEnvironment {
   skills: SkillDescriptor[];
   agents: AgentDescriptor[];
   domains: DomainDescriptor[];
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string | number | boolean | null>;
 }
 
 export interface SimulationResult {
@@ -133,7 +133,7 @@ export interface SimulationResult {
   success: boolean;
   status: SimulationStatus;
   metrics: Record<string, number>;
-  decision_trace: Array<Record<string, unknown>>;
+  decision_trace: Array<Record<string, string | number | boolean | null>>;
   outcome_probabilities: Record<string, number>;
   environment_before: SimulationEnvironment;
   environment_after: SimulationEnvironment;
@@ -271,7 +271,7 @@ export interface Explanation {
   confidence: number;
   risk_level: string;
   related_tape_entries: string[];
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string | number | boolean | null>;
   created_at: string;
 }
 

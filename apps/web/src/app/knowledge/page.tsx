@@ -4,35 +4,16 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRightLeft,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
-  Clock,
   Loader2,
   ChevronDown,
   ChevronRight,
-  RotateCw,
   ArrowRight,
-  Shield,
   Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ── Types ───────────────────────────────────────────────────── */
-
-interface KnowledgeItem {
-  id: string;
-  name: string;
-  knowledge_type: string;
-  description: string;
-  source_domain_id: string;
-  compatibility_score: number;
-  compatibility_level: string;
-  adaptation_needed: string;
-  adaptation_notes: string;
-  transfer_count: number;
-  success_rate: number;
-}
 
 interface TransferResult {
   transfer_id: string;
@@ -82,13 +63,6 @@ const transferStatusColors: Record<string, string> = {
   failed: "bg-red-500/20 text-red-400 border-red-400/30",
   rejected: "bg-gray-500/20 text-gray-400 border-gray-400/30",
   rolled_back: "bg-orange-500/20 text-orange-400 border-orange-400/30",
-};
-
-const compatLevelColors: Record<string, string> = {
-  high: "text-emerald-400",
-  medium: "text-amber-400",
-  low: "text-orange-400",
-  incompatible: "text-red-400",
 };
 
 const typeIcons: Record<string, string> = {

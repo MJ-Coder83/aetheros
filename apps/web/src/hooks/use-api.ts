@@ -67,7 +67,7 @@ export function useApproveProposal() {
   return useMutation({
     mutationFn: ({ id, reviewer }: { id: string; reviewer: string }) =>
       proposalsApi.approve(id, reviewer),
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["proposals"] });
       toast.success("Proposal approved", {
         description: "The proposal has been approved and can now be implemented.",

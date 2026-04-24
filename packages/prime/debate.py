@@ -79,6 +79,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.llm import LLMProvider
 from packages.prime.proposals import RiskLevel
 from packages.tape.service import TapeService
 
@@ -775,9 +776,9 @@ class DebateArena:
         # Determine phases for this round based on format
         phases = self._get_phases_for_round(debate.format, round_number, debate.max_rounds)
 
-        # If no arguments provided, generate placeholder arguments
+        # If no arguments provided, generate arguments (LLM or heuristic)
         if arguments is None:
-            arguments = self._generate_placeholder_arguments(debate, round_number, phases)
+            arguments = await self._generate_placeholder_arguments(debate, round_number, phases)
 
         # Score each argument and detect biases
         all_biases_count = 0
@@ -1038,29 +1039,44 @@ class DebateArena:
     # Internal: placeholder argument generation
     # ------------------------------------------------------------------
 
-    def _generate_placeholder_arguments(
+    async def _generate_placeholder_arguments(
         self,
         debate: Debate,
         round_number: int,
         phases: list[DebatePhase],
     ) -> list[DebateArgument]:
-        """Generate placeholder arguments for participants.
+        """Generate arguments for participants.
 
-        In a production system, these would be replaced by real agent outputs.
-        The placeholders use the participants' roles, personas, and argument
-        styles to produce format-appropriate arguments.
+        When ``USE_REAL_LLM=true``, arguments are generated via DSPy using
+        the participant's persona and role. Otherwise, heuristic placeholders
+        are used.
         """
+        from packages.llm import get_llm_provider, is_llm_enabled
+
         arguments: list[DebateArgument] = []
+        llm = get_llm_provider()
+        use_llm = is_llm_enabled()
 
         for participant in debate.participants:
             for phase in phases:
-                content = self._generate_argument_content(
-                    participant=participant,
-                    topic=debate.topic,
-                    phase=phase,
-                    round_number=round_number,
-                    format=debate.format,
-                )
+                if use_llm:
+                    content = await self._generate_llm_argument(
+                        llm=llm,
+                        participant=participant,
+                        topic=debate.topic,
+                        phase=phase,
+                        round_number=round_number,
+                        format=debate.format,
+                        prior_arguments=debate.arguments,
+                    )
+                else:
+                    content = self._generate_argument_content(
+                        participant=participant,
+                        topic=debate.topic,
+                        phase=phase,
+                        round_number=round_number,
+                        format=debate.format,
+                    )
                 arg = DebateArgument(
                     participant_agent_id=participant.agent_id,
                     round_number=round_number,
@@ -1071,6 +1087,44 @@ class DebateArena:
                 arguments.append(arg)
 
         return arguments
+
+    @staticmethod
+    async def _generate_llm_argument(
+        llm: "LLMProvider",
+        participant: DebateParticipant,
+        topic: str,
+        phase: DebatePhase,
+        round_number: int,
+        format: DebateFormat,
+        prior_arguments: list[DebateArgument],
+    ) -> str:
+        """Generate an argument using an LLM."""
+        role = participant.role.value
+        persona = participant.persona or "a knowledgeable participant"
+        style = participant.argument_style.value
+
+        prior = ""
+        if prior_arguments:
+            last = prior_arguments[-3:]
+            prior = "\n".join(
+                f"- {a.participant_agent_id}: {a.content[:200]}"
+                for a in last
+            )
+
+        prompt = (
+            f"You are {persona} participating in a {format.value} debate.\n"
+            f"Your role: {role}. Argument style: {style}.\n"
+            f"Topic: '{topic}'\n"
+            f"Round {round_number}, Phase: {phase.value}\n"
+            f"{'Recent arguments:\n' + prior if prior else ''}\n\n"
+            f"Write a concise, persuasive argument (2-4 sentences) for this phase."
+        )
+
+        try:
+            response = await llm.generate(prompt, max_tokens=256)
+            return response.strip() or "[LLM returned empty response]"
+        except Exception as exc:
+            return f"[LLM generation failed: {exc}]"
 
     @staticmethod
     def _generate_argument_content(

@@ -8,36 +8,18 @@ querying for reads). Two backends are provided:
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
-from uuid import UUID, uuid4
+from typing import TYPE_CHECKING
+from uuid import UUID
 
-from sqlalchemy import JSON, DateTime, String, and_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from packages.tape.models import TapeEntry, _utcnow
+from packages.tape.models import TapeEntry
 from packages.tape.schemas import TapeEntryCreate, TapeEntryFilter
-from services.api.database import Base
+from services.api.database import TapeEntryORM
 
-# ---------------------------------------------------------------------------
-# SQLAlchemy ORM model (table definition)
-# ---------------------------------------------------------------------------
-
-
-class TapeEntryORM(Base):
-    """SQLAlchemy ORM mapping for the ``tape_entries`` table."""
-
-    __tablename__ = "tape_entries"
-
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=_utcnow, index=True
-    )
-    event_type: Mapped[str] = mapped_column(String(255), index=True)
-    agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    payload: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
-    metadata_: Mapped[dict[str, object]] = mapped_column("metadata", JSON, default=dict)
-    commit_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+if TYPE_CHECKING:
+    pass
 
 
 def _orm_to_model(row: TapeEntryORM) -> TapeEntry:
@@ -88,12 +70,32 @@ class TapeRepository(AbstractTapeRepository):
 
     Entries are stored in the ``tape_entries`` table. The table is created
     by ``init_db()`` in ``services.api.database``.
+
+    Accepts either an active AsyncSession or an async_sessionmaker. When a
+    sessionmaker is provided, each operation runs in its own session and
+    transaction, making the repository safe to use as a singleton.
     """
 
-    def __init__(self, session: AsyncSession) -> None:
-        self._session = session
+    def __init__(
+        self,
+        session_or_maker: AsyncSession | async_sessionmaker[AsyncSession] | None = None,
+    ) -> None:
+        self._session: AsyncSession | None = (
+            session_or_maker if isinstance(session_or_maker, AsyncSession) else None
+        )
+        self._maker: async_sessionmaker[AsyncSession] | None = (
+            session_or_maker if isinstance(session_or_maker, async_sessionmaker) else None
+        )
+
+    async def _get_session(self) -> AsyncSession:
+        if self._session is not None:
+            return self._session
+        if self._maker is not None:
+            return self._maker()
+        raise RuntimeError("TapeRepository requires an AsyncSession or async_sessionmaker")
 
     async def log_event(self, entry: TapeEntryCreate) -> TapeEntry:
+        session = await self._get_session()
         row = TapeEntryORM(
             event_type=entry.event_type,
             agent_id=entry.agent_id,
@@ -101,21 +103,28 @@ class TapeRepository(AbstractTapeRepository):
             metadata=entry.metadata,
             commit_id=str(entry.commit_id) if entry.commit_id is not None else None,
         )
-        self._session.add(row)
-        await self._session.flush()
-
-        return _orm_to_model(row)
+        session.add(row)
+        await session.flush()
+        result = _orm_to_model(row)
+        if self._maker is not None:
+            await session.commit()
+            await session.close()
+        return result
 
     async def get_entry_by_id(self, entry_id: UUID) -> TapeEntry | None:
-        result = await self._session.execute(
+        session = await self._get_session()
+        result = await session.execute(
             select(TapeEntryORM).where(TapeEntryORM.id == str(entry_id))
         )
         row = result.scalar_one_or_none()
+        if self._maker is not None:
+            await session.close()
         if row is None:
             return None
         return _orm_to_model(row)
 
     async def get_entries(self, filters: TapeEntryFilter) -> list[TapeEntry]:
+        session = await self._get_session()
         stmt = select(TapeEntryORM).order_by(TapeEntryORM.timestamp.desc())
 
         from sqlalchemy import ColumnElement
@@ -136,15 +145,20 @@ class TapeRepository(AbstractTapeRepository):
             stmt = stmt.where(and_(*conditions))
 
         stmt = stmt.limit(filters.limit)
-        result = await self._session.execute(stmt)
+        result = await session.execute(stmt)
         rows = list(result.scalars().all())
+        if self._maker is not None:
+            await session.close()
         return [_orm_to_model(row) for row in rows]
 
     async def get_recent_entries(self, limit: int = 50) -> list[TapeEntry]:
-        result = await self._session.execute(
+        session = await self._get_session()
+        result = await session.execute(
             select(TapeEntryORM).order_by(TapeEntryORM.timestamp.desc()).limit(limit)
         )
         rows = list(result.scalars().all())
+        if self._maker is not None:
+            await session.close()
         return [_orm_to_model(row) for row in rows]
 
 

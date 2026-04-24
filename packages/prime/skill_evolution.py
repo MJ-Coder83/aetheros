@@ -93,6 +93,7 @@ class SkillEvolutionProposal(BaseModel):
     new_skill_descriptor: SkillDescriptor | None = None
     before_snapshot: list[SkillDescriptor] = []
     reasoning: str
+    folder_operations: list[dict[str, object]] = []  # Precise folder ops for this evolution
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

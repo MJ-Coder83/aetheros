@@ -75,6 +75,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.folder_tree import FolderTreeService
 from packages.prime.introspection import (
     AgentDescriptor,
     DomainDescriptor,
@@ -891,6 +892,7 @@ class DomainCreationEngine:
         blueprint_store: BlueprintStore | None = None,
         generator: BlueprintGenerator | None = None,
         validator: BlueprintValidator | None = None,
+        folder_tree_service: FolderTreeService | None = None,
     ) -> None:
         self._tape = tape_service
         self._introspector = introspector
@@ -899,6 +901,7 @@ class DomainCreationEngine:
         self._store = blueprint_store or BlueprintStore()
         self._generator = generator or BlueprintGenerator()
         self._validator = validator or BlueprintValidator()
+        self._folder_tree_service = folder_tree_service
 
     # ------------------------------------------------------------------
     # generate_domain_blueprint
@@ -1141,6 +1144,20 @@ class DomainCreationEngine:
             agent_count=len(blueprint.agents),
         )
         self._domain_registry.register(domain)
+
+        # Generate the folder tree (canonical source of truth)
+        # Folder tree is an enhancement — don't fail registration on error.
+        if self._folder_tree_service is not None:
+            with contextlib.suppress(Exception):
+                await self._folder_tree_service.create_tree(
+                    domain_id=blueprint.domain_id,
+                    domain_name=blueprint.domain_name,
+                    description=blueprint.description,
+                    agents=blueprint.agents,
+                    skills=blueprint.skills,
+                    workflows=blueprint.workflows,
+                    config=blueprint.config,
+                )
 
         # Register agents in the introspector's agent registry
         if self._introspector is not None:

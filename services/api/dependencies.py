@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.aethergit.advanced import AdvancedAetherGit
 from packages.auth import AuthService
+from packages.folder_tree import FolderTreeService
 from packages.prime.debate import DebateArena
 from packages.prime.domain_creation import DomainCreationEngine
 from packages.prime.explainability import ExplainabilityEngine
@@ -128,6 +129,17 @@ def get_introspector_for_analysis() -> PrimeIntrospector:
     return get_introspector()
 
 
+_folder_tree_service_singleton: FolderTreeService | None = None
+
+
+def get_folder_tree_service() -> FolderTreeService:
+    """Return the singleton FolderTreeService (in-memory store)."""
+    global _folder_tree_service_singleton
+    if _folder_tree_service_singleton is None:
+        _folder_tree_service_singleton = FolderTreeService(tape_service=get_tape_service())
+    return _folder_tree_service_singleton
+
+
 # Type aliases for FastAPI Depends
 AetherGitServiceDep = Annotated[AdvancedAetherGit, Depends(get_aethergit_service)]
 DebateServiceDep = Annotated[DebateArena, Depends(get_debate_service)]
@@ -140,4 +152,5 @@ LLMPlannerServiceDep = Annotated[LLMPlanner, Depends(get_llm_planner_service)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 NLQServiceDep = Annotated[SemanticTapeQueryEngine, Depends(get_nlq_service)]
 IntrospectorForAnalysisDep = Annotated[PrimeIntrospector, Depends(get_introspector_for_analysis)]
+FolderTreeServiceDep = Annotated[FolderTreeService, Depends(get_folder_tree_service)]
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]

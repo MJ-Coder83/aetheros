@@ -4,6 +4,53 @@
 
 InkosAI is the ultimate **self-governing AI operating system** and **universal visual development environment**. It empowers humans and AI to collaboratively design, build, simulate, iterate, and continuously improve **any type of digital interface** — web, mobile, desktop, TUI, video, podcast, games, 3D, and future interfaces — with no gaps in functionality.
 
+## Core Architectural Principles
+
+InkosAI is built around three tightly integrated representations of every system:
+
+1. **Visual Canvas** — The beautiful, collaborative, node-based interface for humans and Prime.
+2. **Folder-Tree Representation** — A clean, simple, filesystem-like structure that serves as the canonical, version-controlled source of truth for Domains, Canvases, and workflows.
+3. **Agentic Graph** — The runtime execution graph used by Prime, Simulation Engine, and Debate Arena.
+
+**The folder-tree is the stable backbone.** It makes Prime's reasoning deterministic, portable, auditable, and easy for coding agents to work with, while the visual Canvas provides the delightful user experience.
+
+## Folder-Tree Integration (New Core Concept)
+
+Every Domain and Canvas now has a **dual representation**:
+- **Folder Tree** (source of truth) — stored on disk / in AetherGit
+- **Visual Graph** (user-facing) — synchronized in real time with the folder tree.
+
+**Folder Tree Structure Example** (Legal Research Domain):
+```
+Legal_Research_Domain/
+├── agents/
+│   ├── contract_analyst/
+│   │   ├── role.md
+│   │   ├── goals.md
+│   │   ├── tools/
+│   │   └── examples/
+│   └── compliance_checker/
+├── skills/
+│   ├── contract_analysis.py
+│   └── risk_scoring.py
+├── workflows/
+│   ├── full_contract_review/
+│   │   ├── workflow.json
+│   │   └── example_inputs/
+├── templates/
+│   └── analyze_contract_prompt.md
+├── config/
+│   └── domain_config.json
+├── data_sources/
+└── README.md
+```
+
+This structure is:
+- Fully version-controlled with **AetherGit**
+- Navigable and editable by **Prime** in "Folder Thinking Mode"
+- Synchronized bidirectionally with the **Visual Canvas**
+- Portable (easy to export/import as zip or git repo)
+
 ## Core Identity
 
 - **Name**: InkosAI (from "Inkosi" = King/Chief in Zulu/Xhosa + AI)

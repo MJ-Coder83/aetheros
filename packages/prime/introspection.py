@@ -20,11 +20,23 @@ from __future__ import annotations
 import platform
 import sys
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
 from packages.tape.models import TapeEntry
 from packages.tape.service import TapeService
+
+if TYPE_CHECKING:
+    from packages.folder_tree import FolderTreeNode
+    from packages.folder_tree import FolderTreeService as _FolderTreeService
+
+# ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
+
+class FolderThinkingError(Exception):
+    """Raised when Folder Thinking Mode cannot be used."""
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -169,11 +181,13 @@ class PrimeIntrospector:
         agent_registry: AgentRegistry | None = None,
         skill_registry: SkillRegistry | None = None,
         domain_registry: DomainRegistry | None = None,
+        folder_tree_service: _FolderTreeService | None = None,
     ) -> None:
         self._tape = tape_service
         self._agents = agent_registry or AgentRegistry()
         self._skills = skill_registry or SkillRegistry()
         self._domains = domain_registry or DomainRegistry()
+        self._folder_tree_service: _FolderTreeService | None = folder_tree_service
 
     # -----------------------------------------------------------------------
     # Public API
@@ -267,6 +281,64 @@ class PrimeIntrospector:
             agent_id="prime",
         )
         return domains
+
+    # -----------------------------------------------------------------------
+    # Folder Thinking Mode
+    # -----------------------------------------------------------------------
+
+    async def folder_navigate(
+        self, domain_id: str, path: str = "",
+    ) -> list[FolderTreeNode]:
+        """Navigate a domain's folder tree — Prime's Folder Thinking Mode.
+
+        Allows Prime to browse the canonical folder-tree representation
+        using simple paths like ``/agents/contract_analyst/``.
+
+        Args:
+            domain_id: The domain to navigate.
+            path: Relative directory path (empty for root).
+
+        Returns:
+            List of child nodes in the directory.
+        """
+        if self._folder_tree_service is None:
+            raise FolderThinkingError("Folder tree service not configured")
+        return await self._folder_tree_service.list_directory(domain_id, path)
+
+    async def folder_read(
+        self, domain_id: str, path: str,
+    ) -> FolderTreeNode:
+        """Read a file from a domain's folder tree — Folder Thinking Mode.
+
+        Args:
+            domain_id: The domain to read from.
+            path: Relative file path (e.g. ``agents/analyst/role.md``).
+
+        Returns:
+            The FolderTreeNode for the file.
+        """
+        if self._folder_tree_service is None:
+            raise FolderThinkingError("Folder tree service not configured")
+        return await self._folder_tree_service.read_file(domain_id, path)
+
+    async def folder_search(
+        self, domain_id: str, query: str, max_results: int = 20,
+    ) -> list[FolderTreeNode]:
+        """Search a domain's folder tree — Folder Thinking Mode.
+
+        Args:
+            domain_id: The domain to search.
+            query: Search query (case-insensitive substring).
+            max_results: Maximum results to return.
+
+        Returns:
+            List of matching FolderTreeNodes.
+        """
+        if self._folder_tree_service is None:
+            raise FolderThinkingError("Folder tree service not configured")
+        return await self._folder_tree_service.search(
+            domain_id, query, max_results=max_results,
+        )
 
     # -----------------------------------------------------------------------
     # Internal helpers

@@ -107,6 +107,7 @@ class Proposal(BaseModel):
     reviewed_at: datetime | None = None
     introspection_snapshot_id: str | None = None
     parent_proposal_id: UUID | None = None
+    folder_operations: list[dict[str, object]] = []  # Folder tree ops for this proposal
 
 
 class ProposalSummary(BaseModel):
@@ -249,6 +250,7 @@ class ProposalEngine:
         confidence_score: float = 0.0,
         proposed_by: str = "prime",
         parent_proposal_id: UUID | None = None,
+        folder_operations: list[dict[str, object]] | None = None,
     ) -> Proposal:
         """Create a new self-modification proposal.
 
@@ -284,6 +286,7 @@ class ProposalEngine:
             proposed_by=proposed_by,
             introspection_snapshot_id=snapshot_id,
             parent_proposal_id=parent_proposal_id,
+            folder_operations=folder_operations or [],
         )
 
         self._store.add(proposal)

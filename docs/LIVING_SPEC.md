@@ -33,7 +33,7 @@ InkosAI is the ultimate **self-governing AI operating system** and **universal v
 
 Monorepo structure, tooling, database, immutable Tape service, basic Prime Console UI, and core development practices.
 
-### Phase 1: Prime Enhancements (In Progress)
+### Phase 1: Prime Enhancements (Completed)
 
 Building the self-aware meta-agent foundation:
 
@@ -41,7 +41,9 @@ Building the self-aware meta-agent foundation:
 - Self-Modification Proposals with governed approval workflow
 - Skill Evolution Engine
 - One-Click Domain Creation
-- LLM-powered planning and goal decomposition (DSPy / LangGraph)
+- Multi-Step Autonomous Planning (dependency resolution, failure policies, auto-generation)
+- Cross-Domain Knowledge Transfer (compatibility assessment, adaptation, recommendations)
+- Personalized Intelligence Profile v1 (domain expertise, preference inference, snapshots, rollback)
 - Rich historical analysis over the full Tape
 
 ### Phase 2: Core Platform Superpowers (Completed)

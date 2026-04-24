@@ -24,11 +24,21 @@ from packages.prime.debate import (
     DebateStatus,
     NoParticipantsError,
 )
+from packages.prime.domain_creation import (
+    BlueprintNotFoundError,
+    BlueprintValidationError,
+    CreationMode,
+    DomainCreationEngine,
+    DomainNotApprovedError,
+    DuplicateDomainError,
+)
 from packages.prime.explainability import (
     ActionType,
     ExplainabilityEngine,
     ExplanationNotFoundError,
 )
+from packages.prime.introspection import PrimeIntrospector
+from packages.prime.proposals import ProposalEngine
 from packages.tape.models import TapeEntry
 from packages.tape.repository import InMemoryTapeRepository, TapeRepository
 from packages.tape.schemas import TapeEntryCreate, TapeEntryRead
@@ -94,6 +104,27 @@ def _get_explainability_service() -> ExplainabilityEngine:
 
 ExplainabilityServiceDep = Annotated[
     ExplainabilityEngine, Depends(_get_explainability_service)
+]
+
+# Domain Creation Engine service singleton
+_introspector_singleton = PrimeIntrospector(tape_service=_tape_service)
+_proposal_engine_singleton = ProposalEngine(
+    tape_service=_tape_service, introspector=_introspector_singleton,
+)
+_domain_creation_service = DomainCreationEngine(
+    tape_service=_tape_service,
+    introspector=_introspector_singleton,
+    proposal_engine=_proposal_engine_singleton,
+)
+
+
+def _get_domain_creation_service() -> DomainCreationEngine:
+    """Return the singleton DomainCreationEngine instance."""
+    return _domain_creation_service
+
+
+DomainCreationServiceDep = Annotated[
+    DomainCreationEngine, Depends(_get_domain_creation_service)
 ]
 
 
@@ -628,3 +659,134 @@ async def list_explanations(
     """List all stored explanations, optionally filtered by action type."""
     explanations = await svc.list_explanations(action_type=action_type)
     return [e.model_dump() for e in explanations]
+
+
+# ---------------------------------------------------------------------------
+# Domain Creation request schemas
+# ---------------------------------------------------------------------------
+
+
+class CreateDomainRequest(BaseModel):
+    """Schema for creating a domain from a description."""
+    description: str
+    domain_name: str | None = None
+    creation_mode: CreationMode = CreationMode.HUMAN_GUIDED
+    created_by: str = "prime"
+
+
+class GenerateBlueprintRequest(BaseModel):
+    """Schema for generating a domain blueprint."""
+    description: str
+    domain_name: str | None = None
+    creation_mode: CreationMode = CreationMode.HUMAN_GUIDED
+    created_by: str = "prime"
+
+
+class RegisterDomainRequest(BaseModel):
+    """Schema for registering a domain from an approved blueprint."""
+    blueprint_id: UUID
+    reviewer: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Domain Creation endpoints
+# ---------------------------------------------------------------------------
+
+
+@app.post("/domains/create", status_code=201)
+async def create_domain(
+    body: CreateDomainRequest,
+    svc: DomainCreationServiceDep,
+) -> dict[str, object]:
+    """Create a domain from a natural language description."""
+    try:
+        result = await svc.create_domain_from_description(
+            description=body.description,
+            domain_name=body.domain_name,
+            creation_mode=body.creation_mode,
+            created_by=body.created_by,
+        )
+        return result.model_dump()
+    except BlueprintValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/domains/blueprint", status_code=201)
+async def generate_blueprint(
+    body: GenerateBlueprintRequest,
+    svc: DomainCreationServiceDep,
+) -> dict[str, object]:
+    """Generate a domain blueprint without submitting a proposal."""
+    try:
+        blueprint = await svc.generate_domain_blueprint(
+            description=body.description,
+            domain_name=body.domain_name,
+            creation_mode=body.creation_mode,
+            created_by=body.created_by,
+        )
+        return blueprint.model_dump()
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/domains/register")
+async def register_domain(
+    body: RegisterDomainRequest,
+    svc: DomainCreationServiceDep,
+) -> dict[str, object]:
+    """Register a domain after its proposal has been approved."""
+    try:
+        domain = await svc.register_domain(
+            blueprint_id=body.blueprint_id,
+            reviewer=body.reviewer,
+        )
+        return domain.model_dump()
+    except BlueprintNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (DomainNotApprovedError, DuplicateDomainError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/domains")
+async def list_domains(
+    svc: DomainCreationServiceDep,
+) -> list[dict[str, object]]:
+    """List all registered domains."""
+    domains = await svc.list_domains()
+    return [d.model_dump() for d in domains]
+
+
+@app.get("/domains/{domain_id}")
+async def get_domain(
+    domain_id: str,
+    svc: DomainCreationServiceDep,
+) -> dict[str, object]:
+    """Retrieve a single domain by ID."""
+    domain = await svc.get_domain(domain_id)
+    if domain is None:
+        raise HTTPException(status_code=404, detail=f"Domain '{domain_id}' not found")
+    return domain.model_dump()
+
+
+@app.get("/domains/blueprints")
+async def list_blueprints(
+    svc: DomainCreationServiceDep,
+) -> list[dict[str, object]]:
+    """List all stored domain blueprints."""
+    blueprints = await svc.list_blueprints()
+    return [bp.model_dump() for bp in blueprints]
+
+
+@app.get("/domains/blueprints/{blueprint_id}")
+async def get_blueprint(
+    blueprint_id: UUID,
+    svc: DomainCreationServiceDep,
+) -> dict[str, object]:
+    """Retrieve a specific blueprint by ID."""
+    try:
+        blueprint = await svc.get_blueprint(blueprint_id)
+        return blueprint.model_dump()
+    except BlueprintNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc

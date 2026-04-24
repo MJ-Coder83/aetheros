@@ -32,25 +32,22 @@ from packages.domain.starter_canvas import (
 )
 
 __all__ = [
-    # Blueprint models
     "AgentBlueprint",
     "AgentRole",
-    "CreationMode",
-    "DomainBlueprint",
-    "DomainConfig",
-    "DomainCreationError",
-    "DomainStatus",
-    "EvaluationCriteria",
-    "SkillBlueprint",
-    "WorkflowBlueprint",
-    "WorkflowType",
-    # Generators
-    "DomainFolderTreeGenerator",
-    # Canvas
     "CanvasEdge",
     "CanvasLayout",
     "CanvasNode",
     "CanvasNodeType",
+    "CreationMode",
+    "DomainBlueprint",
+    "DomainConfig",
+    "DomainCreationError",
+    "DomainFolderTreeGenerator",
+    "DomainStatus",
+    "EvaluationCriteria",
+    "SkillBlueprint",
     "StarterCanvas",
     "StarterCanvasGenerator",
+    "WorkflowBlueprint",
+    "WorkflowType",
 ]

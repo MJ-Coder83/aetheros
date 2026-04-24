@@ -78,10 +78,6 @@ Usage::
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
-from enum import StrEnum
-from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
@@ -90,7 +86,6 @@ from packages.folder_tree import (
     FolderTreeNode,
     NodeType,
 )
-from packages.tape.service import TapeService
 
 # Re-export the existing blueprint models from prime.domain_creation so that
 # this module is the single canonical import point.  Other modules can still
@@ -107,22 +102,21 @@ from packages.prime.domain_creation import (
     WorkflowBlueprint,
     WorkflowType,
 )
+from packages.tape.service import TapeService
 
 __all__ = [
-    # Re-exported from prime.domain_creation
     "AgentBlueprint",
     "AgentRole",
     "CreationMode",
     "DomainBlueprint",
     "DomainConfig",
     "DomainCreationError",
+    "DomainFolderTreeGenerator",
     "DomainStatus",
+    "EvaluationCriteria",
     "SkillBlueprint",
     "WorkflowBlueprint",
     "WorkflowType",
-    # New in this module
-    "EvaluationCriteria",
-    "DomainFolderTreeGenerator",
 ]
 
 
@@ -140,13 +134,13 @@ class EvaluationCriteria(BaseModel):
     Attributes
     ----------
     accuracy_threshold:
-        Minimum acceptable task accuracy (0.0–1.0, default 0.85).
+        Minimum acceptable task accuracy (0.0-1.0, default 0.85).
     response_time_sla_seconds:
         Maximum acceptable response time in seconds (default 30).
     human_approval_rate:
-        Minimum required human approval rate for proposals (0.0–1.0).
+        Minimum required human approval rate for proposals (0.0-1.0).
     uptime_target:
-        Target system uptime percentage (0.0–100.0, default 99.5).
+        Target system uptime percentage (0.0-100.0, default 99.5).
     custom_metrics:
         Any domain-specific key/value metric thresholds.
     """

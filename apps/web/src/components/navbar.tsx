@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Settings,
   Search,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/tape", label: "Tape", icon: ScrollText },
   { href: "/proposals", label: "Proposals", icon: Vote },
   { href: "/simulations", label: "Simulations", icon: FlaskConical },
+  { href: "/explain", label: "Explain", icon: Lightbulb },
 ];
 
 export function Navbar() {

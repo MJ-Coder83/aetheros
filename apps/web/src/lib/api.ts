@@ -186,3 +186,64 @@ export const healthApi = {
     return request("/api/health");
   },
 };
+
+
+/* ── Explainability ────────────────────────────────────────────── */
+import type { Explanation, ActionType } from "@/types";
+
+export const explainApi = {
+  generate(body: {
+    action_id: string;
+    action_type: ActionType;
+    context?: Record<string, unknown>;
+  }): Promise<Explanation> {
+    return request("/api/explain/generate", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  trace(body: {
+    action_id: string;
+    action_type?: ActionType;
+    context?: Record<string, unknown>;
+  }): Promise<Record<string, unknown>> {
+    return request("/api/explain/trace", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  factors(body: {
+    action_id: string;
+    action_type?: ActionType;
+    context?: Record<string, unknown>;
+    top_n?: number;
+  }): Promise<Record<string, unknown>[]> {
+    return request("/api/explain/factors", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  compare(body: {
+    action_id: string;
+    alternatives: Record<string, unknown>[];
+    action_type?: ActionType;
+    context?: Record<string, unknown>;
+  }): Promise<Record<string, unknown>> {
+    return request("/api/explain/compare", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  get(id: string): Promise<Explanation> {
+    return request(`/api/explain/${id}`);
+  },
+
+  list(actionType?: ActionType): Promise<Explanation[]> {
+    const qs = actionType ? `?action_type=${actionType}` : "";
+    return request(`/api/explain${qs}`);
+  },
+};

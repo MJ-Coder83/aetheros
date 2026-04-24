@@ -194,6 +194,87 @@ export interface SkillAnalysis {
 
 /* ── API ───────────────────────────────────────────────────────── */
 
+/* -- Explainability ------------------------------------------------- */
+export type ActionType =
+  | 'proposal_created' | 'proposal_approved' | 'proposal_rejected'
+  | 'proposal_implemented' | 'skill_evolution' | 'skill_created'
+  | 'skill_deprecated' | 'skill_merged' | 'skill_split'
+  | 'skill_enhanced' | 'simulation_run' | 'simulation_comparison'
+  | 'debate_started' | 'debate_round' | 'debate_concluded'
+  | 'tape_entry' | 'introspection' | 'system_action';
+
+export type FactorCategory =
+  | 'data_driven' | 'heuristic' | 'risk_assessment'
+  | 'stakeholder' | 'historical' | 'system_state'
+  | 'constraint' | 'confidence';
+
+export type AlternativeOutcome =
+  | 'superior' | 'equivalent' | 'inferior' | 'incomparable';
+
+export interface KeyFactor {
+  name: string;
+  description: string;
+  category: FactorCategory;
+  importance: number;
+  evidence: string[];
+  direction: string;
+}
+
+export interface DecisionStep {
+  step_number: number;
+  action: string;
+  rationale: string;
+  data_sources: string[];
+  confidence: number;
+  timestamp: string | null;
+}
+
+export interface DecisionTrace {
+  action_id: string;
+  action_type: ActionType;
+  steps: DecisionStep[];
+  total_confidence: number;
+  data_sources_used: string[];
+  assumptions: string[];
+  limitations: string[];
+}
+
+export interface Alternative {
+  action_id: string;
+  label: string;
+  description: string;
+  score: number;
+  outcome: AlternativeOutcome;
+  pros: string[];
+  cons: string[];
+  key_differences: string[];
+}
+
+export interface AlternativeComparison {
+  action_id: string;
+  chosen_label: string;
+  chosen_score: number;
+  alternatives: Alternative[];
+  summary: string;
+  trade_offs: string[];
+}
+
+export interface Explanation {
+  id: string;
+  action_id: string;
+  action_type: ActionType;
+  technical_summary: string;
+  simplified_summary: string;
+  key_factors: KeyFactor[];
+  decision_trace: DecisionTrace | null;
+  alternative_comparison: AlternativeComparison | null;
+  confidence: number;
+  risk_level: string;
+  related_tape_entries: string[];
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface ApiError {
   detail: string;
 }

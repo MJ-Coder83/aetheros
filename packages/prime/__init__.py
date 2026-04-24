@@ -22,6 +22,26 @@ from packages.prime.debate import (
     NoParticipantsError,
     ParticipantRole,
 )
+from packages.prime.explainability import (
+    ActionNotFoundError,
+    ActionType,
+    Alternative,
+    AlternativeComparison,
+    AlternativeOutcome,
+    DecisionStep,
+    DecisionTrace,
+    ExplainabilityEngine,
+    ExplainabilityError,
+    Explanation,
+    ExplanationGenerator,
+    ExplanationMode,
+    ExplanationNotFoundError,
+    ExplanationStore,
+    FactorCategory,
+    FactorExtractor,
+    KeyFactor,
+    TraceBuilder,
+)
 from packages.prime.introspection import PrimeIntrospector, SystemSnapshot
 from packages.prime.proposals import (
     ModificationType,
@@ -49,6 +69,11 @@ from packages.prime.skill_evolution import (
 )
 
 __all__ = [
+    "ActionNotFoundError",
+    "ActionType",
+    "Alternative",
+    "AlternativeComparison",
+    "AlternativeOutcome",
     "ArgumentQualityScorer",
     "ArgumentStyle",
     "BiasDetector",
@@ -68,10 +93,22 @@ __all__ = [
     "DebateRoundResult",
     "DebateStatus",
     "DebateStore",
+    "DecisionStep",
+    "DecisionTrace",
     "EvolutionNotApprovedError",
     "EvolutionProposalNotFoundError",
     "EvolutionResult",
     "EvolutionType",
+    "ExplainabilityEngine",
+    "ExplainabilityError",
+    "Explanation",
+    "ExplanationGenerator",
+    "ExplanationMode",
+    "ExplanationNotFoundError",
+    "ExplanationStore",
+    "FactorCategory",
+    "FactorExtractor",
+    "KeyFactor",
     "ModificationType",
     "NoParticipantsError",
     "ParticipantRole",
@@ -92,4 +129,5 @@ __all__ = [
     "SkillEvolutionProposal",
     "SkillEvolutionStore",
     "SystemSnapshot",
+    "TraceBuilder",
 ]

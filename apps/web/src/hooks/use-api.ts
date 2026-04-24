@@ -183,3 +183,68 @@ export function useHealthCheck() {
     refetchInterval: 15_000,
   });
 }
+
+/* ── Explainability ──────────────────────────────────────────── */
+import { explainApi } from "@/lib/api";
+import type { ActionType } from "@/types";
+
+export function useExplanations(actionType?: ActionType) {
+  return useQuery({
+    queryKey: ["explainability", actionType],
+    queryFn: () => explainApi.list(actionType),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useExplanation(id: string | null) {
+  return useQuery({
+    queryKey: ["explainability", id],
+    queryFn: () => explainApi.get(id!),
+    enabled: id !== null,
+  });
+}
+
+export function useGenerateExplanation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      action_id: string;
+      action_type: ActionType;
+      context?: Record<string, unknown>;
+    }) => explainApi.generate(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["explainability"] });
+      toast.success("Explanation generated");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to generate explanation", { description: error.message });
+    },
+  });
+}
+
+export function useDecisionTrace() {
+  return useMutation({
+    mutationFn: (body: {
+      action_id: string;
+      action_type?: ActionType;
+      context?: Record<string, unknown>;
+    }) => explainApi.trace(body),
+    onError: (error: Error) => {
+      toast.error("Failed to get decision trace", { description: error.message });
+    },
+  });
+}
+
+export function useKeyFactors() {
+  return useMutation({
+    mutationFn: (body: {
+      action_id: string;
+      action_type?: ActionType;
+      context?: Record<string, unknown>;
+      top_n?: number;
+    }) => explainApi.factors(body),
+    onError: (error: Error) => {
+      toast.error("Failed to highlight key factors", { description: error.message });
+    },
+  });
+}

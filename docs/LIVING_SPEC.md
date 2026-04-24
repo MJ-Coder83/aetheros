@@ -120,6 +120,11 @@ Godot, Unity, Unreal, Blender, DaVinci Resolve, Adobe Suite, VS Code, and any pr
 - Agent-specific Git Worktree usage
 - Semantic/Natural Language querying over Tape
 
+### Future Technical Considerations (from Independent Review)
+
+- **Heuristic Ceiling**: The ArgumentQualityScorer and BiasDetector currently rely on regex-based logic. While effective for V1, the system's reasoning intelligence will eventually plateau. Plan to upgrade these to semantic embedding comparisons or LLM-based evaluators for higher-quality debate analysis and bias detection.
+- **Tape Memory Growth**: As an event-sourced system, the immutable Tape will grow indefinitely over time. Implement a snapshotting mechanism (periodic state collapse into a single record) to maintain performance while preserving full auditability of the event log.
+
 ## Success Metrics (End of Month 9)
 
 - Prime can autonomously understand, propose, evolve, simulate, debate, and explain the entire system

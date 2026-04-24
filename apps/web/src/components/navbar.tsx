@@ -13,6 +13,7 @@ import {
   Search,
   Lightbulb,
   Layers,
+  Route,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/proposals", label: "Proposals", icon: Vote },
   { href: "/simulations", label: "Simulations", icon: FlaskConical },
   { href: "/explain", label: "Explain", icon: Lightbulb },
+  { href: "/planning", label: "Planning", icon: Route },
   { href: "/domains", label: "Domains", icon: Layers },
 ];
 

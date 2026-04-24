@@ -91,6 +91,7 @@ def get_domain_creation_service() -> DomainCreationEngine:
         tape_service=get_tape_service(),
         introspector=get_introspector(),
         proposal_engine=get_proposal_engine(),
+        folder_tree_service=get_folder_tree_service(),
     )
 
 

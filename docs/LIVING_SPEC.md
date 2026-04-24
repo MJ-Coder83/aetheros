@@ -14,13 +14,15 @@ InkosAI is built around three tightly integrated representations of every system
 
 **The folder-tree is the stable backbone.** It makes Prime's reasoning deterministic, portable, auditable, and easy for coding agents to work with, while the visual Canvas provides the delightful user experience.
 
-## Folder-Tree Integration (New Core Concept)
+## Folder-Tree Integration (Core Architectural Principle)
 
-Every Domain and Canvas now has a **dual representation**:
+Every Domain and Canvas has a **dual representation**:
+
 - **Folder Tree** (source of truth) — stored on disk / in AetherGit
-- **Visual Graph** (user-facing) — synchronized in real time with the folder tree.
+- **Visual Graph** (user-facing) — synchronized in real time with the folder tree
 
 **Folder Tree Structure Example** (Legal Research Domain):
+
 ```
 Legal_Research_Domain/
 ├── agents/
@@ -46,10 +48,27 @@ Legal_Research_Domain/
 ```
 
 This structure is:
+
 - Fully version-controlled with **AetherGit**
 - Navigable and editable by **Prime** in "Folder Thinking Mode"
 - Synchronized bidirectionally with the **Visual Canvas**
 - Portable (easy to export/import as zip or git repo)
+
+### How Folder-Tree Is Incorporated Throughout the App
+
+| Component | How Folder-Tree Enhances It (No Breaking Changes) |
+|----------------------------|----------------------------------------------------|
+| **Prime** | New "Folder Thinking Mode" — Prime can navigate, read, search, and propose changes using simple paths (`/agents/contract_analyst/`) |
+| **One-Click Domain Creation** | Now generates both the Domain Blueprint **and** its clean folder-tree structure |
+| **Domain Canvas** | Dual-mode view: **Visual Mode** ↔ **Folder Mode** (one-click switch, fully synchronized) |
+| **AetherGit** | The folder tree is the primary source of truth for commits, branches, and rewinds |
+| **Tape** | Every folder operation is logged (`prime.folder_created`, `prime.file_modified`, `prime.directory_listed`) |
+| **Skill Evolution Engine** | Evolutions are expressed as precise folder operations (create/move/edit files) |
+| **Self-Modification Proposals** | Proposals can include exact file/folder changes with visual diffs |
+| **Plugin System** | Plugins can read/write to the domain's folder tree via the Agent Bridge |
+| **Simulation Engine** | Simulations run on temporary folder branches (`/experiments/...`) |
+
+All existing functionality remains exactly as it is. The folder-tree is an **additional layer** that makes the system more reliable, portable, and developer-friendly.
 
 ## Core Identity
 
@@ -66,19 +85,26 @@ This structure is:
 - Structured multi-agent reasoning (Debate Arena)
 - Full decision transparency (Explainability Dashboard)
 - Universal visual development (Domain Canvas with Plugin Nodes and AI Co-Pilot)
+- **Folder-Tree as stable backbone** — deterministic, portable, version-controlled source of truth
 
 ## Current Status (April 24, 2026)
- 
-- **Phase 1: Prime Enhancements (Completed)** -- Built the self-aware foundation with persistence (PostgreSQL), modular API, advanced introspection, LLM planning, semantic Tape querying, and basic auth.
-- **Phase 2: Core Platform Superpowers (Completed)** — Delivered AetherGit, Simulation, Debate Arena, Semantic Tape Querying, and InkosGraph.
-- **Phase 3: User Experience & Collaboration (Current Focus)** — Building the universal visual development environment (Domain Canvas).
-- **Extremely strong, production-minded backend core**
-- **High architectural quality, consistent testing discipline, and thoughtful governance patterns
 
+- **Phase 1: Prime Enhancements (Completed)** — Built the self-aware foundation with persistence (PostgreSQL), modular API, advanced introspection, LLM planning, semantic Tape querying, and basic auth.
+- **Phase 2: Core Platform Superpowers (Completed)** — Delivered AetherGit, Simulation, Debate Arena, Semantic Tape Querying, and InkosGraph.
+- **Phase 3: User Experience & Collaboration (Current Focus)** — Building the universal visual development environment (Domain Canvas) with dual-mode Visual ↔ Folder view.
+- Extremely strong, production-minded backend core
+- High architectural quality, consistent testing discipline, and thoughtful governance patterns
 
 ## Domain Canvas — v5 Vision (Universal Visual Development Environment)
 
 The Domain Canvas is the heart of InkosAI — a powerful, node-based visual workspace where humans and Prime collaborate to design, build, simulate, and evolve any type of digital interface.
+
+### Dual-Mode View
+
+- **Visual Mode** — The traditional node-based canvas with drag-and-drop, live preview, and AI Co-Pilot
+- **Folder Mode** — The canonical folder-tree representation, synchronized in real time with the visual canvas
+
+One-click switch between modes; changes in either mode are immediately reflected in the other.
 
 ### Tiered Support
 
@@ -101,11 +127,13 @@ Godot, Unity, Unreal, Blender, DaVinci Resolve, Adobe Suite, VS Code, and any pr
 - Real-time simulation, Tape overlay, and AetherGit versioning
 - Multi-user collaboration
 - Visual diffing, ghost mode, and explainability integration
+- Folder-tree synchronization across all modes
 
 ## Plugin Architecture & Marketplace
 
 - Secure Plugin Node system with sandboxing, fine-grained permissions, and audit logging
 - Agent Bridge for structured, safe agent-to-plugin communication
+- Plugins can read/write to the domain's folder tree via the Agent Bridge
 - Marketplace with discovery, ratings, monetization models, and governance
 
 ## Strategic Recommendations
@@ -114,6 +142,7 @@ Godot, Unity, Unreal, Blender, DaVinci Resolve, Adobe Suite, VS Code, and any pr
 - Deeper historical Tape analysis in Introspection
 - Agent-specific Git Worktree usage
 - Semantic/Natural Language querying over Tape
+- Folder-tree as the primary interface for coding agents interacting with InkosAI
 
 ### Future Technical Considerations (from Independent Review)
 
@@ -123,7 +152,8 @@ Godot, Unity, Unreal, Blender, DaVinci Resolve, Adobe Suite, VS Code, and any pr
 ## Success Metrics (End of Month 9)
 
 - Prime can autonomously understand, propose, evolve, simulate, debate, and explain the entire system
-- Users can build and iterate on any type of UI using the Domain Canvas
+- Prime can navigate and reason about domains using Folder Thinking Mode
+- Users can build and iterate on any type of UI using the Domain Canvas (Visual or Folder mode)
 - InkosAI functions as a true self-governing, explainable, and universal creative operating system
 
 ## Tech Stack

@@ -17,6 +17,7 @@ from services.api.routes import (
     debates,
     domains,
     explainability,
+    folder_tree,
     health,
     introspection,
     knowledge,
@@ -62,3 +63,4 @@ app.include_router(llm_planning.router)
 app.include_router(introspection.router)
 app.include_router(nlq.router)
 app.include_router(auth.router)
+app.include_router(folder_tree.router)

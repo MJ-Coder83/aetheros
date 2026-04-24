@@ -38,6 +38,15 @@ from packages.prime.explainability import (
     ExplanationNotFoundError,
 )
 from packages.prime.introspection import PrimeIntrospector
+from packages.prime.knowledge_transfer import (
+    KnowledgeTransferEngine,
+    KnowledgeTransferError,
+    KnowledgeType,
+    TransferStatus,
+)
+from packages.prime.knowledge_transfer import (
+    TransferNotFoundError as KTTransferNotFoundError,
+)
 from packages.prime.planning import (
     CyclicDependencyError,
     FailurePolicy,
@@ -1014,3 +1023,218 @@ async def get_blueprint(
         return blueprint.model_dump()
     except BlueprintNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Transfer endpoints
+# ---------------------------------------------------------------------------
+
+
+def _get_knowledge_transfer_service() -> KnowledgeTransferEngine:
+    return KnowledgeTransferEngine(tape_service=_get_tape_service())
+
+
+KnowledgeTransferServiceDep = Annotated[
+    KnowledgeTransferEngine, Depends(_get_knowledge_transfer_service)
+]
+
+
+class TransferKnowledgeRequest(BaseModel):
+    """Request body for initiating a knowledge transfer."""
+
+    source_domain_id: str
+    target_domain_id: str
+    source_metadata: dict[str, object] = Field(default_factory=dict)
+    target_metadata: dict[str, object] = Field(default_factory=dict)
+    knowledge_types: list[str] | None = None
+    created_by: str = "prime"
+
+
+class ExtractKnowledgeRequest(BaseModel):
+    """Request body for extracting knowledge from a domain."""
+
+    domain_id: str
+    domain_metadata: dict[str, object] = Field(default_factory=dict)
+    knowledge_types: list[str] | None = None
+
+
+class AssessCompatibilityRequest(BaseModel):
+    """Request body for assessing knowledge compatibility."""
+
+    source_domain_id: str
+    target_metadata: dict[str, object] = Field(default_factory=dict)
+    source_metadata: dict[str, object] = Field(default_factory=dict)
+    knowledge_types: list[str] | None = None
+
+
+class RecommendTransfersRequest(BaseModel):
+    """Request body for recommending knowledge transfers."""
+
+    domain_id: str
+    all_domain_metadata: dict[str, dict[str, object]] = Field(default_factory=dict)
+
+
+@app.post("/knowledge-transfer/transfer")
+async def execute_knowledge_transfer(
+    body: TransferKnowledgeRequest,
+    svc: KnowledgeTransferServiceDep,
+) -> dict[str, object]:
+    """Execute a cross-domain knowledge transfer."""
+    ktypes = None
+    if body.knowledge_types is not None:
+        ktypes = [KnowledgeType(t) for t in body.knowledge_types]
+
+    record = await svc.transfer_knowledge(
+        source_domain_id=body.source_domain_id,
+        target_domain_id=body.target_domain_id,
+        source_metadata=body.source_metadata,
+        target_metadata=body.target_metadata,
+        knowledge_types=ktypes,
+        created_by=body.created_by,
+    )
+    return record.model_dump()
+
+
+@app.post("/knowledge-transfer/extract")
+async def extract_knowledge(
+    body: ExtractKnowledgeRequest,
+    svc: KnowledgeTransferServiceDep,
+) -> list[dict[str, object]]:
+    """Extract transferable knowledge from a domain."""
+    ktypes = None
+    if body.knowledge_types is not None:
+        ktypes = [KnowledgeType(t) for t in body.knowledge_types]
+
+    items = await svc.extract_knowledge(
+        domain_id=body.domain_id,
+        domain_metadata=body.domain_metadata,
+        knowledge_types=ktypes,
+    )
+    return [i.model_dump() for i in items]
+
+
+@app.post("/knowledge-transfer/assess")
+async def assess_compatibility(
+    body: AssessCompatibilityRequest,
+    svc: KnowledgeTransferServiceDep,
+) -> list[dict[str, object]]:
+    """Assess compatibility of knowledge items with a target domain."""
+    ktypes = None
+    if body.knowledge_types is not None:
+        ktypes = [KnowledgeType(t) for t in body.knowledge_types]
+
+    items = await svc.extract_knowledge(
+        domain_id=body.source_domain_id,
+        domain_metadata=body.source_metadata,
+        knowledge_types=ktypes,
+    )
+    assessed = await svc.assess_compatibility(items, body.target_metadata)
+    return [i.model_dump() for i in assessed]
+
+
+@app.post("/knowledge-transfer/package")
+async def create_knowledge_package(
+    body: TransferKnowledgeRequest,
+    svc: KnowledgeTransferServiceDep,
+) -> dict[str, object]:
+    """Create a knowledge package for transfer between domains."""
+    ktypes = None
+    if body.knowledge_types is not None:
+        ktypes = [KnowledgeType(t) for t in body.knowledge_types]
+
+    package = await svc.create_package(
+        name=f"Transfer: {body.source_domain_id} -> {body.target_domain_id}",
+        source_domain_id=body.source_domain_id,
+        target_domain_id=body.target_domain_id,
+        source_metadata=body.source_metadata,
+        target_metadata=body.target_metadata,
+        knowledge_types=ktypes,
+    )
+    return package.model_dump()
+
+
+@app.get("/knowledge-transfer/transfers")
+async def list_transfers(
+    svc: KnowledgeTransferServiceDep,
+    status: str | None = None,
+) -> list[dict[str, object]]:
+    """List all knowledge transfers, optionally filtered by status."""
+    ts = TransferStatus(status) if status is not None else None
+    records = await svc.list_transfers(status=ts)
+    return [r.model_dump() for r in records]
+
+
+@app.get("/knowledge-transfer/transfers/{transfer_id}")
+async def get_transfer(
+    transfer_id: UUID,
+    svc: KnowledgeTransferServiceDep,
+) -> dict[str, object]:
+    """Retrieve a specific knowledge transfer by ID."""
+    try:
+        record = await svc.get_transfer(transfer_id)
+        return record.model_dump()
+    except KTTransferNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/knowledge-transfer/transfers/{transfer_id}/rollback")
+async def rollback_transfer(
+    transfer_id: UUID,
+    svc: KnowledgeTransferServiceDep,
+) -> dict[str, object]:
+    """Rollback a completed or failed knowledge transfer."""
+    try:
+        record = await svc.rollback_transfer(transfer_id)
+        return record.model_dump()
+    except KTTransferNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/knowledge-transfer/recommendations")
+async def recommend_transfers(
+    body: RecommendTransfersRequest,
+    svc: KnowledgeTransferServiceDep,
+) -> list[dict[str, object]]:
+    """Recommend knowledge transfers for a domain."""
+    recommendations = await svc.recommend_transfers(
+        domain_id=body.domain_id,
+        all_domain_metadata=body.all_domain_metadata,
+    )
+    return recommendations
+
+
+@app.get("/knowledge-transfer/packages")
+async def list_packages(
+    svc: KnowledgeTransferServiceDep,
+) -> list[dict[str, object]]:
+    """List all knowledge packages."""
+    packages = await svc.list_packages()
+    return [p.model_dump() for p in packages]
+
+
+@app.get("/knowledge-transfer/packages/{package_id}")
+async def get_package(
+    package_id: UUID,
+    svc: KnowledgeTransferServiceDep,
+) -> dict[str, object]:
+    """Retrieve a specific knowledge package by ID."""
+    try:
+        package = await svc.get_package(package_id)
+        return package.model_dump()
+    except KnowledgeTransferError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/knowledge-transfer/items")
+async def list_knowledge_items(
+    svc: KnowledgeTransferServiceDep,
+    source_domain_id: str | None = None,
+    knowledge_type: str | None = None,
+) -> list[dict[str, object]]:
+    """List knowledge items, optionally filtered by source domain or type."""
+    kt = KnowledgeType(knowledge_type) if knowledge_type is not None else None
+    items = await svc.list_knowledge_items(
+        source_domain_id=source_domain_id,
+        knowledge_type=kt,
+    )
+    return [i.model_dump() for i in items]

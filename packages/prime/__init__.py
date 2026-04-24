@@ -62,6 +62,28 @@ from packages.prime.explainability import (
     TraceBuilder,
 )
 from packages.prime.introspection import PrimeIntrospector, SystemSnapshot
+from packages.prime.knowledge_transfer import (
+    AdaptationType,
+    CompatibilityAssessor,
+    CompatibilityLevel,
+    IncompatibleKnowledgeError,
+    KnowledgeExtractor,
+    KnowledgeItem,
+    KnowledgePackage,
+    KnowledgeTransferEngine,
+    KnowledgeTransferError,
+    KnowledgeType,
+    TransferNotFoundError,
+    TransferRecord,
+    TransferResult,
+    TransferStatus,
+    TransferStore,
+    TransferTransitionError,
+    TransferValidationError,
+)
+from packages.prime.knowledge_transfer import (
+    DomainNotFoundError as KTDomainNotFoundError,
+)
 from packages.prime.planning import (
     CyclicDependencyError,
     FailurePolicy,
@@ -108,6 +130,7 @@ from packages.prime.skill_evolution import (
 )
 
 __all__ = [
+    "AdaptationType",
     "AgentBlueprint",
     "AgentRole",
     "ArgumentQualityScorer",
@@ -117,6 +140,8 @@ __all__ = [
     "BlueprintNotFoundError",
     "BlueprintStore",
     "BlueprintValidationError",
+    "CompatibilityAssessor",
+    "CompatibilityLevel",
     "CreationMode",
     "CyclicDependencyError",
     "Debate",
@@ -158,7 +183,15 @@ __all__ = [
     "FactorCategory",
     "FactorExtractor",
     "FailurePolicy",
+    "IncompatibleKnowledgeError",
+    "KTDomainNotFoundError",
     "KeyFactor",
+    "KnowledgeExtractor",
+    "KnowledgeItem",
+    "KnowledgePackage",
+    "KnowledgeTransferEngine",
+    "KnowledgeTransferError",
+    "KnowledgeType",
     "ModificationType",
     "NoParticipantsError",
     "ParticipantRole",
@@ -197,6 +230,13 @@ __all__ = [
     "StepStatus",
     "SystemSnapshot",
     "TraceBuilder",
+    "TransferNotFoundError",
+    "TransferRecord",
+    "TransferResult",
+    "TransferStatus",
+    "TransferStore",
+    "TransferTransitionError",
+    "TransferValidationError",
     "WorkflowBlueprint",
     "WorkflowType",
 ]

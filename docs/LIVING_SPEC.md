@@ -106,6 +106,33 @@ The Domain Canvas is the heart of InkosAI — a powerful, node-based visual work
 
 One-click switch between modes; changes in either mode are immediately reflected in the other.
 
+### Implementation (Phase 1 — April 2026)
+
+The Domain Canvas UI is implemented in `apps/web/src/app/canvas/page.tsx` with the following architecture:
+
+**Frontend Components:**
+- `CanvasPage` — Main route at `/canvas` with header, mode toggle, and layout selector
+- `ModeToggle` — One-click switch between Visual and Folder modes
+- `LayoutSelector` — Choose from Smart Auto, Layered, Hub & Spoke, Clustered, and Linear layouts
+- `VisualCanvasView` — Interactive node-based canvas with:
+  - SVG edge rendering (dependency, flow, data, control, group types)
+  - Zoom controls (50%–200%)
+  - Node selection panel showing label, type, status, folder path, and description
+  - Grid background with scale-aware spacing
+- `FolderTreeView` — Canonical folder-tree representation with:
+  - Expandable/collapsible directories
+  - File search filtering
+  - File size display
+  - Selection highlighting synchronized with visual canvas
+- `FolderThinkingPanel` — Sidebar showing Prime's folder navigation actions in real time
+- `PrimeFeatureBar` — Quick-access links to Simulate, Explain, Proposals, and Domains pages
+
+**Integration Points:**
+- **Navbar** — `/canvas` added to main navigation with Network icon
+- **Command Palette** — "Open Domain Canvas" command added for ⌘K access
+- **Prime Features** — Canvas header includes quick-access links to Simulation, Explainability, Proposals, and Domain Creator
+- **Folder Thinking Mode** — Live panel shows Prime actions (`folder_navigate`, `folder_read`, `folder_search`, `file_modified`) with timestamps
+
 ### Tiered Support
 
 **Tier 1: Browser-Native Frameworks**
@@ -170,7 +197,40 @@ DomainCreationEngine
 ├── validate_blueprint()             — Standalone validation
 ├── list_domains() / get_domain()    — Registry queries
 └── get_blueprint() / list_blueprints() — Blueprint store queries
+
+OneClickDomainCreationEngine (extended pipeline)
+├── generate_domain_blueprint()      — Inherited from DomainCreationEngine
+├── generate_folder_tree()           — Auto-generate canonical folder structure
+├── generate_starter_canvas()       — Optional starter canvas for the domain
+└── create_domain_from_description() — Full pipeline with folder tree + canvas
 ```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|-----------|--------|-------------|
+| `/domains/create` | POST | Create domain from natural language description |
+| `/domains/one-click` | POST | One-click creation with folder tree + optional starter canvas |
+| `/domains/blueprint` | POST | Generate blueprint only (no proposal) |
+| `/domains/register` | POST | Register domain after proposal approval |
+| `/domains` | GET | List all registered domains |
+| `/domains/{id}` | GET | Get domain by ID |
+| `/domains/blueprints` | GET | List all stored blueprints |
+| `/domains/blueprints/{id}` | GET | Get blueprint by ID |
+
+### Prime Console Integration
+
+Users can create domains directly from the Prime Console using natural language:
+
+- **"Create a Legal Research domain"** — Creates domain with starter canvas
+- **"Make a Finance domain for trading"** — Custom domain from description
+
+The Prime Console now detects domain creation requests and calls the One-Click Domain Creation API, providing real-time feedback with:
+- Generated domain name and ID
+- Agent, skill, and workflow counts
+- Folder tree structure preview
+- Starter canvas status (if included)
+- Proposal submission confirmation
 
 ### Integration Points
 

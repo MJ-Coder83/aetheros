@@ -32,8 +32,9 @@ import {
   useProposals,
   useSimulations,
   useSimulationScenarios,
-
+  useOneClickCreateDomain,
 } from "@/hooks/use-api";
+import { domainApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -70,6 +71,7 @@ export default function PrimePage() {
   const { data: proposals } = useProposals();
   const { data: simulations } = useSimulations();
   const { data: scenarios } = useSimulationScenarios();
+  const createDomainMutation = useOneClickCreateDomain();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -129,6 +131,51 @@ export default function PrimePage() {
 
     // Small delay to simulate thinking
     await new Promise((r) => setTimeout(r, 300));
+
+    // Check for domain creation request
+    const q = query.toLowerCase();
+    if (
+      q.includes("create") && q.includes("domain") ||
+      q.includes("new domain") ||
+      q.startsWith("create domain") ||
+      q.startsWith("make domain")
+    ) {
+      try {
+        const domainDescription = query
+          .replace(/create\s+(a\s+)?(new\s+)?domain/gi, "")
+          .replace(/make\s+(a\s+)?(new\s+)?domain/gi, "")
+          .trim() || query;
+
+        const result = await createDomainMutation.mutateAsync({
+          description: domainDescription,
+          creation_option: "domain_with_starter_canvas",
+          created_by: "human-user",
+        });
+
+        const hasCanvas = result.starter_canvas !== null;
+        const fullContent = (
+          `✅ **Domain Creation Started!**\n\n` +
+          `I've generated a new domain based on your request:\n\n` +
+          `**${result.blueprint.domain_name}** (${result.blueprint.domain_id})\n` +
+          `${result.blueprint.description}\n\n` +
+          `📦 **Included:**\n` +
+          `• ${result.blueprint.agents.length} agent(s)\n` +
+          `• ${result.blueprint.skills.length} skill(s)\n` +
+          `• ${result.blueprint.workflows.length} workflow(s)\n` +
+          (hasCanvas ? `• 🎨 Starter canvas generated\n` : "") +
+          `\n📁 Folder tree created with ${result.blueprint.domain_id}/ structure\n\n` +
+          `⏳ The domain proposal is now pending approval. ` +
+          `Once approved, it will be registered and ready to use.\n\n` +
+          `You can track it in the Proposals page.`
+        );
+        streamResponse(responseId, fullContent);
+        return;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        streamResponse(responseId, `❌ Failed to create domain: ${errorMessage}`);
+        return;
+      }
+    }
 
     const fullContent = await generatePrimeResponse(
       query,
@@ -570,6 +617,9 @@ async function generatePrimeResponse(
       `• "Show me the skills" — List all registered skills\n` +
       `• "What agents are available?" — Agent overview\n` +
       `• "List the domains" — Domain status\n\n` +
+      `🏗️ **Domain Creation**\n` +
+      `• "Create a Legal Research domain" — Create a new domain with starter canvas\n` +
+      `• "Make a Finance domain for trading" — Custom domain from description\n\n` +
       `📜 **Tape & Audit**\n` +
       `• "Show me the Tape" — Recent activity summary\n\n` +
       `🗳️ **Proposals**\n` +
@@ -582,5 +632,5 @@ async function generatePrimeResponse(
   }
 
   // Default
-  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
+  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- Create a new domain (e.g., "Create a Legal Research domain")\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
 }

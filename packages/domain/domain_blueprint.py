@@ -55,7 +55,10 @@ Usage::
         EvaluationCriteria,
         DomainFolderTreeGenerator,
     )
-    from packages.tape.service import TapeService
+from packages.tape.service import TapeService
+
+if TYPE_CHECKING:
+    from packages.domain.starter_canvas import StarterCanvas
     from packages.tape.repository import InMemoryTapeRepository
 
     blueprint = DomainBlueprint(
@@ -78,6 +81,7 @@ Usage::
 from __future__ import annotations
 
 import json
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
@@ -86,10 +90,6 @@ from packages.folder_tree import (
     FolderTreeNode,
     NodeType,
 )
-
-# Re-export the existing blueprint models from prime.domain_creation so that
-# this module is the single canonical import point.  Other modules can still
-# import from prime.domain_creation for backward compatibility.
 from packages.prime.domain_creation import (
     AgentBlueprint,
     AgentRole,
@@ -103,6 +103,9 @@ from packages.prime.domain_creation import (
     WorkflowType,
 )
 from packages.tape.service import TapeService
+
+if TYPE_CHECKING:
+    from packages.domain.starter_canvas import StarterCanvas
 
 __all__ = [
     "AgentBlueprint",
@@ -196,6 +199,7 @@ class DomainFolderTreeGenerator:
         self,
         blueprint: DomainBlueprint,
         evaluation_criteria: EvaluationCriteria | None = None,
+        starter_canvas: StarterCanvas | None = None,
     ) -> FolderTree:
         """Generate a ``FolderTree`` from a ``DomainBlueprint``.
 
@@ -204,16 +208,21 @@ class DomainFolderTreeGenerator:
         blueprint:
             The domain blueprint to materialise as a folder tree.
         evaluation_criteria:
-            Optional evaluation criteria.  If ``None``, sensible defaults
+            Optional evaluation criteria. If ``None``, sensible defaults
             are derived from the blueprint's ``DomainConfig``.
+        starter_canvas:
+            Optional starter canvas. When provided, a ``canvas/`` directory
+            is added to the folder tree containing a ``canvas.json`` file
+            with canvas metadata (ID, layout, node/edge counts). This
+            establishes the bidirectional link between folder tree and canvas.
 
         Returns
         -------
         FolderTree
-            A fully-populated ``FolderTree`` ready to be persisted.
+        A fully-populated ``FolderTree`` ready to be persisted.
         """
         criteria = evaluation_criteria or self._derive_criteria(blueprint)
-        tree = self._build_tree(blueprint, criteria)
+        tree = self._build_tree(blueprint, criteria, starter_canvas=starter_canvas)
 
         await self._tape.log_event(
             event_type="domain.folder_tree_generated",
@@ -234,6 +243,8 @@ class DomainFolderTreeGenerator:
                 "agent_count": len(blueprint.agents),
                 "skill_count": len(blueprint.skills),
                 "workflow_count": len(blueprint.workflows),
+                "canvas_linked": starter_canvas is not None,
+                "canvas_id": str(starter_canvas.id) if starter_canvas else None,
             },
             agent_id="domain-folder-tree-generator",
         )
@@ -269,6 +280,7 @@ class DomainFolderTreeGenerator:
         self,
         blueprint: DomainBlueprint,
         criteria: EvaluationCriteria,
+        starter_canvas: StarterCanvas | None = None,
     ) -> FolderTree:
         """Construct the FolderTree from blueprint data.
 
@@ -490,6 +502,29 @@ class DomainFolderTreeGenerator:
         )
         _add_file(readme_path, "README.md", readme_content)
         nodes[root].children.append(readme_path)
+
+        # ---- canvas/ ---- (only when a starter canvas is linked)
+        if starter_canvas is not None:
+            canvas_path = f"{root}/canvas"
+            _add_dir(canvas_path, "canvas")
+            nodes[root].children.append(canvas_path)
+
+            canvas_file = f"{canvas_path}/canvas.json"
+            canvas_data = {
+                "canvas_id": str(starter_canvas.id),
+                "domain_id": starter_canvas.domain_id,
+                "domain_name": starter_canvas.domain_name,
+                "layout": starter_canvas.layout.value,
+                "node_count": starter_canvas.node_count,
+                "edge_count": starter_canvas.edge_count,
+                "folder_tree_id": starter_canvas.folder_tree_id,
+            }
+            _add_file(
+                canvas_file,
+                "canvas.json",
+                json.dumps(canvas_data, indent=2),
+            )
+            nodes[canvas_path].children.append(canvas_file)
 
         return FolderTree(
             domain_id=blueprint.domain_id,

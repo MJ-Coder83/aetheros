@@ -1,32 +1,17 @@
-"""InkosAI Domain Canvas — dual-mode visual + folder-tree canvas.
+"""InkosAI Canvas — Visual graph representation with dual-mode support.
 
-Architecture::
+The Canvas provides a visual interface for domains alongside the canonical
+folder-tree representation. It supports:
 
-    Canvas              — complete canvas (nodes + edges + metadata)
-    CanvasNode          — a single positioned node
-    CanvasEdge          — a directed edge between nodes
-    CanvasNodeType      — semantic type (domain, agent, skill, workflow, …)
-    CanvasEdgeType      — semantic type (contains, uses, executes, …)
-    CanvasLayout        — layout strategy (layered, hub-and-spoke, …)
-    CanvasViewMode      — visual / folder view toggle
-    CanvasOperation     — a single canvas mutation (for audit / undo)
-    CanvasDiff          — diff between two canvas snapshots
-    LayoutEngine        — stateless layout algorithm dispatcher
-    CanvasService       — full lifecycle service with folder-tree sync
-    CanvasStore         — in-memory backing store
-
-Exceptions::
-
-    CanvasError, CanvasNotFoundError, NodeNotFoundError,
-    EdgeNotFoundError, NodeAlreadyExistsError, InvalidEdgeError
+- Visual graph layout (Layered, Hub-and-Spoke, Clustered, Linear, Smart Auto)
+- Folder tree view (canonical source of truth)
+- Real-time synchronization between visual and folder representations
+- Browser nodes with live embedding for web frameworks
+- Terminal nodes with TUI layout editing
+- Tape logging for all canvas operations
 """
 
 from packages.canvas.core import (
-    CanvasService,
-    CanvasStore,
-    LayoutEngine,
-)
-from packages.canvas.models import (
     Canvas,
     CanvasDiff,
     CanvasEdge,
@@ -36,18 +21,35 @@ from packages.canvas.models import (
     CanvasNode,
     CanvasNodeType,
     CanvasNotFoundError,
-    CanvasOperation,
-    CanvasOperationType,
+    CanvasService,
+    CanvasStore,
     CanvasViewMode,
     EdgeNotFoundError,
     InvalidEdgeError,
+    LayoutEngine,
     NodeAlreadyExistsError,
     NodeNotFoundError,
 )
+from packages.canvas.nodes import (
+    BrowserNode,
+    BrowserNodeConfig,
+    BrowserNodeType,
+    DetectedElement,
+    ElementTag,
+    FrameworkType,
+    LivePreviewState,
+    NaturalLanguageEdit,
+    PreviewMode,
+)
+from packages.canvas.service import CanvasDomainService
 
 __all__ = [
+    "BrowserNode",
+    "BrowserNodeConfig",
+    "BrowserNodeType",
     "Canvas",
     "CanvasDiff",
+    "CanvasDomainService",
     "CanvasEdge",
     "CanvasEdgeType",
     "CanvasError",
@@ -55,14 +57,18 @@ __all__ = [
     "CanvasNode",
     "CanvasNodeType",
     "CanvasNotFoundError",
-    "CanvasOperation",
-    "CanvasOperationType",
     "CanvasService",
     "CanvasStore",
     "CanvasViewMode",
+    "DetectedElement",
     "EdgeNotFoundError",
+    "ElementTag",
+    "FrameworkType",
     "InvalidEdgeError",
     "LayoutEngine",
+    "LivePreviewState",
+    "NaturalLanguageEdit",
     "NodeAlreadyExistsError",
     "NodeNotFoundError",
+    "PreviewMode",
 ]

@@ -6,6 +6,7 @@ starter-canvas generation into a single call.
 
 from __future__ import annotations
 
+import json
 from enum import StrEnum
 from uuid import UUID
 
@@ -35,9 +36,12 @@ class DomainCreationOption(StrEnum):
 
 
 class OneClickDomainCreationResult(BaseModel):
+    """Result of a one-click domain creation attempt."""
+
     blueprint: DomainBlueprint
     folder_tree: FolderTree | None = None
     starter_canvas: StarterCanvas | None = None
+    canvas_id: str | None = None  # Explicit canvas ID for frontend convenience
     proposal_id: UUID | None = None
     registered: bool = False
     domain: DomainDescriptor | None = None
@@ -99,11 +103,37 @@ class OneClickDomainCreationEngine:
         )
         blueprint = base_result.blueprint
 
-        folder_tree = await self._folder_tree_generator.generate(blueprint)
+        folder_tree_id = blueprint.domain_id
 
         starter_canvas = None
         if creation_option == DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS:
-            starter_canvas = await self._canvas_generator.generate(blueprint)
+            starter_canvas = await self._canvas_generator.generate(
+                blueprint, folder_tree_id=folder_tree_id,
+            )
+
+        folder_tree = await self._folder_tree_generator.generate(
+            blueprint,
+            starter_canvas=starter_canvas,
+        )
+
+        if starter_canvas is not None and starter_canvas.folder_tree_id is None:
+            starter_canvas.folder_tree_id = folder_tree.domain_id
+            await self._update_canvas_json_in_tree(folder_tree, starter_canvas)
+
+        if starter_canvas is not None:
+            await self._tape.log_event(
+                event_type="canvas.linked_to_folder_tree",
+                payload={
+                    "canvas_id": str(starter_canvas.id),
+                    "domain_id": starter_canvas.domain_id,
+                    "folder_tree_id": folder_tree.domain_id,
+                },
+                agent_id="one-click-domain-creation-engine",
+            )
+
+        starter_canvas_id: str | None = None
+        if starter_canvas is not None:
+            starter_canvas_id = str(starter_canvas.id)
 
         await self._tape.log_event(
             event_type="domain.one_click_created",
@@ -113,7 +143,12 @@ class OneClickDomainCreationEngine:
                 "domain_name": blueprint.domain_name,
                 "creation_option": creation_option.value,
                 "starter_canvas_generated": starter_canvas is not None,
+                "starter_canvas_id": starter_canvas_id,
                 "folder_tree_node_count": len(folder_tree.nodes),
+                "canvas_linked_to_folder_tree": (
+                    starter_canvas is not None
+                    and starter_canvas.folder_tree_id is not None
+                ),
                 "proposal_id": (
                     str(base_result.proposal_id)
                     if base_result.proposal_id else None
@@ -127,6 +162,7 @@ class OneClickDomainCreationEngine:
             blueprint=blueprint,
             folder_tree=folder_tree,
             starter_canvas=starter_canvas,
+            canvas_id=starter_canvas_id,
             proposal_id=base_result.proposal_id,
             message=(
                 "Domain blueprint generated with folder tree. "
@@ -161,8 +197,11 @@ class OneClickDomainCreationEngine:
     async def generate_starter_canvas(
         self,
         blueprint: DomainBlueprint,
+        folder_tree_id: str | None = None,
     ) -> StarterCanvas:
-        return await self._canvas_generator.generate(blueprint)
+        return await self._canvas_generator.generate(
+            blueprint, folder_tree_id=folder_tree_id,
+        )
 
     async def register_domain(
         self,
@@ -173,3 +212,19 @@ class OneClickDomainCreationEngine:
             blueprint_id=blueprint_id,
             reviewer=reviewer,
         )
+
+    @staticmethod
+    async def _update_canvas_json_in_tree(
+        folder_tree: FolderTree,
+        starter_canvas: StarterCanvas,
+    ) -> None:
+        canvas_json_key = next(
+            (k for k in folder_tree.nodes if k.endswith("canvas.json")),
+            None,
+        )
+        if canvas_json_key is None:
+            return
+        canvas_json_node = folder_tree.nodes[canvas_json_key]
+        data = json.loads(canvas_json_node.content)
+        data["folder_tree_id"] = starter_canvas.folder_tree_id
+        canvas_json_node.content = json.dumps(data, indent=2)

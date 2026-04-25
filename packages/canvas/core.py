@@ -28,7 +28,6 @@ Provides two primary classes:
     - ``sync_to_folder_tree()``   — push canvas changes → FolderTree
     - ``sync_from_folder_tree()`` — pull FolderTree changes → canvas
     - ``canvas_from_domain_blueprint()`` — bootstrap a canvas from a blueprint
-    - ``diff()``                  — compute a CanvasDiff between two versions
 
 All mutating operations are logged to the Tape under the ``canvas.*``
 event namespace.
@@ -66,6 +65,8 @@ from packages.canvas.models import (
     CanvasNode,
     CanvasNodeType,
     CanvasNotFoundError,
+    CanvasOperation,
+    CanvasOperationType,
     CanvasViewMode,
     EdgeNotFoundError,
     InvalidEdgeError,
@@ -78,12 +79,35 @@ if TYPE_CHECKING:
     from packages.folder_tree import FolderTreeService
     from packages.prime.domain_creation import DomainBlueprint
 
+__all__ = [
+    "Canvas",
+    "CanvasDiff",
+    "CanvasEdge",
+    "CanvasEdgeType",
+    "CanvasError",
+    "CanvasLayout",
+    "CanvasNode",
+    "CanvasNodeType",
+    "CanvasNotFoundError",
+    "CanvasOperation",
+    "CanvasOperationType",
+    "CanvasService",
+    "CanvasStore",
+    "CanvasViewMode",
+    "EdgeNotFoundError",
+    "InvalidEdgeError",
+    "LayoutEngine",
+    "NodeAlreadyExistsError",
+    "NodeNotFoundError",
+]
+
+
 # ---------------------------------------------------------------------------
 # Layout constants
 # ---------------------------------------------------------------------------
 
-_H_GAP = 260    # horizontal gap between columns (LAYERED / LINEAR)
-_V_GAP = 100    # vertical gap between rows within a column
+_H_GAP = 260  # horizontal gap between columns (LAYERED / LINEAR)
+_V_GAP = 100  # vertical gap between rows within a column
 _CLUSTER_GAP = 320  # horizontal gap between clusters (CLUSTERED)
 
 # Colour palette per node type (CSS hex)
@@ -208,9 +232,7 @@ class LayoutEngine:
 
     def _layered(self, nodes: list[CanvasNode]) -> None:
         """Left-to-right columns, one column per node type."""
-        columns: dict[CanvasNodeType, list[CanvasNode]] = {
-            t: [] for t in _LAYERED_ORDER
-        }
+        columns: dict[CanvasNodeType, list[CanvasNode]] = {t: [] for t in _LAYERED_ORDER}
         for node in nodes:
             bucket = columns.get(node.node_type)
             if bucket is not None:
@@ -248,7 +270,7 @@ class LayoutEngine:
         count = len(spoke_nodes)
         radius = max(220.0, count * 50.0)
         angle_step = 2 * math.pi / count
-        start_angle = -math.pi / 2   # first node at 12 o'clock
+        start_angle = -math.pi / 2  # first node at 12 o'clock
 
         for i, node in enumerate(spoke_nodes):
             angle = start_angle + i * angle_step
@@ -301,7 +323,8 @@ class LayoutEngine:
 
         # Unclaimed skills / data sources below domain
         unclaimed = [
-            n for n in nodes
+            n
+            for n in nodes
             if n.node_type in (CanvasNodeType.SKILL, CanvasNodeType.DATA_SOURCE)
             and n.id not in claimed_skills
         ]
@@ -318,8 +341,10 @@ class LayoutEngine:
 
         # Browser / terminal nodes in their own row
         special = [
-            n for n in nodes
-            if n.node_type in (CanvasNodeType.BROWSER, CanvasNodeType.TERMINAL, CanvasNodeType.CUSTOM)
+            n
+            for n in nodes
+            if n.node_type
+            in (CanvasNodeType.BROWSER, CanvasNodeType.TERMINAL, CanvasNodeType.CUSTOM)
         ]
         sp_y = wf_y + 180
         for sp_idx, sp_node in enumerate(special):
@@ -484,9 +509,7 @@ class CanvasService:
         """
         canvas = self._store.get(domain_id)
         if canvas is None:
-            raise CanvasNotFoundError(
-                f"No canvas found for domain '{domain_id}'"
-            )
+            raise CanvasNotFoundError(f"No canvas found for domain '{domain_id}'")
         return canvas
 
     # ------------------------------------------------------------------
@@ -520,9 +543,7 @@ class CanvasService:
         """
         canvas = self._get_canvas(domain_id)
         if canvas.get_node(node.id) is not None:
-            raise NodeAlreadyExistsError(
-                f"Node '{node.id}' already exists on canvas '{domain_id}'"
-            )
+            raise NodeAlreadyExistsError(f"Node '{node.id}' already exists on canvas '{domain_id}'")
 
         # Inject default display metadata if absent
         if "colour" not in node.metadata:
@@ -537,6 +558,7 @@ class CanvasService:
         # Sync to folder tree
         if sync_to_tree and self._folder_tree is not None and node.folder_path:
             import contextlib
+
             with contextlib.suppress(Exception):
                 await self._folder_tree.create_directory(domain_id, node.folder_path)
 
@@ -573,20 +595,13 @@ class CanvasService:
         canvas = self._get_canvas(domain_id)
         node = canvas.get_node(node_id)
         if node is None:
-            raise NodeNotFoundError(
-                f"Node '{node_id}' not found on canvas '{domain_id}'"
-            )
+            raise NodeNotFoundError(f"Node '{node_id}' not found on canvas '{domain_id}'")
 
         if node.locked:
-            raise CanvasError(
-                f"Node '{node_id}' is locked and cannot be removed"
-            )
+            raise CanvasError(f"Node '{node_id}' is locked and cannot be removed")
 
         # Remove connected edges
-        canvas.edges = [
-            e for e in canvas.edges
-            if e.source != node_id and e.target != node_id
-        ]
+        canvas.edges = [e for e in canvas.edges if e.source != node_id and e.target != node_id]
         canvas.nodes = [n for n in canvas.nodes if n.id != node_id]
         canvas.updated_at = datetime.now(UTC)
         self._store.update(canvas)
@@ -594,6 +609,7 @@ class CanvasService:
         # Sync to folder tree
         if sync_to_tree and self._folder_tree is not None and node.folder_path:
             import contextlib
+
             with contextlib.suppress(Exception):
                 await self._folder_tree.delete_path(domain_id, node.folder_path)
 
@@ -627,9 +643,7 @@ class CanvasService:
         canvas = self._get_canvas(domain_id)
         node = canvas.get_node(node_id)
         if node is None:
-            raise NodeNotFoundError(
-                f"Node '{node_id}' not found on canvas '{domain_id}'"
-            )
+            raise NodeNotFoundError(f"Node '{node_id}' not found on canvas '{domain_id}'")
 
         old_x, old_y = node.x, node.y
         node.x = x
@@ -671,9 +685,7 @@ class CanvasService:
         canvas = self._get_canvas(domain_id)
         node = canvas.get_node(node_id)
         if node is None:
-            raise NodeNotFoundError(
-                f"Node '{node_id}' not found on canvas '{domain_id}'"
-            )
+            raise NodeNotFoundError(f"Node '{node_id}' not found on canvas '{domain_id}'")
 
         if label is not None:
             node.label = label
@@ -757,9 +769,7 @@ class CanvasService:
         canvas = self._get_canvas(domain_id)
         edge = canvas.get_edge(edge_id)
         if edge is None:
-            raise EdgeNotFoundError(
-                f"Edge '{edge_id}' not found on canvas '{domain_id}'"
-            )
+            raise EdgeNotFoundError(f"Edge '{edge_id}' not found on canvas '{domain_id}'")
 
         canvas.edges = [e for e in canvas.edges if e.id != edge_id]
         canvas.updated_at = datetime.now(UTC)
@@ -848,6 +858,7 @@ class CanvasService:
         # Pull latest folder-tree state when entering FOLDER mode
         if mode == CanvasViewMode.FOLDER and self._folder_tree is not None:
             import contextlib
+
             with contextlib.suppress(Exception):
                 await self.sync_from_folder_tree(domain_id)
 
@@ -884,6 +895,7 @@ class CanvasService:
                 if not node.folder_path:
                     continue
                 import contextlib
+
                 with contextlib.suppress(Exception):
                     await self._folder_tree.create_directory(domain_id, node.folder_path)
                     synced.append(node.folder_path)
@@ -924,6 +936,7 @@ class CanvasService:
 
         if self._folder_tree is not None:
             import contextlib
+
             children = []
             with contextlib.suppress(Exception):
                 children = await self._folder_tree.list_directory(domain_id, "")
@@ -974,6 +987,7 @@ class CanvasService:
         self,
         blueprint: DomainBlueprint,
         layout: CanvasLayout = CanvasLayout.SMART,
+        sync_to_tree: bool = False,
     ) -> Canvas:
         """Bootstrap a fully-populated canvas from a ``DomainBlueprint``.
 
@@ -987,6 +1001,9 @@ class CanvasService:
             The domain blueprint to visualise.
         layout:
             Layout strategy to apply.
+        sync_to_tree:
+            If ``True`` and a ``FolderTreeService`` is configured, syncs
+            canvas nodes to the folder tree after creation.
 
         Returns
         -------
@@ -1069,11 +1086,13 @@ class CanvasService:
         for agent in blueprint.agents:
             agent_node_id = f"agent-{agent.agent_id}"
             if agent_node_id in node_ids:
-                canvas.edges.append(CanvasEdge(
-                    source=domain_node_id,
-                    target=agent_node_id,
-                    edge_type=CanvasEdgeType.CONTAINS,
-                ))
+                canvas.edges.append(
+                    CanvasEdge(
+                        source=domain_node_id,
+                        target=agent_node_id,
+                        edge_type=CanvasEdgeType.CONTAINS,
+                    )
+                )
 
         # agent -> skills (via tools matching)
         agent_claimed_skills: set[str] = set()
@@ -1083,26 +1102,29 @@ class CanvasService:
                 for skill in blueprint.skills:
                     skill_node_id = f"skill-{skill.skill_id}"
                     if (
-                        tool.lower() in skill.name.lower()
-                        or skill.skill_id.lower() in tool.lower()
+                        tool.lower() in skill.name.lower() or skill.skill_id.lower() in tool.lower()
                     ) and skill_node_id in node_ids:
-                        canvas.edges.append(CanvasEdge(
-                            source=agent_node_id,
-                            target=skill_node_id,
-                            edge_type=CanvasEdgeType.USES,
-                            animated=True,
-                        ))
+                        canvas.edges.append(
+                            CanvasEdge(
+                                source=agent_node_id,
+                                target=skill_node_id,
+                                edge_type=CanvasEdgeType.USES,
+                                animated=True,
+                            )
+                        )
                         agent_claimed_skills.add(skill_node_id)
 
         # domain -> unclaimed skills
         for skill in blueprint.skills:
             skill_node_id = f"skill-{skill.skill_id}"
             if skill_node_id not in agent_claimed_skills and skill_node_id in node_ids:
-                canvas.edges.append(CanvasEdge(
-                    source=domain_node_id,
-                    target=skill_node_id,
-                    edge_type=CanvasEdgeType.CONTAINS,
-                ))
+                canvas.edges.append(
+                    CanvasEdge(
+                        source=domain_node_id,
+                        target=skill_node_id,
+                        edge_type=CanvasEdgeType.CONTAINS,
+                    )
+                )
 
         # workflow -> agents
         for workflow in blueprint.workflows:
@@ -1112,16 +1134,25 @@ class CanvasService:
             for agent_id_ref in workflow.agent_ids:
                 agent_node_id = f"agent-{agent_id_ref}"
                 if agent_node_id in node_ids:
-                    canvas.edges.append(CanvasEdge(
-                        source=wf_node_id,
-                        target=agent_node_id,
-                        edge_type=CanvasEdgeType.EXECUTES,
-                    ))
+                    canvas.edges.append(
+                        CanvasEdge(
+                            source=wf_node_id,
+                            target=agent_node_id,
+                            edge_type=CanvasEdgeType.EXECUTES,
+                        )
+                    )
 
         # Apply layout
         self._layout_engine.layout(canvas, layout)
         canvas.updated_at = datetime.now(UTC)
         self._store.update(canvas)
+
+        # Sync to folder tree if requested
+        if sync_to_tree and self._folder_tree is not None:
+            import contextlib
+
+            with contextlib.suppress(Exception):
+                await self.sync_to_folder_tree(canvas.domain_id)
 
         await self._tape.log_event(
             event_type="canvas.created_from_blueprint",
@@ -1133,11 +1164,40 @@ class CanvasService:
                 "node_count": canvas.node_count,
                 "edge_count": canvas.edge_count,
                 "blueprint_id": str(blueprint.id),
+                "synced_to_tree": sync_to_tree and self._folder_tree is not None,
             },
             agent_id="canvas-service",
         )
 
         return canvas
+
+    # ------------------------------------------------------------------
+    # create_canvas_from_domain (alias with sync by default)
+    # ------------------------------------------------------------------
+
+    async def create_canvas_from_domain(
+        self,
+        blueprint: DomainBlueprint,
+        layout: CanvasLayout = CanvasLayout.SMART,
+    ) -> Canvas:
+        """Create a canvas from a domain blueprint with folder-tree sync.
+
+        This is a convenience wrapper around ``canvas_from_domain_blueprint``
+        that enables folder-tree synchronization by default.
+
+        Parameters
+        ----------
+        blueprint:
+            The domain blueprint to visualise.
+        layout:
+            Layout strategy to apply.
+
+        Returns
+        -------
+        Canvas
+            The newly created canvas with nodes, edges, and folder-tree sync.
+        """
+        return await self.canvas_from_domain_blueprint(blueprint, layout=layout, sync_to_tree=True)
 
     # ------------------------------------------------------------------
     # diff
@@ -1216,9 +1276,7 @@ class CanvasService:
         """Retrieve canvas or raise CanvasNotFoundError."""
         canvas = self._store.get(domain_id)
         if canvas is None:
-            raise CanvasNotFoundError(
-                f"No canvas found for domain '{domain_id}'"
-            )
+            raise CanvasNotFoundError(f"No canvas found for domain '{domain_id}'")
         return canvas
 
     @staticmethod

@@ -1439,4 +1439,241 @@ class TestFullIntegrationPipeline:
         assert aethergit is not None
         for domain_id in domain_ids:
             commits = await aethergit.get_commit_history(branch=f"domain/{domain_id}")
-            assert len(commits) == 1
+        assert len(commits) == 1
+
+
+class TestCanvasFolderTreeLinking:
+    """Tests for bidirectional canvas↔folder-tree linking."""
+
+    @pytest.mark.asyncio
+    async def test_canvas_linked_folder_tree_contains_canvas_directory(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        assert result.folder_tree is not None
+        canvas_nodes = [
+            n for n in result.folder_tree.nodes.values()
+            if "canvas" in n.path
+        ]
+        assert len(canvas_nodes) >= 1
+        canvas_dir = next(
+            (n for n in canvas_nodes if n.node_type == NodeType.DIRECTORY),
+            None,
+        )
+        assert canvas_dir is not None
+        assert "canvas" in canvas_dir.name
+
+    @pytest.mark.asyncio
+    async def test_canvas_json_contains_canvas_metadata(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        import json
+
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        assert result.starter_canvas is not None
+        canvas_json_node = next(
+            (n for n in result.folder_tree.nodes.values()
+             if n.name == "canvas.json"),
+            None,
+        )
+        assert canvas_json_node is not None
+        data = json.loads(canvas_json_node.content)
+        assert data["canvas_id"] == str(result.starter_canvas.id)
+        assert data["domain_id"] == result.starter_canvas.domain_id
+        assert data["layout"] == result.starter_canvas.layout.value
+        assert data["node_count"] == result.starter_canvas.node_count
+        assert data["edge_count"] == result.starter_canvas.edge_count
+
+    @pytest.mark.asyncio
+    async def test_starter_canvas_has_folder_tree_id(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        assert result.starter_canvas is not None
+        assert result.starter_canvas.folder_tree_id == result.folder_tree.domain_id
+
+    @pytest.mark.asyncio
+    async def test_canvas_json_references_folder_tree_id(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        import json
+
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        canvas_json_node = next(
+            (n for n in result.folder_tree.nodes.values()
+             if n.name == "canvas.json"),
+            None,
+        )
+        assert canvas_json_node is not None
+        data = json.loads(canvas_json_node.content)
+        assert data["folder_tree_id"] == result.folder_tree.domain_id
+
+    @pytest.mark.asyncio
+    async def test_domain_only_has_no_canvas_directory(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+            created_by="alice",
+        )
+        canvas_nodes = [
+            n for n in result.folder_tree.nodes.values()
+            if "canvas" in n.path
+        ]
+        assert len(canvas_nodes) == 0
+
+    @pytest.mark.asyncio
+    async def test_canvas_linked_to_folder_tree_tape_event(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        entries = await one_click_engine._tape.get_entries(
+            event_type="canvas.linked_to_folder_tree",
+        )
+        assert len(entries) == 1
+        assert entries[0].payload["canvas_id"] == str(result.starter_canvas.id)
+        assert entries[0].payload["folder_tree_id"] == result.folder_tree.domain_id
+
+    @pytest.mark.asyncio
+    async def test_folder_tree_generated_tape_includes_canvas_linked(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        entries = await one_click_engine._tape.get_entries(
+            event_type="domain.folder_tree_generated",
+        )
+        assert len(entries) == 1
+        assert entries[0].payload["canvas_linked"] is True
+        assert entries[0].payload["canvas_id"] is not None
+
+    @pytest.mark.asyncio
+    async def test_canvas_created_tape_includes_folder_tree_id(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        entries = await one_click_engine._tape.get_entries(
+            event_type="canvas.linked_to_folder_tree",
+        )
+        assert len(entries) == 1
+        assert entries[0].payload["folder_tree_id"] == result.folder_tree.domain_id
+
+    @pytest.mark.asyncio
+    async def test_full_pipeline_with_canvas_and_folder_tree(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        import json
+
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        assert result.blueprint.domain_name != ""
+        assert result.folder_tree is not None
+        assert result.starter_canvas is not None
+        assert result.canvas_id == str(result.starter_canvas.id)
+        assert result.starter_canvas.folder_tree_id == result.folder_tree.domain_id
+        canvas_json_node = next(
+            (n for n in result.folder_tree.nodes.values()
+             if n.name == "canvas.json"),
+            None,
+        )
+        assert canvas_json_node is not None
+        data = json.loads(canvas_json_node.content)
+        assert data["canvas_id"] == str(result.starter_canvas.id)
+        assert data["folder_tree_id"] == result.folder_tree.domain_id
+        assert result.proposal_id is not None
+
+    @pytest.mark.asyncio
+    async def test_canvas_directory_is_child_of_root(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        root_node = result.folder_tree.nodes[result.folder_tree.root_path]
+        canvas_child_paths = [
+            c for c in root_node.children if "canvas" in c
+        ]
+        assert len(canvas_child_paths) == 1
+
+    @pytest.mark.asyncio
+    async def test_canvas_json_is_child_of_canvas_dir(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        canvas_dir = next(
+            (n for n in result.folder_tree.nodes.values()
+             if n.node_type == NodeType.DIRECTORY and "canvas" in n.path),
+            None,
+        )
+        assert canvas_dir is not None
+        assert any("canvas.json" in c for c in canvas_dir.children)

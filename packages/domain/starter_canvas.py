@@ -137,9 +137,13 @@ class CanvasEdge(BaseModel):
 class StarterCanvas(BaseModel):
     """Complete starter canvas for a domain.
 
-    Produced by ``StarterCanvasGenerator.generate()``.  The canvas is
+    Produced by ``StarterCanvasGenerator.generate()``. The canvas is
     immediately renderable by the InkosAI frontend — all nodes have valid
     positions and all edges reference existing node IDs.
+
+    When linked to a folder tree, ``folder_tree_id`` references the
+    domain's folder tree for cross-referencing between the canvas and
+    the canonical file/folder structure.
     """
 
     id: UUID = Field(default_factory=uuid4)
@@ -148,6 +152,7 @@ class StarterCanvas(BaseModel):
     layout: CanvasLayout
     nodes: list[CanvasNode] = Field(default_factory=list)
     edges: list[CanvasEdge] = Field(default_factory=list)
+    folder_tree_id: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
@@ -236,6 +241,7 @@ class StarterCanvasGenerator:
         self,
         blueprint: DomainBlueprint,
         layout: CanvasLayout | None = None,
+        folder_tree_id: str | None = None,
     ) -> StarterCanvas:
         """Generate a ``StarterCanvas`` from a ``DomainBlueprint``.
 
@@ -244,20 +250,23 @@ class StarterCanvasGenerator:
         blueprint:
             The domain blueprint to visualise.
         layout:
-            Layout strategy override.  Falls back to ``self._default_layout``
+            Layout strategy override. Falls back to ``self._default_layout``
             and then to heuristic selection based on blueprint size.
+        folder_tree_id:
+            Optional folder tree ID to link this canvas to its domain's
+            folder tree. When provided, the canvas stores the reference
+            and the tape event includes the linkage.
 
         Returns
         -------
         StarterCanvas
-            Fully positioned canvas with nodes and edges.
+        Fully positioned canvas with nodes and edges.
         """
         chosen_layout = layout or self._default_layout or self._choose_layout(blueprint)
 
         nodes = self._build_nodes(blueprint)
         edges = self._build_edges(blueprint, nodes)
 
-        # Apply layout — assigns (x, y) to every node in-place
         self._apply_layout(chosen_layout, nodes, blueprint)
 
         canvas = StarterCanvas(
@@ -266,6 +275,7 @@ class StarterCanvasGenerator:
             layout=chosen_layout,
             nodes=nodes,
             edges=edges,
+            folder_tree_id=folder_tree_id,
         )
 
         await self._log_canvas_created(canvas, blueprint)
@@ -623,16 +633,19 @@ class StarterCanvasGenerator:
         blueprint: DomainBlueprint,
     ) -> None:
         """Log a canvas.created event to the Tape."""
+        payload: dict[str, object] = {
+            "canvas_id": str(canvas.id),
+            "domain_id": canvas.domain_id,
+            "domain_name": canvas.domain_name,
+            "layout": canvas.layout,
+            "node_count": canvas.node_count,
+            "edge_count": canvas.edge_count,
+            "blueprint_id": str(blueprint.id),
+        }
+        if canvas.folder_tree_id is not None:
+            payload["folder_tree_id"] = canvas.folder_tree_id
         await self._tape.log_event(
             event_type="canvas.created",
             agent_id="prime",
-            payload={
-                "canvas_id": str(canvas.id),
-                "domain_id": canvas.domain_id,
-                "domain_name": canvas.domain_name,
-                "layout": canvas.layout,
-                "node_count": canvas.node_count,
-                "edge_count": canvas.edge_count,
-                "blueprint_id": str(blueprint.id),
-            },
+            payload=payload,
         )

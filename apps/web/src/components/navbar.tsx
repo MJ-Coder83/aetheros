@@ -15,6 +15,7 @@ import {
   Layers,
   Route,
   ArrowRightLeft,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/simulations", label: "Simulations", icon: FlaskConical },
   { href: "/explain", label: "Explain", icon: Lightbulb },
   { href: "/planning", label: "Planning", icon: Route },
+  { href: "/canvas", label: "Canvas", icon: Network },
   { href: "/profile", label: "Profile", icon: Brain },
   { href: "/knowledge", label: "Knowledge", icon: ArrowRightLeft },
   { href: "/domains", label: "Domains", icon: Layers },

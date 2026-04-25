@@ -1,42 +1,44 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Network,
   FolderTree,
-  LayoutGrid,
   Cpu,
   FlaskConical,
   Lightbulb,
   Vote,
   Layers,
   Maximize2,
+  LayoutGrid,
+  Search,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
   ChevronRight,
   ChevronDown,
   FileCode,
   Folder,
   GripVertical,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  Search,
   MoreHorizontal,
 } from "lucide-react";
-import { useCanvasState, useCanvasActions } from "@/hooks/use-canvas";
 import { cn } from "@/lib/utils";
 import type { FolderItem, CanvasNode, CanvasEdge, CanvasLayout } from "@/types/canvas";
 
 /* ── Mode Toggle ──────────────────────────────────────────────── */
 
-export function ModeToggle() {
-  const { mode } = useCanvasState();
-  const { setMode } = useCanvasActions();
-
+export function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: "visual" | "folder";
+  onChange: (mode: "visual" | "folder") => void;
+}) {
   return (
     <div className="inline-flex items-center rounded-lg border border-inkos-cyan/10 bg-inkos-navy-800/40 p-[3px]">
       <button
-        onClick={() => setMode("visual")}
+        onClick={() => onChange("visual")}
         className={cn(
           "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
           mode === "visual"
@@ -48,7 +50,7 @@ export function ModeToggle() {
         Visual
       </button>
       <button
-        onClick={() => setMode("folder")}
+        onClick={() => onChange("folder")}
         className={cn(
           "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
           mode === "folder"
@@ -68,82 +70,48 @@ export function ModeToggle() {
 const LAYOUT_OPTIONS: { value: CanvasLayout; label: string; icon: React.ElementType }[] = [
   { value: "smart", label: "Smart Auto", icon: Cpu },
   { value: "layered", label: "Layered", icon: LayoutGrid },
-  { value: "hub-and-spoke", label: "Hub & Spoke", icon: Network },
+  { value: "hub-and-spoke", label: "Hub \u0026 Spoke", icon: Network },
   { value: "clustered", label: "Clustered", icon: Layers },
   { value: "linear", label: "Linear", icon: Maximize2 },
 ];
 
-export function LayoutSelector() {
-  const { layout } = useCanvasState();
-  const { setLayout } = useCanvasActions();
-  const [open, setOpen] = useState(false);
-
-  const active = LAYOUT_OPTIONS.find((l) => l.value === layout) ?? LAYOUT_OPTIONS[0];
-
+export function LayoutSelector({
+  layout,
+  onChange,
+}: {
+  layout: CanvasLayout;
+  onChange: (layout: CanvasLayout) => void;
+}) {
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-lg border border-inkos-cyan/10 bg-inkos-navy-800/40 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
-      >
-        <active.icon className="h-3.5 w-3.5" />
-        {active.label}
+    <div className="relative group">
+      <button className="flex items-center gap-1.5 rounded-lg border border-inkos-cyan/10 bg-inkos-navy-800/40 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-all">
+        {(() => {
+          const active = LAYOUT_OPTIONS.find((l) => l.value === layout) ?? LAYOUT_OPTIONS[0];
+          return (
+            <>
+              <active.icon className="h-3.5 w-3.5" />
+              {active.label}
+            </>
+          );
+        })()}
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-inkos-cyan/10 bg-inkos-navy-900 shadow-xl overflow-hidden"
+      <div className="absolute right-0 top-full mt-1 z-50 w-40 rounded-lg border border-inkos-cyan/10 bg-inkos-navy-900 shadow-xl overflow-hidden hidden group-hover:block">
+        {LAYOUT_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              "w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors",
+              layout === opt.value
+                ? "bg-inkos-cyan/10 text-inkos-cyan"
+                : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
+            )}
           >
-            {LAYOUT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => {
-                  setLayout(opt.value);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors",
-                  layout === opt.value
-                    ? "bg-inkos-cyan/10 text-inkos-cyan"
-                    : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
-                )}
-              >
-                <opt.icon className="h-3.5 w-3.5" />
-                {opt.label}
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-/* ── Canvas Toolbar ───────────────────────────────────────────── */
-
-export function CanvasToolbar() {
-  const { setNodes, setEdges } = useCanvasActions();
-
-  const handleReset = useCallback(() => {
-    setNodes([]);
-    setEdges([]);
-  }, [setNodes, setEdges]);
-
-  return (
-    <div className="flex items-center gap-2">
-      <ModeToggle />
-      <LayoutSelector />
-      <div className="h-4 w-px bg-white/[0.06]" />
-      <button
-        onClick={handleReset}
-        className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.03] transition-all"
-        title="Reset view"
-      >
-        <RotateCcw className="h-3.5 w-3.5" />
-      </button>
+            <opt.icon className="h-3.5 w-3.5" />
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -264,24 +232,30 @@ function generateMockFolderTree(): FolderItem {
 function FolderTreeItem({
   item,
   depth = 0,
+  expandedFolders,
+  folderPath,
+  onToggle,
+  onSelect,
 }: {
   item: FolderItem;
   depth?: number;
+  expandedFolders: Set<string>;
+  folderPath: string;
+  onToggle: (path: string) => void;
+  onSelect: (path: string) => void;
 }) {
-  const { expandedFolders, folderPath } = useCanvasState();
-  const { toggleFolder, setFolderPath } = useCanvasActions();
   const isExpanded = expandedFolders.has(item.path);
   const isSelected = folderPath === item.path;
-  const hasChildren = item.children && item.children.length > 0;
+  const hasChildren = item.children != null && item.children.length > 0;
 
   return (
     <div>
       <button
         onClick={() => {
           if (item.type === "directory" && hasChildren) {
-            toggleFolder(item.path);
+            onToggle(item.path);
           }
-          setFolderPath(item.path);
+          onSelect(item.path);
         }}
         className={cn(
           "w-full flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-all",
@@ -312,47 +286,60 @@ function FolderTreeItem({
           </span>
         )}
       </button>
-      <AnimatePresence>
-        {isExpanded && hasChildren && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="overflow-hidden"
-          >
-            {item.children!.map((child) => (
-              <FolderTreeItem key={child.path} item={child} depth={depth + 1} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isExpanded && hasChildren && (
+        <div className="overflow-hidden">
+          {item.children!.map((child) => (
+            <FolderTreeItem
+              key={child.path}
+              item={child}
+              depth={depth + 1}
+              expandedFolders={expandedFolders}
+              folderPath={folderPath}
+              onToggle={onToggle}
+              onSelect={onSelect}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 export function FolderTreeView() {
   const tree = generateMockFolderTree();
-  const { expandAll, collapseAll } = useCanvasActions();
   const [search, setSearch] = useState("");
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(["/"]));
+  const [folderPath, setFolderPath] = useState("/");
 
-  const filterTree = (item: FolderItem, query: string): FolderItem | null => {
-    if (!query) return item;
-    const match = item.name.toLowerCase().includes(query.toLowerCase());
-    const filteredChildren = item.children
-      ?.map((c) => filterTree(c, query))
-      .filter(Boolean) as FolderItem[] | undefined;
-    if (match || (filteredChildren && filteredChildren.length > 0)) {
-      return { ...item, children: filteredChildren };
+  const toggleFolder = useCallback((path: string) => {
+    setExpandedFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }, []);
+
+  const expandAll = useCallback(() => setExpandedFolders(new Set(["/"])), []);
+  const collapseAll = useCallback(() => setExpandedFolders(new Set()), []);
+
+  const filteredTree = (() => {
+    function filterItem(item: FolderItem, query: string): FolderItem | null {
+      if (!query) return item;
+      const match = item.name.toLowerCase().includes(query.toLowerCase());
+      const filteredChildren = item.children
+        ?.map((c) => filterItem(c, query))
+        .filter(Boolean) as FolderItem[] | undefined;
+      if (match || (filteredChildren != null && filteredChildren.length > 0)) {
+        return { ...item, children: filteredChildren };
+      }
+      return null;
     }
-    return null;
-  };
-
-  const filteredTree = search ? filterTree(tree, search) : tree;
+    return search ? filterItem(tree, search) : tree;
+  })();
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.04]">
         <div className="flex-1 flex items-center gap-1.5 rounded-md border border-inkos-cyan/8 bg-inkos-navy-800/30 px-2 py-1">
           <Search className="h-3 w-3 text-muted-foreground/50" />
@@ -377,10 +364,16 @@ export function FolderTreeView() {
           Collapse
         </button>
       </div>
-
-      {/* Tree */}
       <div className="flex-1 overflow-auto p-2">
-        {filteredTree && <FolderTreeItem item={filteredTree} />}
+        {filteredTree != null && (
+          <FolderTreeItem
+            item={filteredTree}
+            expandedFolders={expandedFolders}
+            folderPath={folderPath}
+            onToggle={toggleFolder}
+            onSelect={setFolderPath}
+          />
+        )}
       </div>
     </div>
   );
@@ -390,14 +383,13 @@ export function FolderTreeView() {
 
 function NodeCard({
   node,
+  isSelected,
   onSelect,
 }: {
   node: CanvasNode;
+  isSelected: boolean;
   onSelect: (id: string) => void;
 }) {
-  const { selectedNodeId } = useCanvasState();
-  const isSelected = selectedNodeId === node.id;
-
   const statusColors: Record<string, string> = {
     active: "border-emerald-400/30 text-emerald-400",
     idle: "border-amber-400/30 text-amber-400",
@@ -449,12 +441,12 @@ function NodeCard({
           {node.status}
         </span>
       </div>
-      {node.description && (
+      {node.description != null && (
         <p className="text-[10px] text-muted-foreground line-clamp-2 leading-relaxed">
           {node.description}
         </p>
       )}
-      {node.folderPath && (
+      {node.folderPath != null && (
         <p className="text-[9px] text-muted-foreground/50 mt-1 font-mono truncate">
           {node.folderPath}
         </p>
@@ -466,7 +458,7 @@ function NodeCard({
 function EdgeLine({ edge, nodes }: { edge: CanvasEdge; nodes: CanvasNode[] }) {
   const source = nodes.find((n) => n.id === edge.source);
   const target = nodes.find((n) => n.id === edge.target);
-  if (!source || !target) return null;
+  if (source == null || target == null) return null;
 
   const sx = source.x + source.width / 2;
   const sy = source.y + source.height / 2;
@@ -495,7 +487,7 @@ function EdgeLine({ edge, nodes }: { edge: CanvasEdge; nodes: CanvasNode[] }) {
         strokeWidth={1.5}
         strokeDasharray={edge.type === "flow" ? "4 4" : undefined}
       />
-      {edge.label && (
+      {edge.label != null && (
         <text
           x={(sx + tx) / 2}
           y={(sy + ty) / 2 - 4}
@@ -539,25 +531,33 @@ function generateMockEdges(): CanvasEdge[] {
   ];
 }
 
-export function VisualCanvasView() {
-  const { nodes, edges, selectedNodeId } = useCanvasState();
-  const { setNodes, setEdges, selectNode } = useCanvasActions();
+export function VisualCanvasView({
+  nodes: CanvasNode[] = [],
+  edges: CanvasEdge[] = [],
+  canvasLoaded: boolean = false,
+}: {
+  nodes?: CanvasNode[];
+  edges?: CanvasEdge[];
+  canvasLoaded?: boolean;
+}) {
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [scale, setScale] = useState(1);
 
-  // Initialize mock data if empty
-  useState(() => {
-    if (nodes.length === 0) {
-      setNodes(generateMockNodes());
-      setEdges(generateMockEdges());
-    }
-  });
+  // Use mock data as fallback when no data is provided
+  const displayNodes = nodes && nodes.length > 0 ? nodes : generateMockNodes();
+  const displayEdges = edges && edges.length > 0 ? edges : generateMockEdges();
 
-  // Use a safer initialization pattern
-  const initialized = nodes.length > 0;
+  const handleReset = useCallback(() => {
+    if (canvasLoaded) {
+      // Cannot reset loaded canvas — would need API call
+      return;
+    }
+    setNodes(generateMockNodes());
+    setSelectedNodeId(null);
+  }, []);
 
   return (
     <div className="relative flex-1 overflow-hidden bg-background">
-      {/* Grid background */}
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -568,8 +568,6 @@ export function VisualCanvasView() {
           backgroundSize: `${24 * scale}px ${24 * scale}px`,
         }}
       />
-
-      {/* Canvas content */}
       <div
         className="absolute inset-0"
         style={{
@@ -577,18 +575,19 @@ export function VisualCanvasView() {
           transformOrigin: "top left",
         }}
       >
-        {/* Edges */}
-        {edges.map((edge) => (
-          <EdgeLine key={edge.id} edge={edge} nodes={nodes} />
+        {displayEdges.map((edge) => (
+          <EdgeLine key={edge.id} edge={edge} nodes={displayNodes} />
         ))}
-
-        {/* Nodes */}
-        {nodes.map((node) => (
-          <NodeCard key={node.id} node={node} onSelect={selectNode} />
+        {displayNodes.map((node) => (
+          <NodeCard
+            key={node.id}
+            node={node}
+            isSelected={selectedNodeId === node.id}
+            onSelect={setSelectedNodeId}
+          />
         ))}
       </div>
 
-      {/* Zoom controls */}
       <div className="absolute bottom-4 right-4 flex items-center gap-1 rounded-lg border border-inkos-cyan/10 bg-inkos-navy-900/90 p-1">
         <button
           onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
@@ -605,46 +604,46 @@ export function VisualCanvasView() {
         >
           <ZoomIn className="h-3.5 w-3.5" />
         </button>
+        <div className="w-px h-4 bg-white/[0.06] mx-1" />
+        <button
+          onClick={handleReset}
+          className="h-7 w-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/[0.03] transition-all"
+          title="Reset view"
+          disabled={canvasLoaded}
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {/* Selected node info */}
-      <AnimatePresence>
-        {selectedNodeId && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="absolute top-4 right-4 w-64 glass rounded-xl border border-inkos-cyan/10 p-4"
-          >
-            <SelectedNodePanel nodeId={selectedNodeId} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Initialize button if empty */}
-      {!initialized && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <button
-            onClick={() => {
-              setNodes(generateMockNodes());
-              setEdges(generateMockEdges());
-            }}
-            className="flex items-center gap-2 rounded-lg border border-inkos-cyan/20 bg-inkos-cyan/10 px-4 py-2 text-sm text-inkos-cyan hover:bg-inkos-cyan/20 transition-all"
-          >
-            <Network className="h-4 w-4" />
-            Load Demo Canvas
-          </button>
-        </div>
+      {selectedNodeId != null && (
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          className="absolute top-4 right-4 w-64 glass rounded-xl border border-inkos-cyan/10 p-4"
+        >
+          <SelectedNodePanel
+            nodeId={selectedNodeId}
+            nodes={displayNodes}
+            onClose={() => setSelectedNodeId(null)}
+          />
+        </motion.div>
       )}
     </div>
   );
 }
 
-function SelectedNodePanel({ nodeId }: { nodeId: string }) {
-  const { nodes } = useCanvasState();
-  const { selectNode } = useCanvasActions();
+function SelectedNodePanel({
+  nodeId,
+  nodes,
+  onClose,
+}: {
+  nodeId: string;
+  nodes: CanvasNode[];
+  onClose: () => void;
+}) {
   const node = nodes.find((n) => n.id === nodeId);
-  if (!node) return null;
+  if (node == null) return null;
 
   return (
     <div className="space-y-3">
@@ -652,10 +651,7 @@ function SelectedNodePanel({ nodeId }: { nodeId: string }) {
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Node Details
         </span>
-        <button
-          onClick={() => selectNode(null)}
-          className="text-muted-foreground hover:text-foreground"
-        >
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
           ✕
         </button>
       </div>
@@ -672,13 +668,13 @@ function SelectedNodePanel({ nodeId }: { nodeId: string }) {
           <span className="text-[10px] text-muted-foreground uppercase">Status</span>
           <p className="text-xs">{node.status}</p>
         </div>
-        {node.folderPath && (
+        {node.folderPath != null && (
           <div>
             <span className="text-[10px] text-muted-foreground uppercase">Path</span>
             <p className="text-[10px] font-mono text-muted-foreground">{node.folderPath}</p>
           </div>
         )}
-        {node.description && (
+        {node.description != null && (
           <div>
             <span className="text-[10px] text-muted-foreground uppercase">Description</span>
             <p className="text-xs text-muted-foreground leading-relaxed">{node.description}</p>

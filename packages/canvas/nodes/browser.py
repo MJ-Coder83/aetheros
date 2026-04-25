@@ -23,8 +23,10 @@ from packages.tape.service import TapeService
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class BrowserNodeType(StrEnum):
     """Type of browser node in the canvas."""
+
     PREVIEW = "preview"
     COMPONENT = "component"
     PAGE = "page"
@@ -34,6 +36,7 @@ class BrowserNodeType(StrEnum):
 
 class FrameworkType(StrEnum):
     """Supported web/framework types for live embedding."""
+
     REACT = "react"
     NEXT_JS = "next_js"
     VUE = "vue"
@@ -48,6 +51,7 @@ class FrameworkType(StrEnum):
 
 class PreviewMode(StrEnum):
     """How the preview is rendered."""
+
     LIVE = "live"
     STATIC = "static"
     EMULATED = "emulated"
@@ -56,6 +60,7 @@ class PreviewMode(StrEnum):
 
 class ElementTagCategory(StrEnum):
     """Category for element tags."""
+
     LAYOUT = "layout"
     INTERACTIVE = "interactive"
     MEDIA = "media"
@@ -69,8 +74,10 @@ class ElementTagCategory(StrEnum):
 # Data models
 # ---------------------------------------------------------------------------
 
+
 class ElementTag(BaseModel):
     """A tag attached to a detected element for organization and filtering."""
+
     tag_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     category: ElementTagCategory = ElementTagCategory.CUSTOM
@@ -81,6 +88,7 @@ class ElementTag(BaseModel):
 
 class DetectedElement(BaseModel):
     """An element detected within a browser preview for interaction/editing."""
+
     element_id: str = Field(default_factory=lambda: str(uuid4()))
     selector: str  # CSS selector or XPath
     tag_name: str  # e.g. "div", "button", "img"
@@ -104,6 +112,7 @@ class DetectedElement(BaseModel):
 
 class NaturalLanguageEdit(BaseModel):
     """A natural language instruction for editing an element or component."""
+
     edit_id: str = Field(default_factory=lambda: str(uuid4()))
     instruction: str  # e.g. "Make the button blue and larger"
     target_element_id: str | None = None
@@ -116,6 +125,7 @@ class NaturalLanguageEdit(BaseModel):
 
 class LivePreviewState(BaseModel):
     """Current state of a live preview session."""
+
     session_id: str = Field(default_factory=lambda: str(uuid4()))
     url: str | None = None
     port: int | None = None
@@ -128,6 +138,7 @@ class LivePreviewState(BaseModel):
 
 class BrowserNodeConfig(BaseModel):
     """Configuration for a BrowserNode."""
+
     node_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str = "Browser Preview"
     node_type: BrowserNodeType = BrowserNodeType.PREVIEW
@@ -147,6 +158,7 @@ class BrowserNodeConfig(BaseModel):
 # ---------------------------------------------------------------------------
 # Framework detection
 # ---------------------------------------------------------------------------
+
 
 class FrameworkDetector:
     """Detects the framework type from source code, URLs, or file paths."""
@@ -247,26 +259,64 @@ class FrameworkDetector:
 # Element detection engine
 # ---------------------------------------------------------------------------
 
+
 class ElementDetectionEngine:
     """Detects and extracts elements from HTML/content for canvas interaction."""
 
     _INTERACTIVE_TAGS: ClassVar[set[str]] = {
-        "button", "a", "input", "select", "textarea", "form",
-        "label", "option", "details", "summary",
+        "button",
+        "a",
+        "input",
+        "select",
+        "textarea",
+        "form",
+        "label",
+        "option",
+        "details",
+        "summary",
     }
     _MEDIA_TAGS: ClassVar[set[str]] = {
-        "img", "video", "audio", "canvas", "svg", "iframe",
+        "img",
+        "video",
+        "audio",
+        "canvas",
+        "svg",
+        "iframe",
     }
     _LAYOUT_TAGS: ClassVar[set[str]] = {
-        "div", "section", "article", "aside", "header", "footer",
-        "nav", "main", "figure", "figcaption",
+        "div",
+        "section",
+        "article",
+        "aside",
+        "header",
+        "footer",
+        "nav",
+        "main",
+        "figure",
+        "figcaption",
     }
     _TEXT_TAGS: ClassVar[set[str]] = {
-        "h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "strong",
-        "em", "blockquote", "code", "pre",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "p",
+        "span",
+        "strong",
+        "em",
+        "blockquote",
+        "code",
+        "pre",
     }
     _NAV_TAGS: ClassVar[set[str]] = {
-        "nav", "a", "menu", "ol", "ul", "li",
+        "nav",
+        "a",
+        "menu",
+        "ol",
+        "ul",
+        "li",
     }
 
     @classmethod
@@ -279,9 +329,7 @@ class ElementDetectionEngine:
         elements: list[DetectedElement] = []
 
         # Match opening tags with attributes
-        tag_pattern = re.compile(
-            r"<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>([^<]*)"
-        )
+        tag_pattern = re.compile(r"<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>([^<]*)")
 
         for match in tag_pattern.finditer(html_content):
             tag_name = match.group(1).lower()
@@ -363,13 +411,13 @@ class ElementDetectionEngine:
     @classmethod
     def _tag_color_for_category(cls, category: ElementTagCategory) -> str:
         colors = {
-            ElementTagCategory.LAYOUT: "#8b5cf6",      # violet
+            ElementTagCategory.LAYOUT: "#8b5cf6",  # violet
             ElementTagCategory.INTERACTIVE: "#3b82f6",  # blue
-            ElementTagCategory.MEDIA: "#ec4899",        # pink
-            ElementTagCategory.FORM: "#10b981",         # emerald
-            ElementTagCategory.NAVIGATION: "#f59e0b",   # amber
-            ElementTagCategory.TEXT: "#6b7280",         # gray
-            ElementTagCategory.CUSTOM: "#6366f1",       # indigo
+            ElementTagCategory.MEDIA: "#ec4899",  # pink
+            ElementTagCategory.FORM: "#10b981",  # emerald
+            ElementTagCategory.NAVIGATION: "#f59e0b",  # amber
+            ElementTagCategory.TEXT: "#6b7280",  # gray
+            ElementTagCategory.CUSTOM: "#6366f1",  # indigo
         }
         return colors.get(category, "#6366f1")
 
@@ -377,6 +425,7 @@ class ElementDetectionEngine:
 # ---------------------------------------------------------------------------
 # Natural language editing engine
 # ---------------------------------------------------------------------------
+
 
 class NaturalLanguageEditEngine:
     """Processes natural language editing instructions for browser nodes.
@@ -386,17 +435,27 @@ class NaturalLanguageEditEngine:
     """
 
     _COLOR_MAP: ClassVar[dict[str, str]] = {
-        "red": "#ef4444", "blue": "#3b82f6", "green": "#22c55e",
-        "yellow": "#eab308", "purple": "#a855f7", "orange": "#f97316",
-        "pink": "#ec4899", "gray": "#6b7280", "black": "#000000",
+        "red": "#ef4444",
+        "blue": "#3b82f6",
+        "green": "#22c55e",
+        "yellow": "#eab308",
+        "purple": "#a855f7",
+        "orange": "#f97316",
+        "pink": "#ec4899",
+        "gray": "#6b7280",
+        "black": "#000000",
         "white": "#ffffff",
     }
 
     _SIZE_MAP: ClassVar[dict[str, str]] = {
-        "small": "0.75rem", "smaller": "0.625rem",
-        "normal": "1rem", "medium": "1rem",
-        "large": "1.25rem", "larger": "1.5rem",
-        "big": "1.5rem", "huge": "2rem",
+        "small": "0.75rem",
+        "smaller": "0.625rem",
+        "normal": "1rem",
+        "medium": "1rem",
+        "large": "1.25rem",
+        "larger": "1.5rem",
+        "big": "1.5rem",
+        "huge": "2rem",
     }
 
     @classmethod
@@ -487,6 +546,7 @@ class NaturalLanguageEditEngine:
 # ---------------------------------------------------------------------------
 # Browser Node
 # ---------------------------------------------------------------------------
+
 
 class BrowserNode:
     """A canvas node that renders live browser previews for web frameworks.
@@ -664,7 +724,9 @@ class BrowserNode:
         return [e for e in self._elements if selector in e.selector]
 
     async def add_element_tag(
-        self, element_id: str, tag: ElementTag,
+        self,
+        element_id: str,
+        tag: ElementTag,
     ) -> DetectedElement | None:
         """Add a tag to an element."""
         element = self.get_element_by_id(element_id)
@@ -686,7 +748,9 @@ class BrowserNode:
         return element
 
     async def remove_element_tag(
-        self, element_id: str, tag_id: str,
+        self,
+        element_id: str,
+        tag_id: str,
     ) -> DetectedElement | None:
         """Remove a tag from an element."""
         element = self.get_element_by_id(element_id)

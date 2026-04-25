@@ -56,12 +56,12 @@ class CanvasNodeType(StrEnum):
 class CanvasEdgeType(StrEnum):
     """Semantic type of a directed canvas edge."""
 
-    CONTAINS = "contains"       # domain -> agent / skill
-    USES = "uses"               # agent -> skill
-    EXECUTES = "executes"       # workflow -> agent
-    DEPENDS_ON = "depends_on"   # workflow -> skill / data source
-    TRIGGERS = "triggers"       # event-driven connection
-    DATA_FLOW = "data_flow"     # data-passing connection
+    CONTAINS = "contains"  # domain -> agent / skill
+    USES = "uses"  # agent -> skill
+    EXECUTES = "executes"  # workflow -> agent
+    DEPENDS_ON = "depends_on"  # workflow -> skill / data source
+    TRIGGERS = "triggers"  # event-driven connection
+    DATA_FLOW = "data_flow"  # data-passing connection
     CUSTOM = "custom"
 
 
@@ -75,11 +75,11 @@ class CanvasViewMode(StrEnum):
 class CanvasLayout(StrEnum):
     """Auto-layout strategy for the canvas."""
 
-    LAYERED = "layered"          # Left-to-right columns by node type
+    LAYERED = "layered"  # Left-to-right columns by node type
     HUB_AND_SPOKE = "hub_and_spoke"  # Domain at centre, others radiate
-    CLUSTERED = "clustered"      # Agents + owned skills in clusters
-    LINEAR = "linear"            # All nodes in a single row
-    SMART = "smart"              # Heuristic — picks the best of the above
+    CLUSTERED = "clustered"  # Agents + owned skills in clusters
+    LINEAR = "linear"  # All nodes in a single row
+    SMART = "smart"  # Heuristic — picks the best of the above
 
 
 class CanvasOperationType(StrEnum):
@@ -129,8 +129,8 @@ class CanvasEdge(BaseModel):
     """A directed edge between two canvas nodes."""
 
     id: str = Field(default_factory=lambda: str(uuid4()))
-    source: str          # CanvasNode.id
-    target: str          # CanvasNode.id
+    source: str  # CanvasNode.id
+    target: str  # CanvasNode.id
     edge_type: CanvasEdgeType = CanvasEdgeType.CONTAINS
     label: str = ""
     animated: bool = False

@@ -11,6 +11,7 @@ import {
   FlaskConical,
   Settings,
   ArrowRight,
+  Network,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ const COMMANDS = [
   { id: "tape", label: "View Tape", icon: ScrollText, href: "/tape" },
   { id: "proposals", label: "Manage Proposals", icon: Vote, href: "/proposals" },
   { id: "simulations", label: "Run Simulations", icon: FlaskConical, href: "/simulations" },
+  { id: "canvas", label: "Open Domain Canvas", icon: Network, href: "/canvas" },
   { id: "settings", label: "Settings", icon: Settings, action: "settings" },
 ];
 

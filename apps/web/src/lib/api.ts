@@ -187,6 +187,132 @@ export const healthApi = {
   },
 };
 
+/* ── Domain Creation ────────────────────────────────────────────── */
+
+export type DomainCreationOption = "domain_only" | "domain_with_starter_canvas";
+export type CreationMode = "automatic" | "human_guided" | "hybrid";
+
+interface DomainBlueprint {
+  id: string;
+  domain_name: string;
+  domain_id: string;
+  description: string;
+  source_description: string;
+  agents: Array<{
+    agent_id: string;
+    name: string;
+    role: string;
+    goal: string;
+    backstory: string;
+    capabilities: string[];
+    tools: string[];
+  }>;
+  skills: Array<{
+    skill_id: string;
+    name: string;
+    description: string;
+    version: string;
+    is_reused: boolean;
+    source_domain: string | null;
+  }>;
+  workflows: Array<{
+    workflow_id: string;
+    name: string;
+    workflow_type: string;
+    description: string;
+    agent_ids: string[];
+    steps: string[];
+  }>;
+  config: {
+    max_agents: number;
+    max_concurrent_tasks: number;
+    requires_human_approval: boolean;
+    data_retention_days: number;
+    priority_level: string;
+    custom_settings: Record<string, unknown>;
+  };
+  creation_mode: CreationMode;
+  status: string;
+  proposal_id: string | null;
+  created_by: string;
+  created_at: string;
+  validation_errors: string[];
+  validation_warnings: string[];
+}
+
+interface OneClickDomainCreationResult {
+  blueprint: DomainBlueprint;
+  folder_tree: unknown | null;
+  starter_canvas: unknown | null;
+  canvas_id: string | null;
+  proposal_id: string | null;
+  registered: boolean;
+  domain: unknown | null;
+  message: string;
+}
+
+export const domainApi = {
+  create(body: {
+    description: string;
+    domain_name?: string;
+    creation_mode?: CreationMode;
+    created_by?: string;
+  }): Promise<DomainBlueprint> {
+    return request("/api/domains/create", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  oneClickCreate(body: {
+    description: string;
+    domain_name?: string;
+    creation_option?: DomainCreationOption;
+    creation_mode?: CreationMode;
+    created_by?: string;
+  }): Promise<OneClickDomainCreationResult> {
+    return request("/api/domains/one-click", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  generateBlueprint(body: {
+    description: string;
+    domain_name?: string;
+    creation_mode?: CreationMode;
+    created_by?: string;
+  }): Promise<DomainBlueprint> {
+    return request("/api/domains/blueprint", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  register(blueprintId: string, reviewer?: string): Promise<unknown> {
+    return request("/api/domains/register", {
+      method: "POST",
+      body: JSON.stringify({ blueprint_id: blueprintId, reviewer }),
+    });
+  },
+
+  list(): Promise<Array<{ domain_id: string; name: string; description: string; agent_count: number }>> {
+    return request("/api/domains");
+  },
+
+  get(domainId: string): Promise<{ domain_id: string; name: string; description: string; agent_count: number }> {
+    return request(`/api/domains/${domainId}`);
+  },
+
+  listBlueprints(): Promise<DomainBlueprint[]> {
+    return request("/api/domains/blueprints");
+  },
+
+  getBlueprint(blueprintId: string): Promise<DomainBlueprint> {
+    return request(`/api/domains/blueprints/${blueprintId}`);
+  },
+};
+
 
 /* ── Explainability ────────────────────────────────────────────── */
 import type { Explanation, ActionType } from "@/types";

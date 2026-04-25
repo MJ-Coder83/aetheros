@@ -10,6 +10,9 @@ import {
   proposalsApi,
   simulationApi,
   healthApi,
+  domainApi,
+  type DomainCreationOption,
+  type CreationMode,
 } from "@/lib/api";
 import type { ProposalStatus, SimulationStatus, WhatIfScenario } from "@/types";
 
@@ -181,6 +184,99 @@ export function useHealthCheck() {
     queryKey: ["health"],
     queryFn: healthApi.check,
     refetchInterval: 15_000,
+  });
+}
+
+/* ── Domain Creation ──────────────────────────────────────────── */
+
+export function useDomains() {
+  return useQuery({
+    queryKey: ["domains"],
+    queryFn: domainApi.list,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useDomain(domainId: string | null) {
+  return useQuery({
+    queryKey: ["domains", domainId],
+    queryFn: () => domainApi.get(domainId!),
+    enabled: domainId !== null,
+  });
+}
+
+export function useDomainBlueprints() {
+  return useQuery({
+    queryKey: ["domain-blueprints"],
+    queryFn: domainApi.listBlueprints,
+  });
+}
+
+export function useCreateDomain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      description: string;
+      domain_name?: string;
+      creation_mode?: CreationMode;
+      created_by?: string;
+    }) => domainApi.create(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["domains"] });
+      qc.invalidateQueries({ queryKey: ["domain-blueprints"] });
+      qc.invalidateQueries({ queryKey: ["prime", "snapshot"] });
+      toast.success("Domain created", {
+        description: "Your domain blueprint has been generated and submitted for approval.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to create domain", { description: error.message });
+    },
+  });
+}
+
+export function useOneClickCreateDomain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      description: string;
+      domain_name?: string;
+      creation_option?: DomainCreationOption;
+      creation_mode?: CreationMode;
+      created_by?: string;
+    }) => domainApi.oneClickCreate(body),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["domains"] });
+      qc.invalidateQueries({ queryKey: ["domain-blueprints"] });
+      qc.invalidateQueries({ queryKey: ["prime", "snapshot"] });
+      const hasCanvas = data.starter_canvas !== null;
+      toast.success("Domain created", {
+        description: hasCanvas
+          ? "Your domain with starter canvas has been generated and submitted for approval."
+          : "Your domain blueprint has been generated and submitted for approval.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to create domain", { description: error.message });
+    },
+  });
+}
+
+export function useRegisterDomain() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ blueprintId, reviewer }: { blueprintId: string; reviewer?: string }) =>
+      domainApi.register(blueprintId, reviewer),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["domains"] });
+      qc.invalidateQueries({ queryKey: ["prime", "snapshot"] });
+      toast.success("Domain registered", {
+        description: "The domain has been registered and is now active.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to register domain", { description: error.message });
+    },
   });
 }
 

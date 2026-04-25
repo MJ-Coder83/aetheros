@@ -397,12 +397,13 @@ export default function DomainsPage() {
     setBlueprint(null);
 
     try {
-      const res = await fetch("/api/domains/create", {
+      const res = await fetch("/api/domains/one-click", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: description.trim(),
           domain_name: domainName.trim() || undefined,
+          creation_option: "domain_with_starter_canvas",
         }),
       });
       if (!res.ok) {
@@ -411,9 +412,15 @@ export default function DomainsPage() {
       }
       const data = (await res.json()) as {
         blueprint: Blueprint;
+        canvas_id: string | null;
         message: string;
       };
-      setBlueprint(data.blueprint);
+      // Redirect to canvas page with the new canvas ID
+      if (data.canvas_id) {
+        window.location.href = `/canvas?canvas_id=${data.canvas_id}`;
+      } else {
+        setBlueprint(data.blueprint);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {

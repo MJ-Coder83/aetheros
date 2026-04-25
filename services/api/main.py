@@ -14,6 +14,7 @@ from services.api.middleware import (
 from services.api.routes import (
     aethergit,
     auth,
+    canvas,
     debates,
     domains,
     explainability,
@@ -64,3 +65,4 @@ app.include_router(introspection.router)
 app.include_router(nlq.router)
 app.include_router(auth.router)
 app.include_router(folder_tree.router)
+app.include_router(canvas.router)

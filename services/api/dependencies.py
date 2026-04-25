@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.aethergit.advanced import AdvancedAetherGit
 from packages.auth import AuthService
+from packages.canvas.core import CanvasService
 from packages.domain.creation import OneClickDomainCreationEngine
 from packages.folder_tree import FolderTreeService
 from packages.prime.debate import DebateArena
@@ -151,7 +152,17 @@ def get_folder_tree_service() -> FolderTreeService:
     return _folder_tree_service_singleton
 
 
+def get_canvas_service() -> CanvasService:
+    """Return the singleton CanvasService."""
+    # CanvasService uses in-memory store by default
+    # Pass folder_tree_service=get_folder_tree_service() for two-way sync
+    return CanvasService(
+        tape_service=get_tape_service(),
+        folder_tree_service=get_folder_tree_service(),
+    )
+
 # Type aliases for FastAPI Depends
+CanvasServiceDep = Annotated[CanvasService, Depends(get_canvas_service)]
 AetherGitServiceDep = Annotated[AdvancedAetherGit, Depends(get_aethergit_service)]
 DebateServiceDep = Annotated[DebateArena, Depends(get_debate_service)]
 ExplainabilityServiceDep = Annotated[ExplainabilityEngine, Depends(get_explainability_service)]

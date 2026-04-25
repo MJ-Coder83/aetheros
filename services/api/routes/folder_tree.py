@@ -1,184 +1,143 @@
-"""Folder Tree router — Folder Thinking Mode and dual-view Canvas support."""
+"""GitNexus-inspired folder tree enhancement API routes.
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+Provides endpoints for:
 
-from packages.folder_tree import (
-    DomainTreeNotFoundError,
-    FolderOperation,
-    FolderTreeError,
-    PathAlreadyExistsError,
-    PathNotFoundError,
-)
-from services.api.dependencies import FolderTreeServiceDep
+- **Impact analysis** -- predict what breaks if a path is changed
+- **Dependency graph** -- build an interactive dependency graph for a domain
+- **SKILL.md generation** -- auto-generate capability manifests for agents/skills
+"""
+
+from __future__ import annotations
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query
+
+from packages.folder_tree import FolderTreeService
+from services.api.dependencies import TapeServiceDep
 
 router = APIRouter(prefix="/folder-tree", tags=["folder-tree"])
 
 
-class ReadFileRequest(BaseModel):
-    domain_id: str
-    path: str
+# ---------------------------------------------------------------------------
+# Dependency helpers
+# ---------------------------------------------------------------------------
+
+def _get_folder_tree_service(tape_service: TapeServiceDep) -> FolderTreeService:
+    """Create a FolderTreeService with the shared TapeService."""
+    return FolderTreeService(tape_service=tape_service)
 
 
-class WriteFileRequest(BaseModel):
-    domain_id: str
-    path: str
-    content: str
+FolderTreeServiceDep = Annotated[
+    FolderTreeService,
+    Depends(_get_folder_tree_service),
+]
 
 
-class CreateDirectoryRequest(BaseModel):
-    domain_id: str
-    path: str
+# ---------------------------------------------------------------------------
+# Impact analysis
+# ---------------------------------------------------------------------------
 
-
-class MovePathRequest(BaseModel):
-    domain_id: str
-    old_path: str
-    new_path: str
-
-
-class DeletePathRequest(BaseModel):
-    domain_id: str
-    path: str
-
-
-class SearchRequest(BaseModel):
-    domain_id: str
-    query: str
-    search_content: bool = True
-    max_results: int = 20
-
-
-class SyncFromCanvasRequest(BaseModel):
-    domain_id: str
-    operations: list[FolderOperation]
-
-
-@router.get("/{domain_id}")
-async def get_tree(
+@router.post("/impact/{domain_id}")
+async def assess_impact(
+    fts: FolderTreeServiceDep,
     domain_id: str,
-    svc: FolderTreeServiceDep,
+    path: str = Query(..., description="Relative path within the domain"),
 ) -> dict[str, object]:
-    """Get the full folder tree for a domain."""
-    try:
-        tree = await svc.get_tree(domain_id)
-        return tree.model_dump()
-    except DomainTreeNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    """Assess the impact of changing a path in a domain's folder tree.
+
+    Returns direct and transitive dependents, impact severity, and
+    mitigation suggestions.
+    """
+    from packages.folder_tree.impact import ImpactAnalyzer
+
+    analyzer = ImpactAnalyzer(
+        folder_tree_service=fts,
+        tape_service=fts._tape,
+    )
+    report = await analyzer.assess_impact(domain_id, path)
+    return report.model_dump()
 
 
-@router.get("/{domain_id}/list")
-async def list_directory(
+# ---------------------------------------------------------------------------
+# Dependency graph
+# ---------------------------------------------------------------------------
+
+@router.get("/dependency-graph/{domain_id}")
+async def build_dependency_graph(
+    fts: FolderTreeServiceDep,
     domain_id: str,
-    svc: FolderTreeServiceDep,
-    path: str = "",
-) -> list[dict[str, object]]:
-    """List contents of a directory in the domain's folder tree."""
-    try:
-        children = await svc.list_directory(domain_id, path)
-        return [c.model_dump() for c in children]
-    except (DomainTreeNotFoundError, PathNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except FolderTreeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
-@router.post("/read")
-async def read_file(
-    body: ReadFileRequest,
-    svc: FolderTreeServiceDep,
+    include_semantic: bool = Query(True, description="Include keyword-inferred edges"),
 ) -> dict[str, object]:
-    """Read a file from the domain's folder tree."""
-    try:
-        node = await svc.read_file(body.domain_id, body.path)
-        return node.model_dump()
-    except (DomainTreeNotFoundError, PathNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except FolderTreeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    """Build a dependency graph for a domain's folder tree.
+
+    Returns nodes, edges, and group counts suitable for Sigma.js
+    interactive rendering.
+    """
+    from packages.folder_tree.dependency_graph import DependencyGraphBuilder
+
+    builder = DependencyGraphBuilder(
+        folder_tree_service=fts,
+        tape_service=fts._tape,
+    )
+    graph = await builder.build_graph(domain_id, include_semantic=include_semantic)
+    return graph.model_dump()
 
 
-@router.post("/write", status_code=201)
-async def write_file(
-    body: WriteFileRequest,
-    svc: FolderTreeServiceDep,
+# ---------------------------------------------------------------------------
+# SKILL.md generation
+# ---------------------------------------------------------------------------
+
+@router.post("/skill-md/{domain_id}")
+async def generate_skill_mds(
+    fts: FolderTreeServiceDep,
+    domain_id: str,
 ) -> dict[str, object]:
-    """Write content to a file in the domain's folder tree."""
-    try:
-        node = await svc.write_file(body.domain_id, body.path, body.content)
-        return node.model_dump()
-    except DomainTreeNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    """Auto-generate SKILL.md files for all agents and skills in a domain.
+
+    Returns a mapping of relative path to SKILL.md content.
+    """
+    from packages.folder_tree.skill_md import SkillMdGenerator
+
+    generator = SkillMdGenerator(
+        folder_tree_service=fts,
+        tape_service=fts._tape,
+    )
+    results = await generator.generate_for_domain(domain_id)
+    return {"domain_id": domain_id, "files": results, "count": len(results)}
 
 
-@router.post("/mkdir", status_code=201)
-async def create_directory(
-    body: CreateDirectoryRequest,
-    svc: FolderTreeServiceDep,
+# ---------------------------------------------------------------------------
+# Single SKILL.md update
+# ---------------------------------------------------------------------------
+
+@router.put("/skill-md/{domain_id}/{path:path}")
+async def update_skill_md(
+    fts: FolderTreeServiceDep,
+    domain_id: str,
+    path: str,
 ) -> dict[str, object]:
-    """Create a new directory in the domain's folder tree."""
-    try:
-        node = await svc.create_directory(body.domain_id, body.path)
-        return dict(node.model_dump())
-    except PathAlreadyExistsError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-    except DomainTreeNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    """Re-generate a single SKILL.md file after changes."""
+    from packages.folder_tree.skill_md import SkillMdGenerator
+
+    generator = SkillMdGenerator(
+        folder_tree_service=fts,
+        tape_service=fts._tape,
+    )
+    content = await generator.update_skill_md(domain_id, path)
+    return {"domain_id": domain_id, "path": path, "content": content}
 
 
-@router.post("/move")
-async def move_path(
-    body: MovePathRequest,
-    svc: FolderTreeServiceDep,
+# ---------------------------------------------------------------------------
+# Parse SKILL.md
+# ---------------------------------------------------------------------------
+
+@router.post("/skill-md/parse")
+async def parse_skill_md(
+    content: str = Query(..., description="Raw SKILL.md content to parse"),
 ) -> dict[str, object]:
-    """Move/rename a file or directory."""
-    try:
-        node = await svc.move_path(body.domain_id, body.old_path, body.new_path)
-        return node.model_dump()
-    except (DomainTreeNotFoundError, PathNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except PathAlreadyExistsError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    """Parse an existing SKILL.md file into a structured model."""
+    from packages.folder_tree.skill_md import SkillMdGenerator
 
-
-@router.post("/delete")
-async def delete_path(
-    body: DeletePathRequest,
-    svc: FolderTreeServiceDep,
-) -> dict[str, object]:
-    """Delete a file or directory."""
-    try:
-        await svc.delete_path(body.domain_id, body.path)
-        return {"status": "deleted", "domain_id": body.domain_id, "path": body.path}
-    except (DomainTreeNotFoundError, PathNotFoundError) as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.post("/search")
-async def search(
-    body: SearchRequest,
-    svc: FolderTreeServiceDep,
-) -> list[dict[str, object]]:
-    """Search files by content."""
-    try:
-        results = await svc.search(
-            body.domain_id, body.query,
-            search_content=body.search_content,
-            max_results=body.max_results,
-        )
-        return [r.model_dump() for r in results]
-    except DomainTreeNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.post("/sync")
-async def sync_from_canvas(
-    body: SyncFromCanvasRequest,
-    svc: FolderTreeServiceDep,
-) -> dict[str, object]:
-    """Synchronize visual canvas changes into the folder tree."""
-    try:
-        tree = await svc.sync_from_canvas(body.domain_id, body.operations)
-        return tree.model_dump()
-    except DomainTreeNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    result = SkillMdGenerator.parse_skill_md(content)
+    return result.model_dump()

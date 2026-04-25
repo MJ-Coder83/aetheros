@@ -1,8 +1,8 @@
-"""InkosAI Folder Tree — Canonical filesystem representation for Domains and Canvases.
+"""InkosAI Folder Tree -- Canonical filesystem representation for Domains and Canvases.
 
 Every Domain and Canvas has a dual representation:
-  - **Folder Tree** (source of truth) — stored on disk / in AetherGit
-  - **Visual Graph** (user-facing) — synchronized in real time with the folder tree
+  - **Folder Tree** (source of truth) -- stored on disk / in AetherGit
+  - **Visual Graph** (user-facing) -- synchronized in real time with the folder tree
 
 The folder-tree is the stable backbone. It makes Prime's reasoning deterministic,
 portable, auditable, and easy for coding agents to work with, while the visual
@@ -11,21 +11,21 @@ Canvas provides the delightful user experience.
 Architecture::
 
     FolderTreeService
-    ├── create_tree()         — Generate a folder tree from a DomainBlueprint
-    ├── read_file()           — Read a file at a given path
-    ├── list_directory()      — List contents of a directory
-    ├── write_file()          — Write content to a file path
-    ├── create_directory()    — Create a new directory
-    ├── move_path()           — Move/rename a file or directory
-    ├── delete_path()         — Delete a file or directory
-    ├── search()              — Search files by name, content, or semantic query
-    ├── get_tree()            — Get the full tree structure for a domain
-    ├── diff_trees()          — Compare two versions of a tree
-    └── sync_from_canvas()    — Synchronize visual canvas changes into the tree
+    +------ create_tree()         -- Generate a folder tree from a DomainBlueprint
+    +------ read_file()           -- Read a file at a given path
+    +------ list_directory()      -- List contents of a directory
+    +------ write_file()          -- Write content to a file path
+    +------ create_directory()    -- Create a new directory
+    +------ move_path()           -- Move/rename a file or directory
+    +------ delete_path()         -- Delete a file or directory
+    +------ search()              -- Search files by name, content, or semantic query
+    +------ get_tree()            -- Get the full tree structure for a domain
+    +------ diff_trees()          -- Compare two versions of a tree
+    +------ sync_from_canvas()    -- Synchronize visual canvas changes into the tree
 
-    FolderTreeNode             — A single node (file or directory) in the tree
-    FolderTree                 — The complete tree for a domain
-    FolderOperation            — A single file/folder operation (create/edit/move/delete)
+    FolderTreeNode             -- A single node (file or directory) in the tree
+    FolderTree                 -- The complete tree for a domain
+    FolderOperation            -- A single file/folder operation (create/edit/move/delete)
 """
 
 from collections.abc import Sequence
@@ -57,7 +57,7 @@ class FolderOpType(StrEnum):
 
 
 class FolderViewMode(StrEnum):
-    """Canvas view mode — visual or folder."""
+    """Canvas view mode -- visual or folder."""
     VISUAL = "visual"
     FOLDER = "folder"
 
@@ -67,7 +67,7 @@ class FolderViewMode(StrEnum):
 # ---------------------------------------------------------------------------
 
 class FolderTreeNode(BaseModel):
-    """A single node in the folder tree — either a file or a directory."""
+    """A single node in the folder tree -- either a file or a directory."""
     path: str                          # e.g. "/agents/contract_analyst/role.md"
     name: str                          # e.g. "role.md"
     node_type: NodeType                # file or directory
@@ -77,7 +77,7 @@ class FolderTreeNode(BaseModel):
 
 
 class FolderTree(BaseModel):
-    """Complete folder tree for a domain — the canonical source of truth."""
+    """Complete folder tree for a domain -- the canonical source of truth."""
     domain_id: str
     root_path: str                     # e.g. "Legal_Research_Domain/"
     nodes: dict[str, FolderTreeNode] = Field(default_factory=dict)
@@ -87,7 +87,7 @@ class FolderTree(BaseModel):
 
 
 class FolderOperation(BaseModel):
-    """A single folder operation — used in proposals, skill evolution, and Tape logging."""
+    """A single folder operation -- used in proposals, skill evolution, and Tape logging."""
     id: UUID = Field(default_factory=uuid4)
     op_type: FolderOpType
     path: str                          # Target path
@@ -156,7 +156,7 @@ class FolderTreeStore:
 
 
 # ---------------------------------------------------------------------------
-# FolderTreeGenerator — generates folder trees from DomainBlueprints
+# FolderTreeGenerator -- generates folder trees from DomainBlueprints
 # ---------------------------------------------------------------------------
 
 class FolderTreeGenerator:
@@ -164,24 +164,24 @@ class FolderTreeGenerator:
 
     The generated tree follows the canonical layout:
         Domain_Name/
-        ├── agents/
-        │   └── <agent_slug>/
-        │       ├── role.md
-        │       ├── goals.md
-        │       ├── tools/
-        │       └── examples/
-        ├── skills/
-        │   └── <skill_slug>.py
-        ├── workflows/
-        │   └── <workflow_slug>/
-        │       ├── workflow.json
-        │       └── example_inputs/
-        ├── templates/
-        │   └── <template>.md
-        ├── config/
-        │   └── domain_config.json
-        ├── data_sources/
-        └── README.md
+        +------ agents/
+        |   +------ <agent_slug>/
+        |       +------ role.md
+        |       +------ goals.md
+        |       +------ tools/
+        |       +------ examples/
+        +------ skills/
+        |   +------ <skill_slug>.py
+        +------ workflows/
+        |   +------ <workflow_slug>/
+        |       +------ workflow.json
+        |       +------ example_inputs/
+        +------ templates/
+        |   +------ <template>.md
+        +------ config/
+        |   +------ domain_config.json
+        +------ data_sources/
+        +------ README.md
     """
 
     def generate(
@@ -275,7 +275,7 @@ class FolderTreeGenerator:
         for skill in skills:
             skill_name = _slug(getattr(skill, "name", "unnamed_skill"))
             skill_file = f"{skills_path}/{skill_name}.py"
-            skill_content = f'"""{getattr(skill, "name", "Unnamed Skill")} — {getattr(skill, "description", "")}"""\n\n'
+            skill_content = f'"""{getattr(skill, "name", "Unnamed Skill")} -- {getattr(skill, "description", "")}"""\n\n'
             skill_content += "def execute(*args, **kwargs):\n    pass\n"
             _add_file(skill_file, f"{skill_name}.py", skill_content)
             nodes[skills_path].children.append(skill_file)
@@ -339,12 +339,12 @@ class FolderTreeGenerator:
         readme_path = f"{root}/README.md"
         readme_content = f"# {domain_name}\n\n{description}\n\n"
         readme_content += "## Structure\n\n"
-        readme_content += "- `agents/` — Domain agents and their configurations\n"
-        readme_content += "- `skills/` — Domain skills and capabilities\n"
-        readme_content += "- `workflows/` — Workflow definitions and examples\n"
-        readme_content += "- `templates/` — Reusable prompt templates\n"
-        readme_content += "- `config/` — Domain configuration\n"
-        readme_content += "- `data_sources/` — Data source connections\n"
+        readme_content += "- `agents/` -- Domain agents and their configurations\n"
+        readme_content += "- `skills/` -- Domain skills and capabilities\n"
+        readme_content += "- `workflows/` -- Workflow definitions and examples\n"
+        readme_content += "- `templates/` -- Reusable prompt templates\n"
+        readme_content += "- `config/` -- Domain configuration\n"
+        readme_content += "- `data_sources/` -- Data source connections\n"
         _add_file(readme_path, "README.md", readme_content)
         nodes[root].children.append(readme_path)
 
@@ -356,15 +356,15 @@ class FolderTreeGenerator:
 
 
 # ---------------------------------------------------------------------------
-# FolderTreeService — the main public API
+# FolderTreeService -- the main public API
 # ---------------------------------------------------------------------------
 
 class FolderTreeService:
     """Manages folder-tree representations for domains.
 
     Every domain has a dual representation:
-      - **Folder Tree** (source of truth) — stored here and in AetherGit
-      - **Visual Graph** (user-facing) — synchronized in real time
+      - **Folder Tree** (source of truth) -- stored here and in AetherGit
+      - **Visual Graph** (user-facing) -- synchronized in real time
 
     The folder tree is the primary source of truth for AetherGit commits,
     Prime's "Folder Thinking Mode", and all file/folder-based operations.
@@ -852,7 +852,7 @@ class FolderTreeService:
     ) -> FolderDiff:
         """Compare two versions of a domain's tree.
 
-        Note: Version history is not yet stored — this returns an empty
+        Note: Version history is not yet stored -- this returns an empty
         diff for now. Full version-diff support will come with AetherGit
         integration.
         """
@@ -961,3 +961,91 @@ class FolderTreeService:
     def store(self) -> FolderTreeStore:
         """Access the underlying store (for testing)."""
         return self._store
+
+    # ------------------------------------------------------------------
+    # GitNexus-inspired enhancements (lazy-loaded submodules)
+    # ------------------------------------------------------------------
+
+    async def assess_impact(
+        self,
+        domain_id: str,
+        path: str,
+    ) -> object:
+        """Predict the impact of changing a path in a domain's folder tree.
+
+        Delegates to ``ImpactAnalyzer.assess_impact()``.
+
+        Parameters
+        ----------
+        domain_id:
+            The domain to analyse.
+        path:
+            Relative path within the domain.
+
+        Returns
+        -------
+        ImpactReport
+            Full impact analysis with dependents, severity, and mitigations.
+        """
+        from packages.folder_tree.impact import ImpactAnalyzer
+
+        analyzer = ImpactAnalyzer(
+            folder_tree_service=self,
+            tape_service=self._tape,
+        )
+        return await analyzer.assess_impact(domain_id, path)
+
+    async def build_dependency_graph(
+        self,
+        domain_id: str,
+        include_semantic: bool = True,
+    ) -> object:
+        """Build a dependency graph for a domain's folder tree.
+
+        Delegates to ``DependencyGraphBuilder.build_graph()``.
+
+        Parameters
+        ----------
+        domain_id:
+            The domain to build the graph for.
+        include_semantic:
+            Whether to include keyword-inferred semantic edges.
+
+        Returns
+        -------
+        DependencyGraph
+            Complete dependency graph ready for rendering.
+        """
+        from packages.folder_tree.dependency_graph import DependencyGraphBuilder
+
+        builder = DependencyGraphBuilder(
+            folder_tree_service=self,
+            tape_service=self._tape,
+        )
+        return await builder.build_graph(domain_id, include_semantic=include_semantic)
+
+    async def generate_skill_mds(
+        self,
+        domain_id: str,
+    ) -> dict[str, str]:
+        """Generate SKILL.md files for all agents and skills in a domain.
+
+        Delegates to ``SkillMdGenerator.generate_for_domain()``.
+
+        Parameters
+        ----------
+        domain_id:
+            The domain to generate SKILL.md files for.
+
+        Returns
+        -------
+        dict[str, str]
+            Mapping of relative path to SKILL.md content.
+        """
+        from packages.folder_tree.skill_md import SkillMdGenerator
+
+        generator = SkillMdGenerator(
+            folder_tree_service=self,
+            tape_service=self._tape,
+        )
+        return await generator.generate_for_domain(domain_id)

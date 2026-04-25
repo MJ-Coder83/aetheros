@@ -340,6 +340,82 @@ class PrimeIntrospector:
             domain_id, query, max_results=max_results,
         )
 
+    # ------------------------------------------------------------------
+    # GitNexus-inspired Folder Thinking Mode enhancements
+    # ------------------------------------------------------------------
+
+    async def folder_assess_impact(
+        self,
+        domain_id: str,
+        path: str,
+    ) -> object:
+        """Assess the impact of changing a path -- Folder Thinking Mode.
+
+        Uses the ImpactAnalyzer to predict what will break if a file,
+        agent, or skill is changed.
+
+        Args:
+            domain_id: The domain to analyse.
+            path: Relative path within the domain.
+
+        Returns:
+            ImpactReport with direct/transitive dependents, severity, mitigations.
+
+        Raises:
+            FolderThinkingError: if FolderTreeService not configured.
+        """
+        if self._folder_tree_service is None:
+            raise FolderThinkingError("Folder tree service not configured")
+        return await self._folder_tree_service.assess_impact(domain_id, path)
+
+    async def folder_dependency_graph(
+        self,
+        domain_id: str,
+        include_semantic: bool = True,
+    ) -> object:
+        """Build a dependency graph for a domain -- Folder Thinking Mode.
+
+        Produces a DependencyGraph model that can be rendered as a
+        Sigma.js-style interactive knowledge graph.
+
+        Args:
+            domain_id: The domain to build the graph for.
+            include_semantic: Whether to include keyword-inferred edges.
+
+        Returns:
+            DependencyGraph with nodes, edges, and group counts.
+
+        Raises:
+            FolderThinkingError: if FolderTreeService not configured.
+        """
+        if self._folder_tree_service is None:
+            raise FolderThinkingError("Folder tree service not configured")
+        return await self._folder_tree_service.build_dependency_graph(
+            domain_id, include_semantic=include_semantic
+        )
+
+    async def folder_generate_skill_mds(
+        self,
+        domain_id: str,
+    ) -> dict[str, str]:
+        """Auto-generate SKILL.md files -- Folder Thinking Mode.
+
+        Creates SKILL.md capability manifests for every agent and skill
+        in the domain's folder tree.
+
+        Args:
+            domain_id: The domain to generate SKILL.md files for.
+
+        Returns:
+            Mapping of relative path to SKILL.md content.
+
+        Raises:
+            FolderThinkingError: if FolderTreeService not configured.
+        """
+        if self._folder_tree_service is None:
+            raise FolderThinkingError("Folder tree service not configured")
+        return await self._folder_tree_service.generate_skill_mds(domain_id)
+
     # -----------------------------------------------------------------------
     # Internal helpers
     # -----------------------------------------------------------------------

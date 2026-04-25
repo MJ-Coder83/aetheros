@@ -65,6 +65,15 @@ class SkillMdContent(BaseModel):
     raw_content: str = ""
 
 
+class _RoleMdResult(BaseModel):
+    """Internal helper for _parse_role_md return type."""
+
+    role: str = "specialist"
+    goal: str = ""
+    capabilities: list[str] = []
+    tools: list[str] = []
+
+
 # ---------------------------------------------------------------------------
 # SkillMdGenerator
 # ---------------------------------------------------------------------------
@@ -294,7 +303,8 @@ class SkillMdGenerator:
         tree = await self._fts.get_tree(domain_id)
         results: dict[str, str] = {}
 
-        for path, node_obj in tree.nodes.items():
+        items = list(tree.nodes.items())
+        for path, node_obj in items:
             node = node_obj
             name = node.name
             content = node.content

@@ -370,6 +370,32 @@ class DomainFolderTreeGenerator:
             _add_dir(examples_path, "examples")
             nodes[agent_path].children.append(examples_path)
 
+            # SKILL.md (auto-generated capability manifest)
+            skill_md_path = f"{agent_path}/SKILL.md"
+            caps_list = "\n".join(f"- {c}" for c in agent.capabilities) or "- _No capabilities defined_"
+            tool_deps = "\n".join(
+                f"- `tools/{_slug(str(t))}.md`" for t in agent.tools
+            ) or "- _No dependencies_"
+            skill_md_content = (
+                f"# SKILL.md -- {agent.name}\n\n"
+                f"> Auto-generated capability manifest for **{agent.name}**\n\n"
+                f"## Metadata\n\n"
+                f"| Field | Value |\n|-------|-------|\n"
+                f"| Version | `1.0.0` |\n"
+                f"| Status | active |\n"
+                f"| Role | {agent.role} |\n\n"
+                f"## Capabilities\n\n{caps_list}\n\n"
+                f"## Dependencies\n\n{tool_deps}\n\n"
+                f"## Usage Examples\n\n"
+                f"```\n"
+                f"# Invoke {agent.name}\n"
+                f'agent = registry.get_agent("{agent_slug}")\n'
+                f'result = await agent.execute(task="...", context={{}})\n'
+                f"```\n"
+            )
+            _add_file(skill_md_path, "SKILL.md", skill_md_content)
+            nodes[agent_path].children.append(skill_md_path)
+
         # ---- skills/ ----
         skills_path = f"{root}/skills"
         _add_dir(skills_path, "skills")
@@ -387,6 +413,29 @@ class DomainFolderTreeGenerator:
             )
             _add_file(skill_file, f"{skill_slug}.py", skill_content)
             nodes[skills_path].children.append(skill_file)
+
+            # SKILL.md for skill (auto-generated capability manifest)
+            skill_md_path = f"{skills_path}/{skill_slug}_SKILL.md"
+            reused_tag = " (reused)" if skill.is_reused else ""
+            deps_list = f"- `{skill_slug}.py`" if not skill.is_reused else "- _No dependencies_"
+            skill_md_content = (
+                f"# SKILL.md -- {skill.name}{reused_tag}\n\n"
+                f"> Auto-generated capability manifest for **{skill.name}**{reused_tag}\n\n"
+                f"## Metadata\n\n"
+                f"| Field | Value |\n|-------|-------|\n"
+                f"| Version | `{skill.version}` |\n"
+                f"| Status | active |\n"
+                f"| Reused | {'Yes' if skill.is_reused else 'No'} |\n\n"
+                f"## Description\n\n{skill.description}\n\n"
+                f"## Dependencies\n\n{deps_list}\n\n"
+                f"## Usage Examples\n\n"
+                f"```python\n"
+                f"from packages.skills import {skill_slug}\n"
+                f"result = await {skill_slug}.execute(*args, **kwargs)\n"
+                f"```\n"
+            )
+            _add_file(skill_md_path, f"{skill_slug}_SKILL.md", skill_md_content)
+            nodes[skills_path].children.append(skill_md_path)
 
         # ---- workflows/ ----
         workflows_path = f"{root}/workflows"

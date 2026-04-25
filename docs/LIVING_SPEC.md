@@ -29,12 +29,18 @@ Legal_Research_Domain/
 │   ├── contract_analyst/
 │   │   ├── role.md
 │   │   ├── goals.md
+│   │   ├── SKILL.md  <-- auto-generated
 │   │   ├── tools/
 │   │   └── examples/
 │   └── compliance_checker/
+│       ├── role.md
+│       ├── goals.md
+│       └── SKILL.md  <-- auto-generated
 ├── skills/
 │   ├── contract_analysis.py
-│   └── risk_scoring.py
+│   ├── contract_analysis_SKILL.md  <-- auto-generated
+│   ├── risk_scoring.py
+│   └── risk_scoring_SKILL.md  <-- auto-generated
 ├── workflows/
 │   ├── full_contract_review/
 │   │   ├── workflow.json
@@ -44,6 +50,8 @@ Legal_Research_Domain/
 ├── config/
 │   └── domain_config.json
 ├── data_sources/
+├── evaluation/
+│   └── criteria.json
 └── README.md
 ```
 
@@ -69,6 +77,25 @@ This structure is:
 | **Simulation Engine** | Simulations run on temporary folder branches (`/experiments/...`) |
 
 All existing functionality remains exactly as it is. The folder-tree is an **additional layer** that makes the system more reliable, portable, and developer-friendly.
+
+### GitNexus-Inspired Enhancements
+
+Three new capabilities enhance the folder-tree system without breaking existing features:
+
+1. **Automatic SKILL.md Generation** -- Prime automatically creates and maintains `SKILL.md` files for every agent and skill, describing capabilities, dependencies, and usage examples. These files are used by the Impact Analyzer and Dependency Graph Builder for deeper reasoning.
+
+2. **Impact Analysis** (`assess_impact(path)`) -- Prime can predict what will break if a file, agent, or skill is changed. Reports direct/transitive dependents, severity (LOW/MEDIUM/HIGH/CRITICAL), and mitigation suggestions. All analyses logged to the Tape.
+
+3. **Dependency Graph View** -- Inside Folder Mode, users can toggle a Sigma.js-style interactive knowledge graph showing symbols, imports, and cross-agent dependencies. Four edge types: IMPORT, REFERENCE, STRUCTURAL, SEMANTIC.
+
+4. **Semantic Dependency Resolution** -- Prime detects and visualizes cross-file and cross-agent dependencies from Python imports, markdown references, structural parent-child relationships, and keyword-based semantic inference.
+
+API endpoints added:
+- `POST /folder-tree/impact/{domain_id}` -- Impact analysis
+- `GET /folder-tree/dependency-graph/{domain_id}` -- Dependency graph
+- `POST /folder-tree/skill-md/{domain_id}` -- Generate all SKILL.md files
+- `PUT /folder-tree/skill-md/{domain_id}/{path}` -- Update single SKILL.md
+- `POST /folder-tree/skill-md/parse` -- Parse SKILL.md content
 
 ## Core Identity
 

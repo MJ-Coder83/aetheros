@@ -532,9 +532,9 @@ function generateMockEdges(): CanvasEdge[] {
 }
 
 export function VisualCanvasView({
-  nodes: CanvasNode[] = [],
-  edges: CanvasEdge[] = [],
-  canvasLoaded: boolean = false,
+  nodes = [],
+  edges = [],
+  canvasLoaded = false,
 }: {
   nodes?: CanvasNode[];
   edges?: CanvasEdge[];
@@ -548,11 +548,6 @@ export function VisualCanvasView({
   const displayEdges = edges && edges.length > 0 ? edges : generateMockEdges();
 
   const handleReset = useCallback(() => {
-    if (canvasLoaded) {
-      // Cannot reset loaded canvas — would need API call
-      return;
-    }
-    setNodes(generateMockNodes());
     setSelectedNodeId(null);
   }, []);
 

@@ -416,8 +416,15 @@ export default function DomainsPage() {
         message: string;
       };
       // Redirect to canvas page with the new canvas ID
-      if (data.canvas_id) {
-        window.location.href = `/canvas?canvas_id=${data.canvas_id}`;
+if (data.canvas_id) {
+const params = new URLSearchParams({
+canvas_id: data.canvas_id,
+from_creation: "true",
+});
+if (data.blueprint?.domain_id) {
+params.set("domain_id", data.blueprint.domain_id);
+}
+window.location.href = `/canvas?${params.toString()}`;
       } else {
         setBlueprint(data.blueprint);
       }

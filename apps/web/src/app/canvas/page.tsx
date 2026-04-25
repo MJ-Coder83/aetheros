@@ -1,28 +1,57 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import {
   Network,
   Layers,
   Plus,
+  ArrowLeft,
+  CheckCircle2,
+  X,
 } from "lucide-react";
 import { ModeToggle, LayoutSelector, PrimeFeatureBar, FolderTreeView, VisualCanvasView, FolderThinkingPanel } from "@/components/canvas/canvas-views";
 import type { CanvasLayout, CanvasNode, CanvasEdge } from "@/types/canvas";
 
 export default function CanvasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-1 items-center justify-center min-h-screen">
+          <div className="text-sm text-muted-foreground">Loading canvas...</div>
+        </div>
+      }
+    >
+      <CanvasPageContent />
+    </Suspense>
+  );
+}
+
+function CanvasPageContent() {
   const [mode, setMode] = useState<"visual" | "folder">("visual");
   const [layout, setLayout] = useState<CanvasLayout>("smart");
   const [canvasNodes, setCanvasNodes] = useState<CanvasNode[]>([]);
   const [canvasEdges, setCanvasEdges] = useState<CanvasEdge[]>([]);
   const [canvasLoaded, setCanvasLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
 
   const searchParams = useSearchParams();
   const canvasId = searchParams.get("canvas_id");
+  const domainId = searchParams.get("domain_id");
+  const isNewlyCreated = searchParams.get("from_creation") === "true";
 
-  // Fetch canvas data if canvas_id is provided
+  const dismissBanner = useCallback(() => setShowSuccessBanner(false), []);
+
+  useEffect(() => {
+    if (isNewlyCreated) {
+      setShowSuccessBanner(true);
+      const timer = setTimeout(() => setShowSuccessBanner(false), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewlyCreated]);
+
   useEffect(() => {
     if (!canvasId) {
       setCanvasLoaded(false);
@@ -61,6 +90,15 @@ export default function CanvasPage() {
       >
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
+            {domainId ? (
+              <a
+                href={`/domains?highlight=${domainId}`}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.03] transition-all"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Domain
+              </a>
+            ) : null}
             <div className="h-9 w-9 rounded-lg bg-inkos-cyan/8 border border-inkos-cyan/15 flex items-center justify-center">
               <Network className="h-5 w-5 text-inkos-cyan" />
             </div>
@@ -93,6 +131,34 @@ export default function CanvasPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Success banner for newly created domain canvas */}
+      <AnimatePresence>
+        {showSuccessBanner && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="shrink-0 overflow-hidden"
+          >
+            <div className="flex items-center justify-between px-4 sm:px-6 py-2 bg-emerald-500/8 border-b border-emerald-500/15">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                <span className="text-xs font-medium text-emerald-300">
+                  Starter canvas generated — your domain is ready for visual editing
+                </span>
+              </div>
+              <button
+                onClick={dismissBanner}
+                className="rounded-md p-1 text-emerald-400/60 hover:text-emerald-300 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main workspace */}
       <div className="flex flex-1 min-h-0 overflow-hidden">

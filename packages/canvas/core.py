@@ -874,21 +874,19 @@ class CanvasService:
         For every node that has a non-empty ``folder_path``, creates the
         corresponding directory in the folder tree (idempotent).
 
-        No-op if no ``FolderTreeService`` is configured.
+        Always logs to the Tape, even when no FolderTreeService is configured.
         """
-        if self._folder_tree is None:
-            return
-
         canvas = self._get_canvas(domain_id)
         synced: list[str] = []
 
-        for node in canvas.nodes:
-            if not node.folder_path:
-                continue
-            import contextlib
-            with contextlib.suppress(Exception):
-                await self._folder_tree.create_directory(domain_id, node.folder_path)
-                synced.append(node.folder_path)
+        if self._folder_tree is not None:
+            for node in canvas.nodes:
+                if not node.folder_path:
+                    continue
+                import contextlib
+                with contextlib.suppress(Exception):
+                    await self._folder_tree.create_directory(domain_id, node.folder_path)
+                    synced.append(node.folder_path)
 
         await self._tape.log_event(
             event_type="canvas.synced_to_tree",
@@ -922,41 +920,39 @@ class CanvasService:
             The (possibly updated) canvas.
         """
         canvas = self._get_canvas(domain_id)
-
-        if self._folder_tree is None:
-            return canvas
-
-        import contextlib
-        children = []
-        with contextlib.suppress(Exception):
-            children = await self._folder_tree.list_directory(domain_id, "")
-
-        existing_paths = {n.folder_path for n in canvas.nodes if n.folder_path}
         added = 0
 
-        for child in children:
-            if child.path in existing_paths:
-                continue
-            # Derive node type from path / name heuristics
-            node_type = self._infer_node_type(child.name)
-            new_node = CanvasNode(
-                id=f"tree-{child.path.replace('/', '-')}",
-                node_type=node_type,
-                label=child.name,
-                folder_path=child.path,
-                metadata={
-                    "colour": _NODE_COLOURS.get(node_type, "#94a3b8"),
-                    "icon": _NODE_ICONS.get(node_type, "box"),
-                    "source": "folder_tree",
-                },
-            )
-            canvas.nodes.append(new_node)
-            existing_paths.add(child.path)
-            added += 1
+        if self._folder_tree is not None:
+            import contextlib
+            children = []
+            with contextlib.suppress(Exception):
+                children = await self._folder_tree.list_directory(domain_id, "")
 
-        if added:
-            canvas.updated_at = datetime.now(UTC)
-            self._store.update(canvas)
+            existing_paths = {n.folder_path for n in canvas.nodes if n.folder_path}
+
+            for child in children:
+                if child.path in existing_paths:
+                    continue
+                # Derive node type from path / name heuristics
+                node_type = self._infer_node_type(child.name)
+                new_node = CanvasNode(
+                    id=f"tree-{child.path.replace('/', '-')}",
+                    node_type=node_type,
+                    label=child.name,
+                    folder_path=child.path,
+                    metadata={
+                        "colour": _NODE_COLOURS.get(node_type, "#94a3b8"),
+                        "icon": _NODE_ICONS.get(node_type, "box"),
+                        "source": "folder_tree",
+                    },
+                )
+                canvas.nodes.append(new_node)
+                existing_paths.add(child.path)
+                added += 1
+
+            if added:
+                canvas.updated_at = datetime.now(UTC)
+                self._store.update(canvas)
 
         await self._tape.log_event(
             event_type="canvas.synced_from_tree",

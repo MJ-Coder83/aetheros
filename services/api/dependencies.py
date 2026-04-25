@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.aethergit.advanced import AdvancedAetherGit
 from packages.auth import AuthService
+from packages.domain.creation import OneClickDomainCreationEngine
 from packages.folder_tree import FolderTreeService
 from packages.prime.debate import DebateArena
 from packages.prime.domain_creation import DomainCreationEngine
@@ -95,6 +96,15 @@ def get_domain_creation_service() -> DomainCreationEngine:
     )
 
 
+def get_one_click_domain_creation_service() -> OneClickDomainCreationEngine:
+    """Return the singleton OneClickDomainCreationEngine."""
+    return OneClickDomainCreationEngine(
+        tape_service=get_tape_service(),
+        introspector=get_introspector(),
+        proposal_engine=get_proposal_engine(),
+    )
+
+
 def get_planning_service() -> PlanningEngine:
     """Return the singleton PlanningEngine."""
     return PlanningEngine(tape_service=get_tape_service())
@@ -146,6 +156,9 @@ AetherGitServiceDep = Annotated[AdvancedAetherGit, Depends(get_aethergit_service
 DebateServiceDep = Annotated[DebateArena, Depends(get_debate_service)]
 ExplainabilityServiceDep = Annotated[ExplainabilityEngine, Depends(get_explainability_service)]
 DomainCreationServiceDep = Annotated[DomainCreationEngine, Depends(get_domain_creation_service)]
+OneClickDomainCreationServiceDep = Annotated[
+    OneClickDomainCreationEngine, Depends(get_one_click_domain_creation_service),
+]
 PlanningServiceDep = Annotated[PlanningEngine, Depends(get_planning_service)]
 KnowledgeTransferServiceDep = Annotated[KnowledgeTransferEngine, Depends(get_knowledge_transfer_service)]
 IntelligenceProfileServiceDep = Annotated[IntelligenceProfileEngine, Depends(get_intelligence_profile_service)]

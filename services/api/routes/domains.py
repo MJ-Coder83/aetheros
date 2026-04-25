@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from packages.domain.creation import DomainCreationOption
 from packages.prime.domain_creation import (
     BlueprintNotFoundError,
     BlueprintValidationError,
@@ -12,7 +13,10 @@ from packages.prime.domain_creation import (
     DomainNotApprovedError,
     DuplicateDomainError,
 )
-from services.api.dependencies import DomainCreationServiceDep
+from services.api.dependencies import (
+    DomainCreationServiceDep,
+    OneClickDomainCreationServiceDep,
+)
 
 router = APIRouter(prefix="/domains", tags=["domains"])
 
@@ -42,6 +46,14 @@ class RegisterDomainRequest(BaseModel):
     reviewer: str | None = None
 
 
+class OneClickCreateDomainRequest(BaseModel):
+    description: str
+    domain_name: str | None = None
+    creation_option: DomainCreationOption = DomainCreationOption.DOMAIN_ONLY
+    creation_mode: CreationMode = CreationMode.HUMAN_GUIDED
+    created_by: str = "prime"
+
+
 @router.post("/create", status_code=201)
 async def create_domain(
     body: CreateDomainRequest,
@@ -52,6 +64,27 @@ async def create_domain(
         result = await svc.create_domain_from_description(
             description=body.description,
             domain_name=body.domain_name,
+            creation_mode=body.creation_mode,
+            created_by=body.created_by,
+        )
+        return result.model_dump()
+    except BlueprintValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/one-click", status_code=201)
+async def one_click_create_domain(
+    body: OneClickCreateDomainRequest,
+    svc: OneClickDomainCreationServiceDep,
+) -> dict[str, object]:
+    """One-click domain creation with folder tree and optional starter canvas."""
+    try:
+        result = await svc.create_domain_from_description(
+            description=body.description,
+            domain_name=body.domain_name,
+            creation_option=body.creation_option,
             creation_mode=body.creation_mode,
             created_by=body.created_by,
         )

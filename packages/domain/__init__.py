@@ -6,8 +6,14 @@ Provides:
 - DomainFolderTreeGenerator — generate a FolderTree from a DomainBlueprint
 - StarterCanvasGenerator — visual canvas generation from a DomainBlueprint
 - CanvasLayout strategies: Layered, Hub-and-Spoke, Clustered, Linear
+- OneClickDomainCreationEngine — orchestrates blueprint + tree + canvas
 """
 
+from packages.domain.creation import (
+    DomainCreationOption,
+    OneClickDomainCreationEngine,
+    OneClickDomainCreationResult,
+)
 from packages.domain.domain_blueprint import (
     AgentBlueprint,
     AgentRole,
@@ -42,9 +48,12 @@ __all__ = [
     "DomainBlueprint",
     "DomainConfig",
     "DomainCreationError",
+    "DomainCreationOption",
     "DomainFolderTreeGenerator",
     "DomainStatus",
     "EvaluationCriteria",
+    "OneClickDomainCreationEngine",
+    "OneClickDomainCreationResult",
     "SkillBlueprint",
     "StarterCanvas",
     "StarterCanvasGenerator",

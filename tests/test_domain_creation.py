@@ -6,6 +6,7 @@ Run with: pytest tests/test_domain_creation.py -v
 import pytest
 
 from packages.aethergit.advanced import AdvancedAetherGit
+from packages.domain.creation import OneClickDomainCreationEngine
 from packages.folder_tree import FolderTreeService, NodeType
 from packages.prime.domain_creation import (
     AgentBlueprint,
@@ -975,6 +976,19 @@ class TestDomainCreationIntegration:
 
 
 @pytest.fixture()
+def one_click_engine(
+    tape_svc: TapeService,
+    introspector: PrimeIntrospector,
+    proposal_engine: ProposalEngine,
+) -> OneClickDomainCreationEngine:
+    return OneClickDomainCreationEngine(
+        tape_service=tape_svc,
+        introspector=introspector,
+        proposal_engine=proposal_engine,
+    )
+
+
+@pytest.fixture()
 def aethergit(tape_svc: TapeService) -> AdvancedAetherGit:
     return AdvancedAetherGit(tape_service=tape_svc)
 
@@ -1136,6 +1150,222 @@ class TestFolderThinkingModeIntegration:
 
         with pytest.raises(FolderThinkingError):
             await introspector.folder_navigate(result.blueprint.domain_id, "")
+
+
+class TestOneClickDomainCreation:
+    """Tests for the OneClickDomainCreationEngine with folder-tree and canvas."""
+
+    @pytest.mark.asyncio
+    async def test_domain_only_creates_blueprint_and_folder_tree(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+            created_by="alice",
+        )
+        assert result.blueprint.domain_name != ""
+        assert result.folder_tree is not None
+        assert result.folder_tree.domain_id == result.blueprint.domain_id
+        assert len(result.folder_tree.nodes) > 0
+        assert result.starter_canvas is None
+        assert result.proposal_id is not None
+
+    @pytest.mark.asyncio
+    async def test_domain_with_starter_canvas_creates_all_three(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+            created_by="alice",
+        )
+        assert result.blueprint.domain_name != ""
+        assert result.folder_tree is not None
+        assert result.starter_canvas is not None
+        assert result.starter_canvas.domain_id == result.blueprint.domain_id
+        assert len(result.starter_canvas.nodes) > 0
+        assert result.proposal_id is not None
+
+    @pytest.mark.asyncio
+    async def test_domain_only_logs_to_tape(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+        )
+        entries = await one_click_engine._tape.get_entries(
+            event_type="domain.one_click_created",
+        )
+        assert len(entries) == 1
+        assert entries[0].payload["creation_option"] == "domain_only"
+
+    @pytest.mark.asyncio
+    async def test_domain_with_canvas_logs_to_tape(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_WITH_STARTER_CANVAS,
+        )
+        entries = await one_click_engine._tape.get_entries(
+            event_type="domain.one_click_created",
+        )
+        assert len(entries) == 1
+        assert entries[0].payload["creation_option"] == "domain_with_starter_canvas"
+        assert entries[0].payload["starter_canvas_generated"] is True
+
+    @pytest.mark.asyncio
+    async def test_empty_description_raises(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            await one_click_engine.create_domain_from_description(
+                description="",
+                creation_option=DomainCreationOption.DOMAIN_ONLY,
+            )
+
+    @pytest.mark.asyncio
+    async def test_blueprint_validation_errors_raise(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+        )
+        assert result.proposal_id is not None
+        assert one_click_engine._proposal_engine is not None
+        await one_click_engine._proposal_engine.approve(
+            result.proposal_id, reviewer="alice",
+        )
+        await one_click_engine.register_domain(
+            result.blueprint.id, reviewer="alice",
+        )
+
+        with pytest.raises(BlueprintValidationError):
+            await one_click_engine.create_domain_from_description(
+                description=LEGAL_DESCRIPTION,
+                creation_option=DomainCreationOption.DOMAIN_ONLY,
+            )
+
+    @pytest.mark.asyncio
+    async def test_generate_blueprint_only(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        bp = await one_click_engine.generate_blueprint_only(
+            description=LEGAL_DESCRIPTION,
+        )
+        assert bp.domain_name != ""
+        assert bp.validation_errors == []
+
+    @pytest.mark.asyncio
+    async def test_generate_folder_tree_from_blueprint(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        bp = await one_click_engine.generate_blueprint_only(
+            description=LEGAL_DESCRIPTION,
+        )
+        tree = await one_click_engine.generate_folder_tree(bp)
+        assert tree.domain_id == bp.domain_id
+        assert len(tree.nodes) > 0
+        assert any("agents" in n.path for n in tree.nodes.values())
+        assert any("skills" in n.path for n in tree.nodes.values())
+        assert any("workflows" in n.path for n in tree.nodes.values())
+
+    @pytest.mark.asyncio
+    async def test_generate_starter_canvas_from_blueprint(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        bp = await one_click_engine.generate_blueprint_only(
+            description=LEGAL_DESCRIPTION,
+        )
+        canvas = await one_click_engine.generate_starter_canvas(bp)
+        assert canvas.domain_id == bp.domain_id
+        assert len(canvas.nodes) > 0
+        assert len(canvas.edges) > 0
+
+    @pytest.mark.asyncio
+    async def test_register_domain_after_approval(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+        )
+        assert result.proposal_id is not None
+        assert one_click_engine._proposal_engine is not None
+        await one_click_engine._proposal_engine.approve(
+            result.proposal_id, reviewer="bob",
+        )
+        domain = await one_click_engine.register_domain(
+            result.blueprint.id, reviewer="bob",
+        )
+        assert domain.domain_id == result.blueprint.domain_id
+
+    @pytest.mark.asyncio
+    async def test_register_without_approval_raises(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+        )
+        with pytest.raises(DomainNotApprovedError):
+            await one_click_engine.register_domain(result.blueprint.id)
+
+    @pytest.mark.asyncio
+    async def test_backward_compatible_creation_mode(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        from packages.domain.creation import DomainCreationOption
+        from packages.prime.domain_creation import CreationMode
+
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+            creation_option=DomainCreationOption.DOMAIN_ONLY,
+            creation_mode=CreationMode.AUTOMATIC,
+        )
+        assert result.blueprint.creation_mode == CreationMode.AUTOMATIC
+
+    @pytest.mark.asyncio
+    async def test_default_creation_option_is_domain_only(
+        self,
+        one_click_engine: OneClickDomainCreationEngine,
+    ) -> None:
+        result = await one_click_engine.create_domain_from_description(
+            description=LEGAL_DESCRIPTION,
+        )
+        assert result.folder_tree is not None
+        assert result.starter_canvas is None
 
 
 class TestFullIntegrationPipeline:

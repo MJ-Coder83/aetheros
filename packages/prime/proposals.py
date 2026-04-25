@@ -34,6 +34,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.prime.intelligence_profile import IntelligenceProfileEngine, InteractionType
 from packages.prime.introspection import PrimeIntrospector
 from packages.tape.service import TapeService
 
@@ -229,10 +230,12 @@ class ProposalEngine:
         tape_service: TapeService,
         introspector: PrimeIntrospector | None = None,
         store: ProposalStore | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._introspector = introspector
         self._store = store or ProposalStore()
+        self._profile_engine = profile_engine
 
     # ------------------------------------------------------------------
     # Create proposals
@@ -303,6 +306,19 @@ class ProposalEngine:
             agent_id="prime",
             metadata={"status": ProposalStatus.PENDING_APPROVAL.value},
         )
+
+        # Record proposal creation in user profile
+        if self._profile_engine and proposed_by:
+            try:
+                await self._profile_engine.record_interaction(
+                    user_id=proposed_by,
+                    interaction_type=InteractionType.PROPOSAL,
+                    domain=None,
+                    depth=0.5,
+                    approved=None,
+                )
+            except Exception:
+                pass  # Profile logging should not break proposal creation
 
         return proposal
 
@@ -410,11 +426,26 @@ class ProposalEngine:
         """
         return self._get_or_raise(proposal_id)
 
-    async def list_proposals(self, status: ProposalStatus | None = None) -> list[Proposal]:
-        """List proposals, optionally filtered by status."""
+    async def list_proposals(
+        self,
+        status: ProposalStatus | None = None,
+        user_id: str | None = None,
+    ) -> list[Proposal]:
+        """List proposals, optionally filtered by status and personalized for a user."""
         if status is not None:
-            return self._store.list_by_status(status)
-        return self._store.list_all()
+            proposals = self._store.list_by_status(status)
+        else:
+            proposals = self._store.list_all()
+
+        if user_id and self._profile_engine:
+            try:
+                context = await self._profile_engine.get_recommendation_context(user_id)
+                proposals = self._reorder_proposals_by_relevance(proposals, context)
+            except Exception:
+                # Fallback to default order if personalization fails
+                pass
+
+        return proposals
 
     async def list_pending(self) -> list[Proposal]:
         """Convenience: list all proposals awaiting human review."""

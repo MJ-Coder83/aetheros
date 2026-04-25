@@ -80,6 +80,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from packages.llm import LLMProvider
+from packages.prime.intelligence_profile import IntelligenceProfileEngine, InteractionType
 from packages.prime.proposals import RiskLevel
 from packages.tape.service import TapeService
 
@@ -640,12 +641,14 @@ class DebateArena:
         quality_scorer: ArgumentQualityScorer | None = None,
         bias_detector: BiasDetector | None = None,
         consensus_tracker: ConsensusTracker | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._store = store or DebateStore()
         self._scorer = quality_scorer or ArgumentQualityScorer()
         self._bias_detector = bias_detector or BiasDetector()
         self._consensus = consensus_tracker or ConsensusTracker()
+        self._profile_engine = profile_engine
 
     # ------------------------------------------------------------------
     # Start debate
@@ -720,6 +723,19 @@ class DebateArena:
                 "participants": [p.name for p in participants],
             },
         )
+
+        # Record debate start in user profile
+        if self._profile_engine and initiator:
+            try:
+                await self._profile_engine.record_interaction(
+                    user_id=initiator,
+                    interaction_type=InteractionType.DEBATE_STARTED,
+                    domain=None,
+                    depth=0.5,
+                    approved=None,
+                )
+            except Exception:
+                pass  # Profile update should not disrupt debate creation
 
         return debate
 

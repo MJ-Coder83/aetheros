@@ -12,6 +12,7 @@ import {
   Settings,
   ArrowRight,
   Network,
+  Brain,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const COMMANDS = [
   { id: "proposals", label: "Manage Proposals", icon: Vote, href: "/proposals" },
   { id: "simulations", label: "Run Simulations", icon: FlaskConical, href: "/simulations" },
   { id: "canvas", label: "Open Domain Canvas", icon: Network, href: "/canvas" },
+  { id: "profile", label: "View Intelligence Profile", icon: Brain, href: "/profile" },
   { id: "settings", label: "Settings", icon: Settings, action: "settings" },
 ];
 

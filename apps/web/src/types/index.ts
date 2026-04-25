@@ -278,3 +278,201 @@ export interface Explanation {
 export interface ApiError {
   detail: string;
 }
+
+/* ── Intelligence Profile & User Profile ───────────────────── */
+export type ExpertiseLevel = "novice" | "intermediate" | "advanced" | "expert";
+export type InteractionType =
+  | "query" | "command" | "approval" | "rejection" | "proposal"
+  | "simulation" | "debate" | "browser" | "feedback"
+  | "domain_created" | "plan_created" | "debate_started";
+export type PreferenceCategory =
+  | "response_detail" | "automation_level" | "notification_frequency"
+  | "risk_tolerance" | "workflow_style" | "explanation_depth"
+  | "suggestion_frequency";
+export type ProfileStatus = "active" | "archived" | "suspended";
+export type WorkingStyle =
+  | "methodical" | "exploratory" | "collaborative"
+  | "independent" | "visual" | "textual";
+export type AutomationPreference =
+  | "manual" | "assisted" | "semi_automated" | "fully_automated";
+export type CommunicationStyle =
+  | "concise" | "detailed" | "technical" | "conversational";
+
+export interface DomainExpertise {
+  domain_id: string;
+  level: ExpertiseLevel;
+  score: number;
+  interaction_count: number;
+  total_depth: number;
+  avg_depth: number;
+  last_interaction: string | null;
+  skills_used: string[];
+  preferred_workflows: string[];
+}
+
+export interface UserPreference {
+  category: PreferenceCategory;
+  value: number;
+  explicit_value: number | null;
+  inferred_value: number;
+  confidence: number;
+  last_updated: string;
+}
+
+export interface InteractionSummary {
+  total_interactions: number;
+  interactions_by_type: Record<string, number>;
+  interactions_by_domain: Record<string, number>;
+  avg_depth: number;
+  peak_depth: number;
+  last_interaction: string | null;
+  approval_rate: number;
+  most_active_hour: number;
+  daily_streak: number;
+}
+
+/** Embedded intelligence tracking within UserProfile. */
+export interface IntelligenceProfile {
+  domain_expertise: Record<string, DomainExpertise>;
+  preferences: Record<string, UserPreference>;
+  interaction_summary: InteractionSummary;
+  behavioural_signals: Record<string, unknown>;
+  adaptation_count: number;
+  snapshot_id: string | null;
+}
+
+export interface ProfileSnapshot {
+  id: string;
+  profile_id: string;
+  profile_data: Record<string, unknown>;
+  reason: string;
+  created_at: string;
+}
+
+export interface WorkingStyleConfig {
+  primary_style: WorkingStyle;
+  secondary_styles: WorkingStyle[];
+  preferred_session_length: number;
+  peak_hours: number[];
+  timezone: string;
+  automation_preference: AutomationPreference;
+  communication_style: CommunicationStyle;
+  context_retention: number;
+}
+
+export interface UserGoal {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  target_date: string | null;
+  completed_at: string | null;
+  progress: number;
+  metadata: Record<string, unknown>;
+}
+
+export interface LearnedSkill {
+  skill_id: string;
+  name: string;
+  category: string;
+  proficiency: number;
+  first_observed: string;
+  last_used: string;
+  usage_count: number;
+  verified: boolean;
+  source: string;
+}
+
+export interface InteractionPattern {
+  pattern_type: string;
+  pattern_value: string;
+  frequency: number;
+  confidence: number;
+  first_observed: string;
+  last_observed: string;
+  is_active: boolean;
+}
+
+export interface HistorySummary {
+  total_sessions: number;
+  total_interactions: number;
+  total_domains: number;
+  total_proposals: number;
+  total_approvals: number;
+  total_rejections: number;
+  avg_session_duration: number;
+  favorite_domains: string[];
+  common_patterns: string[];
+  last_session_at: string | null;
+  summary_generated_at: string;
+}
+
+export interface UserPreferenceSetting {
+  key: string;
+  value: unknown;
+  category: string;
+  is_explicit: boolean;
+  confidence: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Complete user profile for Prime personalization. */
+export interface UserProfile {
+  id: string;
+  user_id: string;
+  version: number;
+  status: ProfileStatus;
+  display_name: string;
+  email: string;
+  bio: string;
+  working_style: WorkingStyleConfig;
+  preferences: Record<string, UserPreferenceSetting>;
+  intelligence: IntelligenceProfile;
+  goals: UserGoal[];
+  learned_skills: Record<string, LearnedSkill>;
+  interaction_patterns: InteractionPattern[];
+  history_summary: HistorySummary;
+  storage_backend: string;
+  folder_tree_path: string;
+  aethergit_commit_id: string | null;
+  created_at: string;
+  updated_at: string;
+  last_sync_at: string | null;
+}
+
+export interface RecommendationContext {
+  user_id: string;
+  expertise_level: string;
+  top_domains: Array<{ domain_id: string; level: string; score: number }>;
+  preferences: Record<string, number>;
+  interaction_count: number;
+  avg_depth: number;
+  approval_rate: number;
+  adaptation_count: number;
+  working_style: string;
+  automation_preference: string;
+  communication_style: string;
+  active_goals: number;
+  total_skills: number;
+}
+
+export interface ProfileSummary {
+  user_id: string;
+  display_name: string;
+  working_style: string;
+  automation_preference: string;
+  total_goals: number;
+  active_goals: number;
+  total_skills: number;
+  verified_skills: number;
+  total_preferences: number;
+  total_patterns: number;
+  total_sessions: number;
+  favorite_domains: string[];
+  last_sync: string | null;
+}

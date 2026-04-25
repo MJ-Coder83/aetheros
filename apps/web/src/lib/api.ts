@@ -373,3 +373,181 @@ export const explainApi = {
     return request(`/api/explain${qs}`);
   },
 };
+
+/* ── Intelligence Profile ────────────────────────────────────── */
+
+import type {
+  UserProfile,
+  ProfileSummary,
+  ProfileSnapshot,
+  RecommendationContext,
+  
+  InteractionType,
+  PreferenceCategory,
+} from "@/types";
+
+export const profileApi = {
+  get(userId: string): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}`);
+  },
+
+  getOrCreate(userId: string): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}`, { method: "POST" });
+  },
+
+  list(): Promise<UserProfile[]> {
+    return request("/api/profiles");
+  },
+
+  recordInteraction(body: {
+    user_id: string;
+    interaction_type: InteractionType;
+    domain?: string;
+    depth?: number;
+    approved?: boolean;
+    metadata?: Record<string, unknown>;
+  }): Promise<UserProfile> {
+    return request("/api/profiles/interactions", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  setPreference(body: {
+    user_id: string;
+    category: PreferenceCategory;
+    value: number;
+  }): Promise<UserProfile> {
+    return request("/api/profiles/preferences", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  getEffectivePreference(userId: string, category: string): Promise<{ category: string; value: number }> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/preferences/${encodeURIComponent(category)}`);
+  },
+
+  createSnapshot(userId: string, reason?: string): Promise<ProfileSnapshot> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/snapshots`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason ?? "" }),
+    });
+  },
+
+  listSnapshots(userId: string): Promise<ProfileSnapshot[]> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/snapshots`);
+  },
+
+  rollback(userId: string, snapshotId: string): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/rollback/${encodeURIComponent(snapshotId)}`, {
+      method: "POST",
+    });
+  },
+
+  getDomainSummary(userId: string): Promise<Record<string, { level: string; score: number }>> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/domains`);
+  },
+
+  getRecommendationContext(userId: string): Promise<RecommendationContext> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/context`);
+  },
+
+  merge(sourceUserId: string, targetUserId: string): Promise<UserProfile> {
+    return request("/api/profiles/merge", {
+      method: "POST",
+      body: JSON.stringify({ source_user_id: sourceUserId, target_user_id: targetUserId }),
+    });
+  },
+
+  archive(userId: string): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/archive`, { method: "POST" });
+  },
+
+  suspend(userId: string): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/suspend`, { method: "POST" });
+  },
+
+  reactivate(userId: string): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/reactivate`, { method: "POST" });
+  },
+
+  // ── UserProfile endpoints ──────────────────────────────────
+  getSummary(userId: string): Promise<ProfileSummary> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/summary`);
+  },
+
+  updateDetails(userId: string, body: { display_name?: string; email?: string; bio?: string }): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/details`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  },
+
+  setUserPreference(userId: string, key: string, value: unknown, category: string = "general"): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/user-preferences`, {
+      method: "POST",
+      body: JSON.stringify({ key, value, category }),
+    });
+  },
+
+  updateWorkingStyle(userId: string, body: Record<string, unknown>): Promise<UserProfile> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/working-style`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  },
+
+  addGoal(userId: string, title: string, description: string = "", category: string = "general", priority: number = 3): Promise<unknown> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/goals`, {
+      method: "POST",
+      body: JSON.stringify({ title, description, category, priority }),
+    });
+  },
+
+  listGoals(userId: string, status?: string): Promise<unknown[]> {
+    const qs = status ? `?status=${status}` : "";
+    return request(`/api/profiles/${encodeURIComponent(userId)}/goals${qs}`);
+  },
+
+  completeGoal(userId: string, goalId: string): Promise<unknown> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/goals/${encodeURIComponent(goalId)}/complete`, { method: "POST" });
+  },
+
+  addSkill(userId: string, skillId: string, name: string, proficiency: number = 0.0): Promise<unknown> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/skills`, {
+      method: "POST",
+      body: JSON.stringify({ skill_id: skillId, name, proficiency }),
+    });
+  },
+
+  listSkills(userId: string, category?: string): Promise<unknown[]> {
+    const qs = category ? `?category=${category}` : "";
+    return request(`/api/profiles/${encodeURIComponent(userId)}/skills${qs}`);
+  },
+
+  recordPattern(userId: string, patternType: string, patternValue: string, confidence: number = 0.5): Promise<unknown> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/patterns`, {
+      method: "POST",
+      body: JSON.stringify({ pattern_type: patternType, pattern_value: patternValue, confidence }),
+    });
+  },
+
+  recordSession(userId: string, duration: number, interactions: number = 0, domains?: string[]): Promise<unknown> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/sessions`, {
+      method: "POST",
+      body: JSON.stringify({ duration, interactions, domains }),
+    });
+  },
+
+  syncToAethergit(userId: string, commitMessage: string = "Update user profile"): Promise<{ commit_id: string | null }> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/sync`, {
+      method: "POST",
+      body: JSON.stringify({ commit_message: commitMessage }),
+    });
+  },
+
+  exportProfile(userId: string): Promise<Record<string, unknown>> {
+    return request(`/api/profiles/${encodeURIComponent(userId)}/export`);
+  },
+};

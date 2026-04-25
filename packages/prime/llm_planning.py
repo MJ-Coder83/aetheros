@@ -35,6 +35,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.prime.intelligence_profile import IntelligenceProfileEngine
 from packages.tape.service import TapeService
 
 # ---------------------------------------------------------------------------
@@ -694,10 +695,12 @@ class LLMPlanner:
         provider: LLMProvider | None = None,
         tape_service: TapeService | None = None,
         store: DecompositionStore | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._provider = provider or MockLLMProvider()
         self._tape = tape_service
         self._store = store or DecompositionStore()
+        self._profile_engine = profile_engine
 
     async def decompose_goal(
         self,

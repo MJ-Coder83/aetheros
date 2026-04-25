@@ -40,6 +40,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.prime.intelligence_profile import IntelligenceProfileEngine, InteractionType
 from packages.tape.service import TapeService
 
 # ---------------------------------------------------------------------------
@@ -414,12 +415,14 @@ class PlanningEngine:
         action_registry: StepActionRegistry | None = None,
         introspector: object | None = None,
         proposal_engine: object | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._store = store or PlanStore()
         self._actions = action_registry or StepActionRegistry()
         self._introspector = introspector
         self._proposal_engine = proposal_engine
+        self._profile_engine = profile_engine
         self._register_default_actions()
 
     # ------------------------------------------------------------------
@@ -478,6 +481,19 @@ class PlanningEngine:
             progress_pct=_compute_progress(updated_steps),
         )
 
+        # Adapt plan based on user profile if available
+        if self._profile_engine and created_by:
+            try:
+                context = await self._profile_engine.get_recommendation_context(created_by)
+                prefs = context.get("preferences", {})
+                auto_level = prefs.get("automation_level", 0.5)
+                if auto_level > 0.7:
+                    plan.requires_approval = False
+                elif auto_level < 0.3:
+                    plan.requires_approval = True
+            except Exception:
+                pass  # Ignore profile errors
+
         self._store.add(plan)
 
         await self._tape.log_event(
@@ -492,6 +508,19 @@ class PlanningEngine:
             agent_id="planning-engine",
             metadata={"status": PlanStatus.DRAFT.value},
         )
+
+        # Record plan creation in user profile
+        if self._profile_engine and created_by:
+            try:
+                await self._profile_engine.record_interaction(
+                    user_id=created_by,
+                    interaction_type=InteractionType.PLAN_CREATED,
+                    domain=None,
+                    depth=0.5,
+                    approved=None,
+                )
+            except Exception:
+                pass  # Profile logging should not impact plan creation
 
         return plan
 

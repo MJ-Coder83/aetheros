@@ -13,11 +13,14 @@ from packages.folder_tree import FolderTreeService
 from packages.prime.debate import DebateArena
 from packages.prime.domain_creation import DomainCreationEngine
 from packages.prime.explainability import ExplainabilityEngine
-from packages.prime.intelligence_profile import IntelligenceProfileEngine
 from packages.prime.introspection import PrimeIntrospector
 from packages.prime.knowledge_transfer import KnowledgeTransferEngine
 from packages.prime.llm_planning import LLMPlanner
 from packages.prime.planning import PlanningEngine
+from packages.prime.profile import (
+    IntelligenceProfileEngine,
+    ProfileStorage,
+)
 from packages.prime.proposals import ProposalEngine
 from packages.tape.nlq import SemanticTapeQueryEngine
 from packages.tape.repository import TapeRepository
@@ -66,6 +69,7 @@ def get_proposal_engine() -> ProposalEngine:
         _proposal_engine_singleton = ProposalEngine(
             tape_service=get_tape_service(),
             introspector=get_introspector(),
+            profile_engine=get_intelligence_profile_service(),
         )
     return _proposal_engine_singleton
 
@@ -79,12 +83,18 @@ def get_aethergit_service() -> AdvancedAetherGit:
 
 def get_debate_service() -> DebateArena:
     """Return the singleton DebateArena."""
-    return DebateArena(tape_service=get_tape_service())
+    return DebateArena(
+        tape_service=get_tape_service(),
+        profile_engine=get_intelligence_profile_service(),
+    )
 
 
 def get_explainability_service() -> ExplainabilityEngine:
     """Return the singleton ExplainabilityEngine."""
-    return ExplainabilityEngine(tape_service=get_tape_service())
+    return ExplainabilityEngine(
+        tape_service=get_tape_service(),
+        profile_engine=get_intelligence_profile_service(),
+    )
 
 
 def get_domain_creation_service() -> DomainCreationEngine:
@@ -94,6 +104,7 @@ def get_domain_creation_service() -> DomainCreationEngine:
         introspector=get_introspector(),
         proposal_engine=get_proposal_engine(),
         folder_tree_service=get_folder_tree_service(),
+        profile_engine=get_intelligence_profile_service(),
     )
 
 
@@ -103,22 +114,46 @@ def get_one_click_domain_creation_service() -> OneClickDomainCreationEngine:
         tape_service=get_tape_service(),
         introspector=get_introspector(),
         proposal_engine=get_proposal_engine(),
+        profile_engine=get_intelligence_profile_service(),
     )
 
 
 def get_planning_service() -> PlanningEngine:
     """Return the singleton PlanningEngine."""
-    return PlanningEngine(tape_service=get_tape_service())
+    return PlanningEngine(
+        tape_service=get_tape_service(),
+        introspector=get_introspector(),
+        proposal_engine=get_proposal_engine(),
+        profile_engine=get_intelligence_profile_service(),
+    )
 
 
 def get_knowledge_transfer_service() -> KnowledgeTransferEngine:
     """Return the singleton KnowledgeTransferEngine."""
-    return KnowledgeTransferEngine(tape_service=get_tape_service())
+    return KnowledgeTransferEngine(
+        tape_service=get_tape_service(),
+        profile_engine=get_intelligence_profile_service(),
+    )
+
+
+_profile_storage_singleton: ProfileStorage | None = None
+
+def get_profile_storage() -> ProfileStorage:
+    """Return the singleton ProfileStorage."""
+    global _profile_storage_singleton
+    if _profile_storage_singleton is None:
+        _profile_storage_singleton = ProfileStorage(tape_service=get_tape_service())
+    return _profile_storage_singleton
+
+ProfileStorageDep = Annotated[ProfileStorage, Depends(get_profile_storage)]
 
 
 def get_intelligence_profile_service() -> IntelligenceProfileEngine:
     """Return the singleton IntelligenceProfileEngine."""
-    return IntelligenceProfileEngine(tape_service=get_tape_service())
+    return IntelligenceProfileEngine(
+        tape_service=get_tape_service(),
+        store=get_profile_storage(),
+    )
 
 
 def get_llm_planner_service() -> LLMPlanner:

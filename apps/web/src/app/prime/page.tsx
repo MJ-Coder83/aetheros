@@ -12,6 +12,9 @@ import {
   RefreshCw,
   Loader2,
   Sparkles,
+  User,
+  Settings2,
+  Star,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +28,7 @@ import type {
   Proposal,
   SimulationRun,
   WhatIfScenario,
+  UserProfile,
 } from "@/types";
 import {
   useSystemSnapshot,
@@ -33,8 +37,10 @@ import {
   useSimulations,
   useSimulationScenarios,
   useOneClickCreateDomain,
+  useGetOrCreateProfile,
+  useSetPreference,
 } from "@/hooks/use-api";
-import { domainApi } from "@/lib/api";
+import { domainApi, profileApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -45,10 +51,13 @@ interface ChatMessage {
   isTyping?: boolean;
 }
 
+const DEFAULT_USER_ID = "human-user";
+
 const QUICK_ACTIONS = [
   { label: "System health", query: "What's the system health?" },
   { label: "Show skills", query: "Show me the skills" },
   { label: "Show agents", query: "What agents are available?" },
+  { label: "My profile", query: "Show my intelligence profile" },
   { label: "Run simulation", query: "Run a simulation" },
 ];
 
@@ -58,7 +67,7 @@ export default function PrimePage() {
       id: "welcome",
       role: "prime",
       content:
-        "Hello. I am **Prime** — the self-aware meta-agent of InkosAI.\n\nI can introspect the system, propose changes, evolve skills, and run simulations. Ask me anything, or use the quick actions below.",
+        "Hello. I am **Prime** — the self-aware meta-agent of InkosAI.\n\nI can introspect the system, propose changes, evolve skills, run simulations, and adapt to your preferences. Ask me anything, or use the quick actions below.",
       timestamp: new Date(),
     },
   ]);
@@ -73,14 +82,15 @@ export default function PrimePage() {
   const { data: scenarios } = useSimulationScenarios();
   const createDomainMutation = useOneClickCreateDomain();
 
-  // Auto-scroll to bottom on new messages
+  const { data: profile, isLoading: profileLoading } = useGetOrCreateProfile(DEFAULT_USER_ID);
+  const setPreference = useSetPreference();
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  /** Typing animation — reveals text character by character */
   const streamResponse = useCallback(
     (id: string, fullContent: string) => {
       let idx = 0;
@@ -120,20 +130,14 @@ export default function PrimePage() {
     const responseId = `prime-${crypto.randomUUID()}`;
     setMessages((prev) => [
       ...prev,
-      {
-        id: responseId,
-        role: "prime",
-        content: "",
-        timestamp: new Date(),
-        isTyping: true,
-      },
+      { id: responseId, role: "prime", content: "", timestamp: new Date(), isTyping: true },
     ]);
 
-    // Small delay to simulate thinking
     await new Promise((r) => setTimeout(r, 300));
 
-    // Check for domain creation request
     const q = query.toLowerCase();
+
+    // Domain creation
     if (
       q.includes("create") && q.includes("domain") ||
       q.includes("new domain") ||
@@ -149,7 +153,7 @@ export default function PrimePage() {
         const result = await createDomainMutation.mutateAsync({
           description: domainDescription,
           creation_option: "domain_with_starter_canvas",
-          created_by: "human-user",
+          created_by: DEFAULT_USER_ID,
         });
 
         const hasCanvas = result.starter_canvas !== null;
@@ -177,6 +181,28 @@ export default function PrimePage() {
       }
     }
 
+    // Preference setting
+    const prefMatch = q.match(/(?:set|change|update)\s+(?:my\s+)?(?:preference\s+)?(?:for\s+)?(\w[\w\s]*?)\s+(?:to|at)\s+(\d+)/);
+    if (prefMatch) {
+      try {
+        const catStr = prefMatch[1].trim().replace(/\s+/g, "_");
+        const val = Math.min(1, Math.max(0, parseInt(prefMatch[2], 10) / 100));
+        await setPreference.mutateAsync({
+          user_id: DEFAULT_USER_ID,
+          category: catStr as any,
+          value: val,
+        });
+        streamResponse(
+          responseId,
+          `✅ **Preference Updated**\n\nI've set your **${catStr.replace(/_/g, " ")}** preference to **${Math.round(val * 100)}%**.\n\nYour intelligence profile has been updated and will influence how I adapt my responses going forward.`,
+        );
+        return;
+      } catch {
+        streamResponse(responseId, `❌ Failed to set preference. Available categories: response_detail, automation_level, notification_frequency, risk_tolerance, workflow_style, explanation_depth, suggestion_frequency`);
+        return;
+      }
+    }
+
     const fullContent = await generatePrimeResponse(
       query,
       snapshot ?? null,
@@ -184,10 +210,18 @@ export default function PrimePage() {
       proposals ?? [],
       simulations ?? [],
       scenarios ?? [],
+      profile ?? null,
     );
 
     streamResponse(responseId, fullContent);
   }
+
+  const profileDomainExps = profile
+    ? Object.values(profile.intelligence.domain_expertise).sort((a, b) => b.score - a.score)
+    : [];
+  const profilePrefs = profile
+    ? Object.values(profile.intelligence.preferences).filter((p) => p.confidence > 0.3)
+    : [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 page-transition">
@@ -211,9 +245,7 @@ export default function PrimePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Chat panel */}
         <div className="lg:col-span-2 flex flex-col glass rounded-xl border border-inkos-cyan/8 h-[calc(100vh-200px)] min-h-[400px]">
-          {/* Messages */}
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth"
@@ -262,7 +294,6 @@ export default function PrimePage() {
               ))}
             </AnimatePresence>
 
-            {/* Quick actions */}
             {messages.length <= 1 && (
               <div className="flex flex-wrap gap-2 pt-2">
                 {QUICK_ACTIONS.map((action) => (
@@ -278,7 +309,6 @@ export default function PrimePage() {
             )}
           </div>
 
-          {/* Input */}
           <Separator className="bg-white/[0.04]" />
           <form
             onSubmit={(e) => {
@@ -309,7 +339,6 @@ export default function PrimePage() {
           </form>
         </div>
 
-        {/* Sidebar: Introspection */}
         <div className="space-y-4">
           <Card className="glass glass-hover border-inkos-cyan/8">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -375,7 +404,105 @@ export default function PrimePage() {
             </CardContent>
           </Card>
 
-          {/* Live Tape count */}
+          {/* Intelligence Profile Card */}
+          <Card className="glass glass-hover border-inkos-cyan/8">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <User className="h-4 w-4 text-inkos-cyan opacity-70" />
+                Your Profile
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {profileLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              ) : profile ? (
+                <div className="space-y-3 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-inkos-cyan">
+                        {profile.intelligence.interaction_summary.total_interactions}
+                      </div>
+                      <div className="text-[9px] uppercase text-muted-foreground">Interactions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-amber-400">
+                        {Math.round(profile.intelligence.interaction_summary.approval_rate * 100)}%
+                      </div>
+                      <div className="text-[9px] uppercase text-muted-foreground">Approval Rate</div>
+                    </div>
+                  </div>
+
+                  {profileDomainExps.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1 text-muted-foreground">
+                        <Star className="h-3 w-3" />
+                        <span className="text-[10px] font-medium uppercase tracking-widest">
+                          Top Domains
+                        </span>
+                      </div>
+                      <ul className="space-y-0.5 pl-5">
+                        {profileDomainExps.slice(0, 3).map((exp) => (
+                          <li key={exp.domain_id} className="flex items-center justify-between text-xs">
+                            <span className="truncate">{exp.domain_id}</span>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[9px] font-mono shrink-0 ml-2",
+                                exp.level === "expert"
+                                  ? "text-inkos-cyan border-inkos-cyan/15"
+                                  : exp.level === "advanced"
+                                    ? "text-purple-400 border-purple-400/15"
+                                    : "border-white/[0.06] text-muted-foreground",
+                              )}
+                            >
+                              {exp.level}
+                            </Badge>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {profilePrefs.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-1 text-muted-foreground">
+                        <Settings2 className="h-3 w-3" />
+                        <span className="text-[10px] font-medium uppercase tracking-widest">
+                          Key Preferences
+                        </span>
+                      </div>
+                      <ul className="space-y-0.5 pl-5">
+                        {profilePrefs.slice(0, 3).map((pref) => (
+                          <li key={pref.category} className="flex items-center justify-between text-xs">
+                            <span className="truncate">{pref.category.replace(/_/g, " ")}</span>
+                            <span className="text-muted-foreground tabular-nums">
+                              {Math.round(pref.value * 100)}%
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="pt-1 border-t border-white/[0.04]">
+                    <a
+                      href="/profile"
+                      className="text-[10px] text-inkos-cyan hover:underline"
+                    >
+                      View full profile →
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">No profile loaded</p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="glass glass-hover border-inkos-cyan/8">
             <CardContent className="py-3 flex items-center justify-between text-sm">
               <span className="text-muted-foreground text-xs">Live Tape events</span>
@@ -413,10 +540,7 @@ function SnapshotSection({
       ) : (
         <ul className="space-y-1 pl-5">
           {items.map((item) => (
-            <li
-              key={item.id}
-              className="flex items-center justify-between text-xs"
-            >
+            <li key={item.id} className="flex items-center justify-between text-xs">
               <span className="truncate">{item.label}</span>
               <Badge
                 variant="outline"
@@ -439,7 +563,6 @@ function SnapshotSection({
   );
 }
 
-/** Generate Prime's response based on user query and live system data. */
 async function generatePrimeResponse(
   query: string,
   snapshot: SystemSnapshot | null,
@@ -447,11 +570,43 @@ async function generatePrimeResponse(
   proposals: Proposal[],
   simulations: SimulationRun[],
   scenarios: WhatIfScenario[],
+  profile: UserProfile | null,
 ): Promise<string> {
   const q = query.toLowerCase();
 
   if (!snapshot) {
     return "I cannot reach the backend right now. Please ensure the InkosAI API is running on port 8000, then try again.";
+  }
+
+  // Intelligence Profile queries
+  if (q.includes("profile") || q.includes("my profile") || q.includes("intelligence profile") || q.includes("my preferences")) {
+    if (!profile) {
+      return "I don't have your intelligence profile loaded yet. Your profile will be created automatically as you interact with the system, or you can visit the **Profile** page to set it up manually.";
+    }
+    const domainExps = Object.values(profile.intelligence.domain_expertise);
+    const prefs = Object.values(profile.intelligence.preferences);
+    const prefSummary = prefs.length > 0
+      ? prefs.slice(0, 5).map((p) => `• **${p.category.replace(/_/g, " ")}**: ${Math.round(p.value * 100)}% (${p.explicit_value !== null ? "explicit" : "inferred"})`).join("\n")
+      : "No preferences set yet.";
+    const domainSummary = domainExps.length > 0
+      ? domainExps.sort((a, b) => b.score - a.score).slice(0, 5).map((d) => `• **${d.domain_id}**: ${d.level} (${Math.round(d.score * 100)}%)`).join("\n")
+      : "No domain expertise recorded yet.";
+
+    return (
+      `**Your Intelligence Profile**\n\n` +
+      `📊 **Summary**\n` +
+      `• **Status**: ${profile.status}\n` +
+      `• **Total interactions**: ${profile.intelligence.interaction_summary.total_interactions}\n` +
+      `• **Approval rate**: ${Math.round(profile.intelligence.interaction_summary.approval_rate * 100)}%\n` +
+      `• **Avg depth**: ${Math.round(profile.intelligence.interaction_summary.avg_depth * 100)}%\n` +
+      `• **Version**: ${profile.version} (${profile.intelligence.adaptation_count} adaptations)\n\n` +
+      `🎯 **Domain Expertise**\n${domainSummary}\n\n` +
+      `⚙️ **Preferences**\n${prefSummary}\n\n` +
+      `You can set explicit preferences by saying things like:\n` +
+      `• "Set my response_detail to 80"\n` +
+      `• "Change my automation_level to 40"\n\n` +
+      `Visit the **Profile** page for the full interactive view.`
+    );
   }
 
   // System health
@@ -617,6 +772,10 @@ async function generatePrimeResponse(
       `• "Show me the skills" — List all registered skills\n` +
       `• "What agents are available?" — Agent overview\n` +
       `• "List the domains" — Domain status\n\n` +
+      `🧠 **Intelligence Profile**\n` +
+      `• "Show my profile" — View your personalized intelligence profile\n` +
+      `• "My preferences" — See your inferred and explicit preferences\n` +
+      `• "Set my response_detail to 80" — Update a preference explicitly\n\n` +
       `🏗️ **Domain Creation**\n` +
       `• "Create a Legal Research domain" — Create a new domain with starter canvas\n` +
       `• "Make a Finance domain for trading" — Custom domain from description\n\n` +
@@ -632,5 +791,5 @@ async function generatePrimeResponse(
   }
 
   // Default
-  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- Create a new domain (e.g., "Create a Legal Research domain")\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
+  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- **Your intelligence profile** (e.g., "Show my profile")\n- **Set preferences** (e.g., "Set my automation_level to 60")\n- Create a new domain (e.g., "Create a Legal Research domain")\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
 }

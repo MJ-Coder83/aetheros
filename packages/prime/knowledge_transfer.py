@@ -32,6 +32,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.prime.intelligence_profile import IntelligenceProfileEngine
 from packages.tape.service import TapeService
 
 # ---------------------------------------------------------------------------
@@ -593,11 +594,13 @@ class KnowledgeTransferEngine:
         store: TransferStore | None = None,
         extractor: KnowledgeExtractor | None = None,
         assessor: CompatibilityAssessor | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._store = store or TransferStore()
         self._extractor = extractor or KnowledgeExtractor()
         self._assessor = assessor or CompatibilityAssessor()
+        self._profile_engine = profile_engine
 
     # ------------------------------------------------------------------
     # Knowledge extraction

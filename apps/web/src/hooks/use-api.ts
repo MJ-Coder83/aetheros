@@ -11,10 +11,11 @@ import {
   simulationApi,
   healthApi,
   domainApi,
+  profileApi,
   type DomainCreationOption,
   type CreationMode,
 } from "@/lib/api";
-import type { ProposalStatus, SimulationStatus, WhatIfScenario } from "@/types";
+import type { ProposalStatus, SimulationStatus, WhatIfScenario, InteractionType, PreferenceCategory } from "@/types";
 
 /* ── Tape ─────────────────────────────────────────────────────── */
 
@@ -342,5 +343,131 @@ export function useKeyFactors() {
     onError: (error: Error) => {
       toast.error("Failed to highlight key factors", { description: error.message });
     },
+  });
+}
+
+/* ── Intelligence Profile ────────────────────────────────────── */
+
+export function useProfile(userId: string | null) {
+  return useQuery({
+    queryKey: ["profile", userId],
+    queryFn: () => profileApi.get(userId!),
+    enabled: userId !== null,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useGetOrCreateProfile(userId: string | null) {
+  return useQuery({
+    queryKey: ["profile", "get-or-create", userId],
+    queryFn: () => profileApi.getOrCreate(userId!),
+    enabled: userId !== null,
+  });
+}
+
+export function useProfiles() {
+  return useQuery({
+    queryKey: ["profiles"],
+    queryFn: profileApi.list,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useRecordInteraction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      user_id: string;
+      interaction_type: InteractionType;
+      domain?: string;
+      depth?: number;
+      approved?: boolean;
+      metadata?: Record<string, unknown>;
+    }) => profileApi.recordInteraction(body),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["profile", variables.user_id] });
+      qc.invalidateQueries({ queryKey: ["profiles"] });
+      toast.success("Interaction recorded");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to record interaction", { description: error.message });
+    },
+  });
+}
+
+export function useSetPreference() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      user_id: string;
+      category: PreferenceCategory;
+      value: number;
+    }) => profileApi.setPreference(body),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["profile", variables.user_id] });
+      toast.success("Preference updated", {
+        description: `${variables.category} set to ${Math.round(variables.value * 100)}%`,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to set preference", { description: error.message });
+    },
+  });
+}
+
+export function useProfileSnapshots(userId: string | null) {
+  return useQuery({
+    queryKey: ["profile", "snapshots", userId],
+    queryFn: () => profileApi.listSnapshots(userId!),
+    enabled: userId !== null,
+  });
+}
+
+export function useCreateSnapshot() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, reason }: { userId: string; reason?: string }) =>
+      profileApi.createSnapshot(userId, reason),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["profile", "snapshots", variables.userId] });
+      toast.success("Profile snapshot created");
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to create snapshot", { description: error.message });
+    },
+  });
+}
+
+export function useRollbackProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ userId, snapshotId }: { userId: string; snapshotId: string }) =>
+      profileApi.rollback(userId, snapshotId),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["profile", variables.userId] });
+      qc.invalidateQueries({ queryKey: ["profile", "snapshots", variables.userId] });
+      toast.success("Profile rolled back", {
+        description: "Reverted to the selected snapshot.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to rollback profile", { description: error.message });
+    },
+  });
+}
+
+export function useDomainSummary(userId: string | null) {
+  return useQuery({
+    queryKey: ["profile", "domains", userId],
+    queryFn: () => profileApi.getDomainSummary(userId!),
+    enabled: userId !== null,
+  });
+}
+
+export function useRecommendationContext(userId: string | null) {
+  return useQuery({
+    queryKey: ["profile", "context", userId],
+    queryFn: () => profileApi.getRecommendationContext(userId!),
+    enabled: userId !== null,
   });
 }

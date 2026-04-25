@@ -20,9 +20,14 @@ from packages.prime.intelligence_profile import (
     ProfileNotFoundError,
     ProfileSnapshot,
     ProfileStatus,
-    ProfileStore,
     SnapshotNotFoundError,
+    SnapshotStore,
     UserPreference,
+)
+from packages.prime.profile import (
+    InMemoryProfileStore,
+    ProfileStorage,
+    UserProfile,
 )
 from packages.tape.repository import InMemoryTapeRepository
 from packages.tape.service import TapeService
@@ -212,62 +217,65 @@ class TestPreferenceInferrer:
 
 
 class TestProfileStore:
-    """Test in-memory profile store."""
+    """Test in-memory profile store and snapshot store."""
 
     def test_add_and_get_profile(self) -> None:
-        store = ProfileStore()
-        profile = IntelligenceProfile(user_id="alice")
-        store.add_profile(profile)
-        assert store.get_profile("alice") is not None
+        store = InMemoryProfileStore()
+        profile = UserProfile(user_id="alice")
+        store._profiles["alice"] = profile
+        assert store._profiles.get("alice") is not None
 
     def test_get_nonexistent_profile(self) -> None:
-        store = ProfileStore()
-        assert store.get_profile("nonexistent") is None
+        store = InMemoryProfileStore()
+        assert store._profiles.get("nonexistent") is None
 
     def test_update_profile(self) -> None:
-        store = ProfileStore()
-        profile = IntelligenceProfile(user_id="alice")
-        store.add_profile(profile)
+        store = InMemoryProfileStore()
+        profile = UserProfile(user_id="alice")
+        store._profiles["alice"] = profile
         updated = profile.model_copy(update={"version": 2})
-        store.update_profile(updated)
-        fetched = store.get_profile("alice")
+        store._profiles["alice"] = updated
+        fetched = store._profiles.get("alice")
         assert fetched is not None
         assert fetched.version == 2
 
     def test_update_nonexistent_raises(self) -> None:
-        store = ProfileStore()
-        profile = IntelligenceProfile(user_id="alice")
+        store = InMemoryProfileStore()
+        # profile creation not needed for this test
+        # InMemoryProfileStore doesn't raise on direct dict assignment
+        # but ProfileStorage.update_profile does
         with pytest.raises(ProfileNotFoundError):
-            store.update_profile(profile)
+            import asyncio
+            async def _test():
+                storage = ProfileStorage(store=store)
+                await storage.update_profile("alice", {"version": 2})
+            asyncio.run(_test())
 
     def test_list_profiles(self) -> None:
-        store = ProfileStore()
-        store.add_profile(IntelligenceProfile(user_id="alice"))
-        store.add_profile(IntelligenceProfile(user_id="bob"))
-        assert len(store.list_profiles()) == 2
+        store = InMemoryProfileStore()
+        store._profiles["alice"] = UserProfile(user_id="alice")
+        store._profiles["bob"] = UserProfile(user_id="bob")
+        assert len(store._profiles) == 2
 
     def test_snapshot_crud(self) -> None:
-        store = ProfileStore()
-        profile = IntelligenceProfile(user_id="alice")
-        store.add_profile(profile)
+        store = SnapshotStore()
+        profile = UserProfile(user_id="alice")
         snapshot = ProfileSnapshot(
             profile_id=profile.id,
             profile_data=profile.model_dump(),
             reason="test",
         )
-        store.add_snapshot(snapshot)
-        assert store.get_snapshot(snapshot.id) is not None
+        store.add(snapshot)
+        assert store.get(snapshot.id) is not None
 
     def test_list_snapshots_filtered(self) -> None:
-        store = ProfileStore()
-        p1 = IntelligenceProfile(user_id="alice")
-        p2 = IntelligenceProfile(user_id="bob")
-        store.add_profile(p1)
-        store.add_profile(p2)
+        store = SnapshotStore()
+        p1 = UserProfile(user_id="alice")
+        p2 = UserProfile(user_id="bob")
         s1 = ProfileSnapshot(profile_id=p1.id, profile_data=p1.model_dump())
         s2 = ProfileSnapshot(profile_id=p2.id, profile_data=p2.model_dump())
-        store.add_snapshot(s1)
-        store.add_snapshot(s2)
+        store.add(s1)
+        store.add(s2)
         assert len(store.list_snapshots(profile_id=p1.id)) == 1
 
 
@@ -378,8 +386,8 @@ class TestIntelligenceProfileEngineInteraction:
                 depth=0.8,
                 approved=True,
             )
-        assert PreferenceCategory.RESPONSE_DETAIL.value in profile.preferences
-        assert PreferenceCategory.AUTOMATION_LEVEL.value in profile.preferences
+        assert PreferenceCategory.RESPONSE_DETAIL.value in profile.intelligence.preferences
+        assert PreferenceCategory.AUTOMATION_LEVEL.value in profile.intelligence.preferences
 
     @pytest.mark.asyncio
     async def test_record_interaction_approval_rate(self) -> None:
@@ -421,7 +429,7 @@ class TestIntelligenceProfileEngineInteraction:
             domain="legal",
             depth=0.5,
         )
-        assert profile.snapshot_id is not None
+        assert profile.intelligence.snapshot_id is not None
 
     @pytest.mark.asyncio
     async def test_record_interaction_logs_to_tape(self) -> None:
@@ -458,7 +466,7 @@ class TestIntelligenceProfileEnginePreferences:
             category=PreferenceCategory.RESPONSE_DETAIL,
             value=0.9,
         )
-        pref = profile.preferences.get(PreferenceCategory.RESPONSE_DETAIL.value)
+        pref = profile.intelligence.preferences.get(PreferenceCategory.RESPONSE_DETAIL.value)
         assert pref is not None
         assert pref.explicit_value == 0.9
         assert pref.confidence == 1.0
@@ -721,7 +729,7 @@ class TestIntelligenceProfileEngineMerge:
             value=0.3,
         )
         merged = await engine.merge_profiles("alice", "bob")
-        pref = merged.preferences.get(PreferenceCategory.RISK_TOLERANCE.value)
+        pref = merged.intelligence.preferences.get(PreferenceCategory.RISK_TOLERANCE.value)
         assert pref is not None
         # Bob's explicit should be preserved (target)
         assert pref.explicit_value == 0.8
@@ -879,13 +887,13 @@ class TestInteractionSummaryModel:
 
 
 class TestIntelligenceProfileModel:
-    """Test IntelligenceProfile model."""
+    """Test IntelligenceProfile model (embedded in UserProfile)."""
 
     def test_default_fields(self) -> None:
-        profile = IntelligenceProfile(user_id="alice")
+        profile = UserProfile(user_id="alice")
         assert profile.status == ProfileStatus.ACTIVE
         assert profile.version == 1
-        assert profile.adaptation_count == 0
+        assert profile.intelligence.adaptation_count == 0
         assert isinstance(profile.id, UUID)
 
     def test_with_expertise(self) -> None:

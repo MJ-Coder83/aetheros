@@ -5,6 +5,7 @@ import {
   useRecentTape,
   useProposals,
   useSimulations,
+  useGetOrCreateProfile,
 } from "@/hooks/use-api";
 import { LeftRail } from "@/components/dashboard/left-rail";
 import { StatusStrip } from "@/components/dashboard/status-strip";
@@ -14,6 +15,7 @@ import { QueueSidebar } from "@/components/dashboard/queue-sidebar";
 import { AgentCard } from "@/components/dashboard/agent-card";
 import { DomainsStrip } from "@/components/dashboard/domains-strip";
 import { HealthSparklines } from "@/components/dashboard/health-sparklines";
+import { ProfileSummaryCard } from "@/components/dashboard/profile-summary-card";
 
 function deriveEventsPerMinute(entries: { timestamp: string }[]): number {
   if (!entries || entries.length === 0) return 0;
@@ -45,6 +47,7 @@ export default function DashboardPage() {
   const { data: tapeEntries, isLoading: tapeLoading } = useRecentTape(50);
   const { data: proposals, isLoading: propLoading } = useProposals();
   const { data: simulations, isLoading: simLoading } = useSimulations();
+  const { data: profile, isLoading: profileLoading } = useGetOrCreateProfile("default");
 
   const pendingProposals =
     proposals?.filter((p) => p.status === "pending_approval") ?? [];
@@ -156,7 +159,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="w-[320px] p-4 flex flex-col shrink-0">
+          <div className="w-[320px] p-4 flex flex-col shrink-0 gap-2">
+            <ProfileSummaryCard profile={profile} isLoading={profileLoading} />
             <DomainsStrip domains={domains} />
             <HealthSparklines tapeEntries={tapeEntries ?? []} />
           </div>

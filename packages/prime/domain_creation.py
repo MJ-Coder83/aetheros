@@ -78,6 +78,7 @@ from pydantic import BaseModel, Field
 from packages.aethergit.advanced import AdvancedAetherGit
 from packages.core.models import AetherCommit
 from packages.folder_tree import FolderTreeService
+from packages.prime.intelligence_profile import IntelligenceProfileEngine, InteractionType
 from packages.prime.introspection import (
     AgentDescriptor,
     DomainDescriptor,
@@ -896,6 +897,7 @@ class DomainCreationEngine:
         validator: BlueprintValidator | None = None,
         folder_tree_service: FolderTreeService | None = None,
         aethergit: AdvancedAetherGit | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._introspector = introspector
@@ -906,6 +908,7 @@ class DomainCreationEngine:
         self._validator = validator or BlueprintValidator()
         self._folder_tree_service = folder_tree_service
         self._aethergit = aethergit
+        self._profile_engine = profile_engine
 
     # ------------------------------------------------------------------
     # generate_domain_blueprint
@@ -958,6 +961,14 @@ class DomainCreationEngine:
         errors, warnings = self._validator.validate(blueprint, existing_domains)
         blueprint.validation_errors = errors
         blueprint.validation_warnings = warnings
+
+        # Adapt blueprint to user profile if available
+        if self._profile_engine is not None and created_by != "prime":
+            try:
+                context = await self._profile_engine.get_recommendation_context(created_by)
+                self._adapt_blueprint_to_profile(blueprint, context)
+            except Exception:
+                pass  # Continue with default blueprint if profile adaptation fails
 
         # Store the blueprint
         self._store.add(blueprint)
@@ -1235,6 +1246,19 @@ class DomainCreationEngine:
             agent_id="domain-creation-engine",
         )
 
+        # Record domain creation in user profile
+        if self._profile_engine and blueprint.created_by:
+            try:
+                await self._profile_engine.record_interaction(
+                    user_id=blueprint.created_by,
+                    interaction_type=InteractionType.DOMAIN_CREATED,
+                    domain=blueprint.domain_id,
+                    depth=1.0,
+                    approved=None,
+                )
+            except Exception:
+                pass  # Profile update failure shouldn't block registration
+
         return domain
 
     # ------------------------------------------------------------------
@@ -1255,6 +1279,19 @@ class DomainCreationEngine:
         """
         existing_domains = self._domain_registry.list_domains()
         return self._validator.validate(blueprint, existing_domains)
+
+    def _adapt_blueprint_to_profile(
+        self,
+        blueprint: DomainBlueprint,
+        context: dict[str, object],
+    ) -> None:
+        """Apply user profile preferences to adapt the blueprint."""
+        prefs = context.get("preferences", {})
+        auto_level = prefs.get("automation_level", 0.5)
+        if auto_level > 0.7:
+            blueprint.config.requires_human_approval = False
+        elif auto_level < 0.3:
+            blueprint.config.requires_human_approval = True
 
     # ------------------------------------------------------------------
     # Query methods

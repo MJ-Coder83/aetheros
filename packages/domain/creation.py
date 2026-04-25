@@ -26,6 +26,7 @@ from packages.prime.domain_creation import (
     DomainCreationEngine,
 )
 from packages.prime.introspection import DomainDescriptor, PrimeIntrospector
+from packages.prime.profile import IntelligenceProfileEngine
 from packages.prime.proposals import ProposalEngine
 from packages.tape.service import TapeService
 
@@ -56,6 +57,7 @@ class OneClickDomainCreationEngine:
         introspector: PrimeIntrospector | None = None,
         proposal_engine: ProposalEngine | None = None,
         base_engine: DomainCreationEngine | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._proposal_engine = proposal_engine
@@ -63,6 +65,7 @@ class OneClickDomainCreationEngine:
             tape_service=tape_service,
             introspector=introspector,
             proposal_engine=proposal_engine,
+            profile_engine=profile_engine,
         )
         self._folder_tree_generator = DomainFolderTreeGenerator(
             tape_service=tape_service,

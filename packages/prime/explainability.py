@@ -65,6 +65,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+from packages.prime.intelligence_profile import IntelligenceProfileEngine
 from packages.tape.service import TapeService
 
 # ---------------------------------------------------------------------------
@@ -1360,10 +1361,12 @@ class ExplainabilityEngine:
         tape_service: TapeService,
         store: ExplanationStore | None = None,
         generator: ExplanationGenerator | None = None,
+        profile_engine: IntelligenceProfileEngine | None = None,
     ) -> None:
         self._tape = tape_service
         self._store = store or ExplanationStore()
         self._generator = generator or ExplanationGenerator()
+        self._profile_engine = profile_engine
 
     # ------------------------------------------------------------------
     # generate_explanation

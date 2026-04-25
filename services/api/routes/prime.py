@@ -21,10 +21,12 @@ async def snapshot() -> dict[str, object]:
 
 
 @router.get("/proposals")
-async def list_proposals() -> list[dict[str, object]]:
-    """List all proposals."""
+async def list_proposals(
+    user_id: str | None = None,
+) -> list[dict[str, object]]:
+    """List all proposals, optionally personalized for a user."""
     engine = get_proposal_engine()
-    proposals = await engine.list_proposals()
+    proposals = await engine.list_proposals(user_id=user_id)
     return [p.model_dump() for p in proposals]
 
 

@@ -250,6 +250,141 @@ The Prime Console now detects domain creation requests and calls the One-Click D
 - Both fully-automatic and human-guided creation modes are supported
 - High-risk domains (legal, healthcare, finance) automatically require human approval
 
+## Personalized Intelligence Profile
+
+InkosAI maintains a **Personalized Intelligence Profile** for each user — a living, adaptive model of expertise, preferences, working style, goals, and interaction patterns that Prime uses to tailor its behaviour, suggestions, and communication style.
+
+### Architecture
+
+The profile system has been consolidated into a single, unified `UserProfile` model that embeds the `IntelligenceProfile` (domain expertise, preference inference, interaction tracking) alongside rich personalization data (goals, skills, working style, folder-tree and AetherGit integration).
+
+```
+UserProfile (unified model)
+├── IntelligenceProfile (embedded)
+│   ├── DomainExpertise — Per-domain expertise level (novice → expert) with score tracking
+│   ├── UserPreference — Categorised preference values (verbosity, risk_tolerance, detail_level, etc.)
+│   ├── InteractionSummary — Aggregate stats (total_interactions, approval_rate, avg_depth)
+│   ├── BehaviouralSignals — Freeform key-value signals
+│   └── AdaptationCount — Number of profile adaptations
+├── WorkingStyleConfig — primary_style, communication_style, automation_preference
+├── UserPreferenceSetting — Key-value preferences (explicit or inferred)
+├── UserGoal — Tracked goals with progress, priority, and status
+├── LearnedSkill — Skills learned through interactions, with proficiency tracking
+├── InteractionPattern — Detected usage patterns (time_of_day, domain_preference, etc.)
+├── HistorySummary — Aggregate session and interaction statistics
+├── folder_tree_path — Path in folder-tree where profile data is stored
+├── aethergit_commit_id — Last AetherGit commit hash for this profile
+└── ProfileStorage — Persistence layer (InMemory / Filesystem / AetherGit)
+
+ProfileStorage (CRUD + helpers)
+├── get_or_create_profile() / update_profile() / delete_profile()
+├── set_preference() / get_preference() / update_preferences()
+├── update_working_style()
+├── add_goal() / update_goal() / complete_goal() / delete_goal()
+├── add_or_update_skill() / get_skill() / list_skills()
+├── record_pattern() / list_patterns()
+├── update_history_summary() / record_session()
+├── sync_to_aethergit() / export_profile() / import_profile()
+└── get_profile_summary()
+
+IntelligenceProfileEngine (backward-compatible facade)
+├── record_interaction() — Updates expertise + interaction summary + inferred preferences
+├── set_preference() / get_effective_preference()
+├── create_snapshot() / rollback_to_snapshot() / list_snapshots()
+├── get_domain_summary() / get_recommendation_context()
+├── merge_profiles() — Merge source profile into target
+├── archive_profile() / suspend_profile() / reactivate_profile()
+└── ExpertiseAssessor — Infers expertise from interaction patterns
+    PreferenceInferrer — Derives preferences from observed behaviour
+
+ProfileLearningEngine (separate module: profile_learning.py)
+├── TapeBehaviorAnalyzer — Extracts patterns from Tape entries
+├── ProposalPatternAnalyzer — Analyzes approval/rejection tendencies
+├── CanvasInteractionAnalyzer — Studies canvas usage patterns
+├── FeedbackAnalyzer — Processes explicit feedback signals
+├── FolderTreeAnalyzer — Infers organizational preferences
+├── learn_for_user() — Full behavioral analysis for one user
+├── batch_learn_all() — Batch learning across all users
+├── suggest_profile_updates() — Generate reviewable suggestions
+└── learn_from_event() — Incremental single-event learning
+```
+
+### Storage Backends
+
+| Backend | Use Case |
+|---------|----------|
+| **InMemoryProfileStore** | Testing and development |
+| **FilesystemProfileStore** | Persistent storage, folder-tree linked |
+| **AetherGit** | Version-controlled profile storage (via `sync_to_aethergit`) |
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/profiles/interactions` | POST | Record a user interaction |
+| `/profiles/{user_id}` | GET | Get user profile |
+| `/profiles/{user_id}` | POST | Get or create user profile |
+| `/profiles` | GET | List all profiles |
+| `/profiles/preferences` | POST | Set a preference value (IntelligenceProfile)
+| `/profiles/{user_id}/preferences/{category}` | GET | Get effective preference for category |
+| `/profiles/{user_id}/snapshots` | POST | Create profile snapshot |
+| `/profiles/{user_id}/snapshots` | GET | List profile snapshots |
+| `/profiles/{user_id}/rollback/{snapshot_id}` | POST | Rollback profile to snapshot |
+| `/profiles/{user_id}/domains` | GET | Get domain expertise summary |
+| `/profiles/{user_id}/context` | GET | Get recommendation context for Prime |
+| `/profiles/merge` | POST | Merge two profiles |
+| `/profiles/{user_id}/archive` | POST | Archive profile |
+| `/profiles/{user_id}/suspend` | POST | Suspend profile |
+| `/profiles/{user_id}/reactivate` | POST | Reactivate suspended profile |
+| `/profiles/{user_id}/summary` | GET | Get full profile summary |
+| `/profiles/{user_id}/details` | PATCH | Update display_name, email, bio |
+| `/profiles/{user_id}/user-preferences` | POST | Set UserProfile preference (key-value) |
+| `/profiles/{user_id}/working-style` | PATCH | Update working style configuration |
+| `/profiles/{user_id}/goals` | POST | Add a new goal |
+| `/profiles/{user_id}/goals` | GET | List goals |
+| `/profiles/{user_id}/goals/{goal_id}` | PATCH | Update a goal |
+| `/profiles/{user_id}/goals/{goal_id}/complete` | POST | Complete a goal |
+| `/profiles/{user_id}/goals/{goal_id}` | DELETE | Delete a goal |
+| `/profiles/{user_id}/skills` | POST | Add or update a learned skill |
+| `/profiles/{user_id}/skills` | GET | List skills |
+| `/profiles/{user_id}/patterns` | POST | Record an interaction pattern |
+| `/profiles/{user_id}/patterns` | GET | List interaction patterns |
+| `/profiles/{user_id}/sessions` | POST | Record a completed session |
+| `/profiles/{user_id}/sync` | POST | Sync profile to AetherGit |
+| `/profiles/{user_id}/export` | GET | Export profile as JSON |
+
+### Frontend Integration
+
+- **Profile Page** (`/profile`) — Full profile view with click-to-edit preference sliders, snapshot creation/rollback, domain expertise display, working style config, goals, and learned skills
+- **Prime Console** (`/prime`) — Profile sidebar card, profile-aware query handling, and "My profile" quick-action button
+- **Dashboard** — `ProfileSummaryCard` widget showing interaction count, approval rate, top domains, working style, and key preferences
+- **Command Palette** — "View Intelligence Profile" command (⌘K → Brain icon)
+
+### Integration Points
+
+| System | Integration |
+|--------|-------------|
+| **Prime** | Uses `getRecommendationContext` to tailor responses, verbosity, and suggestions to user expertise, working style, and preferences |
+| **Tape** | Every profile update is logged (`profile.interaction_recorded`, `profile.preference_set`, `profile.snapshot_created`, `profile.rollback`, `profile.goal_added`, `profile.skill_updated`, `profile.pattern_recorded`) |
+| **Proposals** | Approval/rejection events feed the profile's interaction summary and expertise assessor |
+| **Domains** | Domain interaction frequency drives expertise level upgrades (novice → intermediate → advanced → expert) |
+| **Folder Tree** | Profile data can be stored in the folder-tree structure via `FilesystemProfileStore` |
+| **AetherGit** | Profile changes can be synced to AetherGit for version control (`sync_to_aethergit`) |
+| **Profile Learning** | `ProfileLearningEngine` continuously analyzes Tape, Proposals, Canvas, Feedback, and Folder-Tree to refine the profile |
+
+### Backward Compatibility
+
+The `IntelligenceProfileEngine` facade is fully backward-compatible — existing code that imports from `packages.prime.intelligence_profile` continues to work. The old `IntelligenceProfile` model is now embedded within `UserProfile`, and convenience properties on `UserProfile` allow transparent access to `domain_expertise`, `interaction_summary`, and `adaptation_count`.
+
+### Safety Guarantees
+
+- Profile data is user-scoped — no cross-user leakage
+- Snapshots enable rollback to any prior state
+- Preferences have confidence scores; low-confidence inferences are not applied automatically
+- Profile status lifecycle: `active → suspended → archived`, with reactivation support
+- All mutations are logged to the immutable Tape
+- Explicit preferences always override inferred values with full confidence
+
 ## Success Metrics (End of Month 9)
 
 - Prime can autonomously understand, propose, evolve, simulate, debate, and explain the entire system

@@ -63,6 +63,7 @@ from packages.prime.profile import (
     ProfileStorage,
     UserProfile,
 )
+from packages.tape.models import TapeEntry
 from packages.tape.service import TapeService
 
 # ---------------------------------------------------------------------------
@@ -225,7 +226,7 @@ class TapeBehaviorAnalyzer(BaseAnalyzer):
     def _infer_skills_from_domains(
         self,
         user_id: str,
-        entries: list,
+        entries: list[TapeEntry],
     ) -> list[BehavioralInsight]:
         """Infer learned skills based on repeated domain interactions with high depth."""
         domain_interactions: dict[str, list[float]] = defaultdict(list)
@@ -262,7 +263,7 @@ class TapeBehaviorAnalyzer(BaseAnalyzer):
     def _infer_goals_from_activity(
         self,
         user_id: str,
-        entries: list,
+        entries: list[TapeEntry],
     ) -> list[BehavioralInsight]:
         """Infer potential user goals based on focused domain activity clusters."""
         # Group by domain and time windows to detect sustained focus
@@ -298,7 +299,7 @@ class TapeBehaviorAnalyzer(BaseAnalyzer):
     def _analyze_depth_preference(
         self,
         user_id: str,
-        entries: list,
+        entries: list[TapeEntry],
     ) -> BehavioralInsight | None:
         """Infer response detail preference from average interaction depth."""
         depths = []
@@ -335,7 +336,7 @@ class TapeBehaviorAnalyzer(BaseAnalyzer):
     def _analyze_timing_patterns(
         self,
         user_id: str,
-        entries: list,
+        entries: list[TapeEntry],
     ) -> BehavioralInsight | None:
         """Detect time-of-day patterns in user activity."""
         hour_counts: Counter[int] = Counter()
@@ -361,7 +362,7 @@ class TapeBehaviorAnalyzer(BaseAnalyzer):
             "evening": evening,
             "night": night,
         }
-        peak_period = max(periods, key=periods.get)
+        peak_period = max(periods, key=lambda k: periods[k])
         peak_ratio = periods[peak_period] / total if total > 0 else 0
 
         if peak_ratio < 0.3:  # No strong pattern
@@ -382,23 +383,23 @@ class TapeBehaviorAnalyzer(BaseAnalyzer):
     def _analyze_interaction_types(
         self,
         user_id: str,
-        entries: list,
+        entries: list[TapeEntry],
     ) -> BehavioralInsight | None:
         """Analyze distribution of interaction types."""
-        type_counts: Counter[str] = Counter()
-        total_weighted = 0.0
+        type_counts: dict[str, float] = {}
+        total_weighted: float = 0.0
 
         for e in entries:
             t = e.event_type
             weight = self.INTERACTION_WEIGHTS.get(t, 0.5)
-            type_counts[t] += weight
+            type_counts[t] = type_counts.get(t, 0.0) + weight
             total_weighted += weight
 
         if total_weighted < 10:
             return None
 
         # Find dominant interaction type
-        dominant = type_counts.most_common(1)
+        dominant = sorted(type_counts.items(), key=lambda x: x[1], reverse=True)[:1]
         if not dominant:
             return None
 
@@ -581,7 +582,8 @@ class CanvasInteractionAnalyzer(BaseAnalyzer):
         # Count node types used
         node_types: Counter[str] = Counter()
         for e in user_entries:
-            node_type = e.payload.get("node_type", "")
+            node_type_raw = e.payload.get("node_type", "")
+            node_type = str(node_type_raw) if isinstance(node_type_raw, str) else ""
             node_types[node_type] += 1
 
         if node_types:
@@ -737,9 +739,8 @@ class FolderTreeAnalyzer(BaseAnalyzer):
     ) -> UserProfile:
         """Apply folder-tree-based insights to the profile."""
         for insight in insights:
-            if insight.key == "editing_behavior":
-                # Heuristic: frequent editors prefer detailed communications
-                if insight.value == "frequent_editor":
+            # Heuristic: frequent editors prefer detailed communications
+            if insight.key == "editing_behavior" and insight.value == "frequent_editor":
                     profile = await self._storage.update_working_style(
                         user_id=profile.user_id,
                         communication_style=CommunicationStyle.DETAILED,

@@ -1248,7 +1248,7 @@ class DomainCreationEngine:
 
         # Record domain creation in user profile
         if self._profile_engine and blueprint.created_by:
-            try:
+            with contextlib.suppress(Exception):
                 await self._profile_engine.record_interaction(
                     user_id=blueprint.created_by,
                     interaction_type=InteractionType.DOMAIN_CREATED,
@@ -1256,8 +1256,6 @@ class DomainCreationEngine:
                     depth=1.0,
                     approved=None,
                 )
-            except Exception:
-                pass  # Profile update failure shouldn't block registration
 
         return domain
 
@@ -1286,8 +1284,9 @@ class DomainCreationEngine:
         context: dict[str, object],
     ) -> None:
         """Apply user profile preferences to adapt the blueprint."""
-        prefs = context.get("preferences", {})
-        auto_level = prefs.get("automation_level", 0.5)
+        prefs_raw = context.get("preferences", {})
+        prefs = prefs_raw if isinstance(prefs_raw, dict) else {}
+        auto_level = float(prefs.get("automation_level", 0.5)) if isinstance(prefs.get("automation_level", 0.5), (int, float)) else 0.5
         if auto_level > 0.7:
             blueprint.config.requires_human_approval = False
         elif auto_level < 0.3:

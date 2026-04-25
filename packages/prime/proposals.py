@@ -28,6 +28,7 @@ Usage::
     approved = await engine.approve(proposal.id, reviewer="human-001")
 """
 
+import contextlib
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -309,7 +310,7 @@ class ProposalEngine:
 
         # Record proposal creation in user profile
         if self._profile_engine and proposed_by:
-            try:
+            with contextlib.suppress(Exception):
                 await self._profile_engine.record_interaction(
                     user_id=proposed_by,
                     interaction_type=InteractionType.PROPOSAL,
@@ -317,8 +318,6 @@ class ProposalEngine:
                     depth=0.5,
                     approved=None,
                 )
-            except Exception:
-                pass  # Profile logging should not break proposal creation
 
         return proposal
 
@@ -446,6 +445,38 @@ class ProposalEngine:
                 pass
 
         return proposals
+
+    def _reorder_proposals_by_relevance(
+        self,
+        proposals: list[Proposal],
+        context: dict[str, object],
+    ) -> list[Proposal]:
+        """Re-order proposals by user profile relevance.
+
+        Uses the recommendation context from IntelligenceProfileEngine
+        to sort proposals so the most relevant ones appear first.
+        """
+        # Simple relevance scoring: prefer proposals in domains the user
+        # has high expertise in
+        user_domains = context.get("top_domains", [])
+        if not isinstance(user_domains, list) or not user_domains:
+            return proposals
+
+        def _score(proposal: Proposal) -> int:
+            """Higher score = more relevant."""
+            # Proposals targeting user's top domains rank higher
+            scope = getattr(proposal, "scope", "") or ""
+            for domain_obj in user_domains:
+                domain_id = ""
+                if isinstance(domain_obj, dict):
+                    domain_id = str(domain_obj.get("domain_id", ""))
+                elif isinstance(domain_obj, str):
+                    domain_id = domain_obj
+                if domain_id and domain_id in str(scope):
+                    return 1
+            return 0
+
+        return sorted(proposals, key=_score, reverse=True)
 
     async def list_pending(self) -> list[Proposal]:
         """Convenience: list all proposals awaiting human review."""

@@ -72,6 +72,7 @@ Usage::
     transcript = await arena.get_debate_transcript(debate.id)
 """
 
+import contextlib
 import re
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -726,7 +727,7 @@ class DebateArena:
 
         # Record debate start in user profile
         if self._profile_engine and initiator:
-            try:
+            with contextlib.suppress(Exception):
                 await self._profile_engine.record_interaction(
                     user_id=initiator,
                     interaction_type=InteractionType.DEBATE_STARTED,
@@ -734,8 +735,6 @@ class DebateArena:
                     depth=0.5,
                     approved=None,
                 )
-            except Exception:
-                pass  # Profile update should not disrupt debate creation
 
         return debate
 

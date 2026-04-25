@@ -33,6 +33,7 @@ Usage::
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import Callable, Coroutine
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -485,8 +486,9 @@ class PlanningEngine:
         if self._profile_engine and created_by:
             try:
                 context = await self._profile_engine.get_recommendation_context(created_by)
-                prefs = context.get("preferences", {})
-                auto_level = prefs.get("automation_level", 0.5)
+                prefs_raw = context.get("preferences", {})
+                prefs = prefs_raw if isinstance(prefs_raw, dict) else {}
+                auto_level = float(prefs.get("automation_level", 0.5)) if isinstance(prefs.get("automation_level", 0.5), (int, float)) else 0.5
                 if auto_level > 0.7:
                     plan.requires_approval = False
                 elif auto_level < 0.3:
@@ -511,7 +513,7 @@ class PlanningEngine:
 
         # Record plan creation in user profile
         if self._profile_engine and created_by:
-            try:
+            with contextlib.suppress(Exception):
                 await self._profile_engine.record_interaction(
                     user_id=created_by,
                     interaction_type=InteractionType.PLAN_CREATED,
@@ -519,8 +521,6 @@ class PlanningEngine:
                     depth=0.5,
                     approved=None,
                 )
-            except Exception:
-                pass  # Profile logging should not impact plan creation
 
         return plan
 

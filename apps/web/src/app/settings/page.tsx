@@ -155,7 +155,7 @@ export default function SettingsPage() {
                       testConnection.isPending &&
                       testConnection.variables?.providerId === selectedProviderId
                     }
-                    testResult={testResults[selectedProviderId] ?? null}
+                    testResult={selectedProviderId ? (testResults[selectedProviderId] ?? null) : null}
                   />
                 ) : (
                   <div className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-8 flex flex-col items-center justify-center text-center">

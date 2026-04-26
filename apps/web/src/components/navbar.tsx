@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Settings,
+  Settings2,
   Search,
   Lightbulb,
   Layers,
@@ -19,6 +20,7 @@ import {
   Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSettings, useProviders } from "@/hooks/use-api";
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -33,10 +35,17 @@ const NAV_ITEMS = [
   { href: "/knowledge", label: "Knowledge", icon: ArrowRightLeft },
   { href: "/domains", label: "Domains", icon: Layers },
   { href: "/marketplace", label: "Marketplace", icon: Store },
+  { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { data: settings } = useSettings();
+  const { data: providersData } = useProviders();
+
+  const activeProvider = providersData?.providers.find(
+    (p) => p.provider_id === settings?.active_provider_id
+  );
 
   return (
     <header className="sticky top-0 z-50 glass-strong">
@@ -96,9 +105,25 @@ export function Navbar() {
             <kbd className="font-mono text-[9px] bg-inkos-navy-800/60 px-1.5 py-0.5 rounded border border-white/[0.06] ml-2">
               ⌘K
             </kbd>
-          </button>
+        </button>
 
-          {/* Settings button */}
+        {settings?.active_provider_id && settings?.active_model_id && (
+          <Link
+            href="/settings"
+            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-inkos-cyan/15 bg-inkos-cyan/5 px-2.5 py-1 text-[11px] text-inkos-cyan hover:bg-inkos-cyan/10 transition-all duration-200"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-inkos-cyan" />
+            <span className="truncate max-w-[120px]">
+              {activeProvider?.display_name ?? settings.active_provider_id}
+            </span>
+            <span className="text-inkos-cyan/40">/</span>
+            <span className="truncate max-w-[80px]">
+              {settings.active_model_id}
+            </span>
+          </Link>
+        )}
+
+        {/* Settings button */}
           <button
             onClick={() =>
               window.dispatchEvent(new CustomEvent("open-settings"))

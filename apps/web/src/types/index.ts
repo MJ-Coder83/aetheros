@@ -476,3 +476,102 @@ export interface ProfileSummary {
   favorite_domains: string[];
   last_sync: string | null;
 }
+
+/* ── Plugin System & Marketplace ────────────────────────────── */
+
+export type PluginPermission =
+  | "folder_tree_read"
+  | "folder_tree_write"
+  | "tape_read"
+  | "tape_write"
+  | "agent_communicate"
+  | "canvas_read"
+  | "canvas_write"
+  | "domain_read"
+  | "network_access"
+  | "system_config";
+
+export type PluginStatus =
+  | "installed"
+  | "enabled"
+  | "disabled"
+  | "error"
+  | "pending_install";
+
+export type MarketplacePluginStatus =
+  | "published"
+  | "under_review"
+  | "deprecated"
+  | "removed";
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  homepage: string | null;
+  repository: string | null;
+  permissions: PluginPermission[];
+  entry_point: string;
+  min_platform_version: string;
+  max_platform_version: string | null;
+  tags: string[];
+  category: string;
+  icon: string | null;
+}
+
+export interface InstalledPlugin {
+  id: string;
+  manifest: PluginManifest;
+  status: PluginStatus;
+  installed_at: string;
+  updated_at: string;
+  enabled: boolean;
+  install_path: string;
+  last_error: string | null;
+}
+
+export interface MarketplacePlugin {
+  id: string;
+  manifest: PluginManifest;
+  status: MarketplacePluginStatus;
+  downloads: number;
+  rating_avg: number;
+  rating_count: number;
+  published_at: string;
+  updated_at: string;
+  featured: boolean;
+  verified: boolean;
+}
+
+export interface PluginRating {
+  user_id: string;
+  plugin_id: string;
+  score: number;
+  review: string | null;
+  created_at: string;
+}
+
+export interface PluginInstallRequest {
+  plugin_id: string;
+  version: string;
+  granted_permissions: PluginPermission[];
+  user_id: string;
+}
+
+export interface PluginInstallResult {
+  success: boolean;
+  plugin: InstalledPlugin | null;
+  message: string;
+  errors: string[];
+}
+
+export interface MarketplaceSearchParams {
+  query?: string;
+  category?: string;
+  tags?: string[];
+  sort_by?: "downloads" | "rating" | "newest" | "name";
+  limit?: number;
+  offset?: number;
+}

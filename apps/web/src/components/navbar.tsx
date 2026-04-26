@@ -16,6 +16,7 @@ import {
   Route,
   ArrowRightLeft,
   Network,
+  Store,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { href: "/profile", label: "Profile", icon: Brain },
   { href: "/knowledge", label: "Knowledge", icon: ArrowRightLeft },
   { href: "/domains", label: "Domains", icon: Layers },
+  { href: "/marketplace", label: "Marketplace", icon: Store },
 ];
 
 export function Navbar() {

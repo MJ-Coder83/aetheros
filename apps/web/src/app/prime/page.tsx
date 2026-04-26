@@ -15,6 +15,7 @@ import {
   User,
   Settings2,
   Star,
+  Plug,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ import type {
   SimulationRun,
   WhatIfScenario,
   UserProfile,
+  InstalledPlugin,
 } from "@/types";
 import {
   useSystemSnapshot,
@@ -39,6 +41,7 @@ import {
   useOneClickCreateDomain,
   useGetOrCreateProfile,
   useSetPreference,
+  useInstalledPlugins,
 } from "@/hooks/use-api";
 import { domainApi, profileApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -57,6 +60,7 @@ const QUICK_ACTIONS = [
   { label: "System health", query: "What's the system health?" },
   { label: "Show skills", query: "Show me the skills" },
   { label: "Show agents", query: "What agents are available?" },
+  { label: "Show plugins", query: "What plugins are installed?" },
   { label: "My profile", query: "Show my intelligence profile" },
   { label: "Run simulation", query: "Run a simulation" },
 ];
@@ -84,6 +88,7 @@ export default function PrimePage() {
 
   const { data: profile, isLoading: profileLoading } = useGetOrCreateProfile(DEFAULT_USER_ID);
   const setPreference = useSetPreference();
+  const { data: installedPlugins } = useInstalledPlugins();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -203,15 +208,16 @@ export default function PrimePage() {
       }
     }
 
-    const fullContent = await generatePrimeResponse(
-      query,
-      snapshot ?? null,
-      tapeEntries ?? [],
-      proposals ?? [],
-      simulations ?? [],
-      scenarios ?? [],
-      profile ?? null,
-    );
+  const fullContent = await generatePrimeResponse(
+    query,
+    snapshot ?? null,
+    tapeEntries ?? [],
+    proposals ?? [],
+    simulations ?? [],
+    scenarios ?? [],
+    profile ?? null,
+    installedPlugins ?? [],
+  );
 
     streamResponse(responseId, fullContent);
   }
@@ -386,15 +392,24 @@ export default function PrimePage() {
                       badge: `v${s.version}`,
                     }))}
                   />
-                  <SnapshotSection
-                    icon={<Globe className="h-3.5 w-3.5" />}
-                    title="Domains"
-                    items={snapshot.domains.map((d) => ({
-                      id: d.domain_id,
-                      label: d.name,
-                      badge: `${d.agent_count} agents`,
-                    }))}
-                  />
+                <SnapshotSection
+                  icon={<Globe className="h-3.5 w-3.5" />}
+                  title="Domains"
+                  items={snapshot.domains.map((d) => ({
+                    id: d.domain_id,
+                    label: d.name,
+                    badge: `${d.agent_count} agents`,
+                  }))}
+                />
+                <SnapshotSection
+                  icon={<Plug className="h-3.5 w-3.5" />}
+                  title="Plugins"
+                  items={(installedPlugins ?? []).map((ip) => ({
+                    id: ip.id,
+                    label: ip.manifest.name,
+                    badge: ip.enabled ? "on" : "off",
+                  }))}
+                />
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -546,10 +561,10 @@ function SnapshotSection({
                 variant="outline"
                 className={cn(
                   "text-[9px] font-mono shrink-0 ml-2",
-                  item.badge === "active" || item.badge === "healthy"
+          item.badge === "active" || item.badge === "healthy" || item.badge === "on"
                     ? "text-emerald-400 border-emerald-500/15"
-                    : item.badge === "idle"
-                      ? "text-amber-400 border-amber-400/15"
+                    : item.badge === "idle" || item.badge === "off"
+                    ? "text-amber-400 border-amber-400/15"
                       : "border-white/[0.06] text-muted-foreground",
                 )}
               >
@@ -571,6 +586,7 @@ async function generatePrimeResponse(
   simulations: SimulationRun[],
   scenarios: WhatIfScenario[],
   profile: UserProfile | null,
+  installedPlugins: InstalledPlugin[],
 ): Promise<string> {
   const q = query.toLowerCase();
 
@@ -628,7 +644,8 @@ async function generatePrimeResponse(
       `• ${snapshot.skills.length} skills registered\n` +
       `• ${snapshot.domains.length} domains active\n` +
       `• ${snapshot.tape_stats.total_entries ?? tapeEntries.length} Tape entries recorded\n` +
-      `• ${snapshot.active_worktrees.length} worktrees active\n\n` +
+      `• ${snapshot.active_worktrees.length} worktrees active\n` +
+      `• ${installedPlugins.length} plugins installed (${installedPlugins.filter((p) => p.enabled).length} enabled)\n\n` +
       (errorTypes.length > 0
         ? `⚠️ **${errorTypes.length} error events** detected in recent Tape activity. Consider running a reliability simulation.`
         : `✅ No recent errors detected in the Tape.`)
@@ -686,6 +703,26 @@ async function generatePrimeResponse(
       (emptyDomains.length > 0
         ? `\n\n⚠️ ${emptyDomains.length} empty domain(s) need agent assignments.`
         : "")
+    );
+  }
+
+  // Plugins
+  if (q.includes("plugin") || q.includes("marketplace") || q.includes("extension") || q.includes("addon")) {
+    if (installedPlugins.length === 0) {
+      return "No plugins are currently installed. Visit the **Marketplace** to discover and install plugins that extend InkosAI's capabilities.";
+    }
+    const pluginList = installedPlugins
+      .map((p) => {
+        const statusEmoji = p.enabled ? "🟢" : "🔴";
+        return `${statusEmoji} **${p.manifest.name}** (v${p.manifest.version}) — ${p.enabled ? "enabled" : "disabled"} • ${p.manifest.permissions.length} permission(s) • by ${p.manifest.author}`;
+      })
+      .join("\n");
+    const enabled = installedPlugins.filter((p) => p.enabled).length;
+    const disabled = installedPlugins.filter((p) => !p.enabled).length;
+    return (
+      `**${installedPlugins.length} Plugins Installed:**\n\n${pluginList}\n\n` +
+      `📊 **Summary:** ${enabled} enabled, ${disabled} disabled\n\n` +
+      `Visit the **Marketplace** to browse, install, or manage plugins.`
     );
   }
 
@@ -779,8 +816,11 @@ async function generatePrimeResponse(
       `🏗️ **Domain Creation**\n` +
       `• "Create a Legal Research domain" — Create a new domain with starter canvas\n` +
       `• "Make a Finance domain for trading" — Custom domain from description\n\n` +
-      `📜 **Tape & Audit**\n` +
-      `• "Show me the Tape" — Recent activity summary\n\n` +
+    `📜 **Tape & Audit**\n` +
+    `• "Show me the Tape" — Recent activity summary\n\n` +
+    `🔌 **Plugins & Marketplace**\n` +
+    `• "Show plugins" — List installed plugins\n` +
+    `• "What plugins are available?" — Plugin overview\n\n` +
       `🗳️ **Proposals**\n` +
       `• "Show proposals" — Governance overview\n\n` +
       `🧪 **Simulations**\n` +
@@ -791,5 +831,5 @@ async function generatePrimeResponse(
   }
 
   // Default
-  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- **Your intelligence profile** (e.g., "Show my profile")\n- **Set preferences** (e.g., "Set my automation_level to 60")\n- Create a new domain (e.g., "Create a Legal Research domain")\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
+  return `I understand you're asking about "${query}". I'm currently operating with local intelligence based on live system data.\n\nTry asking about:\n- System health\n- Skills, agents, or domains\n- **Your intelligence profile** (e.g., "Show my profile")\n- **Set preferences** (e.g., "Set my automation_level to 60")\n- Create a new domain (e.g., "Create a Legal Research domain")\n- Plugins and marketplace (e.g., "Show plugins")\n- Proposals and governance\n- Simulations and what-if scenarios\n- Tape activity and audit trail\n\nAs I evolve, I'll gain deeper reasoning capabilities and be able to take autonomous actions.`;
 }

@@ -12,10 +12,11 @@ import {
   healthApi,
   domainApi,
   profileApi,
+  marketplaceApi,
   type DomainCreationOption,
   type CreationMode,
 } from "@/lib/api";
-import type { ProposalStatus, SimulationStatus, WhatIfScenario, InteractionType, PreferenceCategory } from "@/types";
+import type { ProposalStatus, SimulationStatus, WhatIfScenario, InteractionType, PreferenceCategory, MarketplaceSearchParams, PluginPermission } from "@/types";
 
 /* ── Tape ─────────────────────────────────────────────────────── */
 
@@ -469,5 +470,96 @@ export function useRecommendationContext(userId: string | null) {
     queryKey: ["profile", "context", userId],
     queryFn: () => profileApi.getRecommendationContext(userId!),
     enabled: userId !== null,
+  });
+}
+
+/* ── Marketplace ──────────────────────────────────────────── */
+
+export function useMarketplacePlugins(params?: MarketplaceSearchParams) {
+  return useQuery({
+    queryKey: ["marketplace", "plugins", params],
+    queryFn: () => marketplaceApi.discover(params),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useMarketplacePlugin(pluginId: string | null) {
+  return useQuery({
+    queryKey: ["marketplace", "plugin", pluginId],
+    queryFn: () => marketplaceApi.getPlugin(pluginId!),
+    enabled: pluginId !== null,
+  });
+}
+
+export function useInstalledPlugins() {
+  return useQuery({
+    queryKey: ["marketplace", "installed"],
+    queryFn: marketplaceApi.listInstalled,
+    refetchInterval: 15_000,
+  });
+}
+
+export function useInstallPlugin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pluginId, version, grantedPermissions, userId }: {
+      pluginId: string;
+      version: string;
+      grantedPermissions: PluginPermission[];
+      userId: string;
+    }) => marketplaceApi.install(pluginId, {
+      version,
+      granted_permissions: grantedPermissions,
+      user_id: userId,
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["marketplace"] });
+      qc.invalidateQueries({ queryKey: ["prime", "snapshot"] });
+      toast.success("Plugin installed", {
+        description: "The plugin has been installed and is ready to use.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to install plugin", { description: error.message });
+    },
+  });
+}
+
+export function useUninstallPlugin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (pluginId: string) => marketplaceApi.uninstall(pluginId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["marketplace"] });
+      qc.invalidateQueries({ queryKey: ["prime", "snapshot"] });
+      toast.success("Plugin uninstalled", {
+        description: "The plugin has been removed.",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to uninstall plugin", { description: error.message });
+    },
+  });
+}
+
+export function useRatePlugin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ pluginId, score, review, userId }: {
+      pluginId: string;
+      score: number;
+      review?: string;
+      userId: string;
+    }) => marketplaceApi.rate(pluginId, { score, review, user_id: userId }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["marketplace", "plugin", variables.pluginId] });
+      qc.invalidateQueries({ queryKey: ["marketplace", "plugins"] });
+      toast.success("Rating submitted", {
+        description: "Thanks for your feedback!",
+      });
+    },
+    onError: (error: Error) => {
+      toast.error("Failed to submit rating", { description: error.message });
+    },
   });
 }

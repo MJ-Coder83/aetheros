@@ -551,3 +551,60 @@ export const profileApi = {
     return request(`/api/profiles/${encodeURIComponent(userId)}/export`);
   },
 };
+
+/* ── Marketplace ────────────────────────────────────────────── */
+
+import type {
+  MarketplacePlugin,
+  InstalledPlugin,
+  PluginInstallResult,
+  PluginRating,
+  MarketplaceSearchParams,
+  PluginPermission,
+} from "@/types";
+
+export const marketplaceApi = {
+  discover(params?: MarketplaceSearchParams): Promise<MarketplacePlugin[]> {
+    const search = new URLSearchParams();
+    if (params?.query) search.set("query", params.query);
+    if (params?.category) search.set("category", params.category);
+    if (params?.tags?.length) search.set("tags", params.tags.join(","));
+    if (params?.sort_by) search.set("sort_by", params.sort_by);
+    if (params?.limit) search.set("limit", String(params.limit));
+    if (params?.offset) search.set("offset", String(params.offset));
+    const qs = search.toString();
+    return request(`/api/marketplace/plugins${qs ? `?${qs}` : ""}`);
+  },
+
+  getPlugin(pluginId: string): Promise<MarketplacePlugin> {
+    return request(`/api/marketplace/plugins/${encodeURIComponent(pluginId)}`);
+  },
+
+  install(pluginId: string, body: {
+    version: string;
+    granted_permissions: PluginPermission[];
+    user_id: string;
+  }): Promise<PluginInstallResult> {
+    return request(`/api/marketplace/plugins/${encodeURIComponent(pluginId)}/install`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  uninstall(pluginId: string): Promise<{ success: boolean; message: string }> {
+    return request(`/api/marketplace/plugins/${encodeURIComponent(pluginId)}/uninstall`, {
+      method: "POST",
+    });
+  },
+
+  listInstalled(): Promise<InstalledPlugin[]> {
+    return request("/api/marketplace/installed");
+  },
+
+  rate(pluginId: string, body: { score: number; review?: string; user_id: string }): Promise<PluginRating> {
+    return request(`/api/marketplace/plugins/${encodeURIComponent(pluginId)}/rate`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+};

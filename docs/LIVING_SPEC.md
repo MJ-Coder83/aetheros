@@ -185,10 +185,111 @@ Godot, Unity, Unreal, Blender, DaVinci Resolve, Adobe Suite, VS Code, and any pr
 
 ## Plugin Architecture & Marketplace
 
-- Secure Plugin Node system with sandboxing, fine-grained permissions, and audit logging
-- Agent Bridge for structured, safe agent-to-plugin communication
-- Plugins can read/write to the domain's folder tree via the Agent Bridge
-- Marketplace with discovery, ratings, monetization models, and governance
+InkosAI features a secure, extensible Plugin System with a full Marketplace for discovery, installation, and governance of plugins that extend the platform's capabilities.
+
+### Architecture
+
+```
+PluginManifest (core schema)
+├── id, name, version, description, author
+├── homepage, repository
+├── permissions: PluginPermission[] — fine-grained access control
+├── entry_point, min_platform_version, max_platform_version
+├── tags, category, icon
+
+InstalledPlugin (runtime state)
+├── manifest: PluginManifest
+├── status: installed | enabled | disabled | error | pending_install
+├── enabled: bool
+├── installed_at, updated_at
+├── install_path
+└── last_error
+
+MarketplacePlugin (catalog entry)
+├── manifest: PluginManifest
+├── status: published | under_review | deprecated | removed
+├── downloads, rating_avg, rating_count
+├── published_at, updated_at
+├── featured, verified
+```
+
+### Permission System
+
+Every plugin declares the permissions it requires. Users review and selectively grant permissions at install time. Permissions are classified by risk level:
+
+| Risk Level | Permissions | Description |
+|------------|------------|-------------|
+| **Low** | `folder_tree_read`, `domain_read` | Read-only access to non-sensitive data |
+| **Medium** | `tape_read`, `canvas_read`, `agent_communicate` | Read access to activity/logs, canvas, inter-agent messaging |
+| **High** | `folder_tree_write`, `tape_write`, `canvas_write` | Write access to core structures |
+| **Critical** | `network_access`, `system_config` | External network calls, system configuration changes |
+
+Permissions can be individually toggled during installation. A plugin that lacks a required permission will gracefully degrade or report an error rather than fail silently.
+
+### Installation Flow
+
+1. **Discover** — User browses the Marketplace or searches by category, tags, or keyword
+2. **Review** — User selects a plugin and reviews its manifest, permissions, ratings, and download count
+3. **Permission Grant** — User toggles individual permissions on/off (high-risk permissions shown in red/amber badges)
+4. **Install** — System installs the plugin with granted permissions, logs `plugin.installed` to Tape
+5. **Enable/Disable** — Plugin can be toggled without uninstalling; status changes logged to Tape
+
+### Marketplace API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/marketplace/plugins` | GET | Discover/search plugins (query, category, tags, sort_by, limit, offset) |
+| `/marketplace/plugins/{id}` | GET | Get plugin details |
+| `/marketplace/plugins/{id}/install` | POST | Install a plugin (version, granted_permissions, user_id) |
+| `/marketplace/plugins/{id}/uninstall` | POST | Uninstall a plugin |
+| `/marketplace/installed` | GET | List installed plugins |
+| `/marketplace/plugins/{id}/rate` | POST | Rate a plugin (score, review, user_id) |
+
+### Frontend Integration
+
+**Marketplace Page** (`/marketplace`):
+- **Browse tab** — Search bar, category filters (Analytics, Automation, Communication, Data, Development, Integration, Productivity, Security), sort options (downloads, rating, newest, name), plugin cards with name/author/version/rating/downloads/category/featured/verified badges, high-risk permission warnings
+- **Installed tab** — List of installed plugins with status badges (enabled=green, disabled=amber, error=red), uninstall button with confirmation dialog
+- **Install dialog** — Permission review with per-permission toggle, risk-level badges (low=green, medium=amber, high=red), install confirmation
+- **Uninstall dialog** — Confirmation with plugin name and version
+
+**Prime Console** (`/prime`):
+- **Plugins snapshot sidebar** — Shows all installed plugins with on/off status badges
+- **Plugin query handling** — "show plugins", "installed plugins", "what plugins" queries return formatted plugin list with status, permissions, and author
+- **Health/status response** — Includes plugin count in system overview
+- **Help response** — Lists plugin-related queries in the help section
+- **Quick action** — "Show plugins" quick-action button in the chat input bar
+
+**Navigation**:
+- **Navbar** — Marketplace entry with Store icon at `/marketplace`
+- **Command Palette** — "Open Plugin Marketplace" command (⌘K → Store icon)
+
+### Folder Tree Integration
+
+Plugins with `folder_tree_read` or `folder_tree_write` permissions can access domain folder trees via the Agent Bridge. All folder operations by plugins are logged to the Tape with the plugin ID as the agent reference, ensuring full auditability of plugin-driven modifications.
+
+### Tape Event Types
+
+| Event Type | Trigger |
+|------------|---------|
+| `plugin.installed` | Plugin successfully installed |
+| `plugin.uninstalled` | Plugin removed from system |
+| `plugin.enabled` | Plugin toggled on |
+| `plugin.disabled` | Plugin toggled off |
+| `plugin.permission_granted` | Permission granted at install time |
+| `plugin.permission_denied` | Permission denied at install time |
+| `plugin.error` | Plugin encountered a runtime error |
+| `plugin.rated` | User submitted a rating/review |
+
+### Safety Guarantees
+
+- All plugin operations are logged to the immutable Tape
+- Fine-grained permissions prevent unauthorized access to system resources
+- High-risk permissions require explicit user opt-in during installation
+- Plugins run in sandboxed execution contexts via the Agent Bridge
+- Marketplace entries are reviewed before publication (`under_review` status)
+- Deprecated or malicious plugins can be removed by governance (`removed` status)
+- Users can disable any plugin without uninstalling, preserving data integrity
 
 ## Strategic Recommendations
 

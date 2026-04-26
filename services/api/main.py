@@ -23,8 +23,10 @@ from services.api.routes import (
     introspection,
     knowledge,
     llm_planning,
+    marketplace,
     nlq,
     plans,
+    plugins,
     prime,
     profiles,
     tape,
@@ -66,3 +68,5 @@ app.include_router(nlq.router)
 app.include_router(auth.router)
 app.include_router(folder_tree.router)
 app.include_router(canvas.router)
+app.include_router(plugins.router)
+app.include_router(marketplace.router)

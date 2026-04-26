@@ -10,6 +10,8 @@ from packages.auth import AuthService
 from packages.canvas.core import CanvasService
 from packages.domain.creation import OneClickDomainCreationEngine
 from packages.folder_tree import FolderTreeService
+from packages.marketplace.service import MarketplaceService
+from packages.plugin.core import PluginSDK
 from packages.prime.debate import DebateArena
 from packages.prime.domain_creation import DomainCreationEngine
 from packages.prime.explainability import ExplainabilityEngine
@@ -169,6 +171,38 @@ def get_auth_service() -> AuthService:
 def get_nlq_service() -> SemanticTapeQueryEngine:
     """Return the singleton SemanticTapeQueryEngine."""
     return SemanticTapeQueryEngine(tape_service=get_tape_service())
+
+
+_marketplace_service_singleton: MarketplaceService | None = None
+
+
+def get_marketplace_service() -> MarketplaceService:
+    """Return the singleton MarketplaceService."""
+    global _marketplace_service_singleton
+    if _marketplace_service_singleton is None:
+        _marketplace_service_singleton = MarketplaceService(tape_service=get_tape_service())
+    return _marketplace_service_singleton
+
+
+MarketplaceServiceDep = Annotated[MarketplaceService, Depends(get_marketplace_service)]
+
+_plugin_sdk_singleton: PluginSDK | None = None
+
+
+def get_plugin_sdk() -> PluginSDK:
+    """Return the singleton PluginSDK."""
+    global _plugin_sdk_singleton
+    if _plugin_sdk_singleton is None:
+        from packages.plugin.models import PluginVersion
+
+        _plugin_sdk_singleton = PluginSDK(
+            tape_service=get_tape_service(),
+            platform_version=PluginVersion(major=0, minor=1, patch=0),
+        )
+    return _plugin_sdk_singleton
+
+
+PluginSDKDep = Annotated[PluginSDK, Depends(get_plugin_sdk)]
 
 
 def get_introspector_for_analysis() -> PrimeIntrospector:

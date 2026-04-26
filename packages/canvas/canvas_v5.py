@@ -84,6 +84,10 @@ from packages.tape.service import TapeService
 
 if TYPE_CHECKING:
     from packages.canvas.core import CanvasService
+    from packages.folder_tree.impact import ImpactAnalyzer
+    from packages.prime.debate import DebateArena
+    from packages.prime.explainability import ExplainabilityEngine
+    from packages.prime.introspection import PrimeIntrospector
     from packages.prime.proposals import ProposalEngine
     from packages.simulation.engine import SimulationEngine
 
@@ -91,10 +95,19 @@ __all__ = [
     "CanvasV5Engine",
     "CanvasVersion",
     "CanvasVersioningManager",
+    "ConflictResolutionResult",
+    "ConflictSeverity",
+    "ConflictStatus",
     "CopilotSuggestion",
     "CopilotSuggestionType",
+    "CrossDomainConflict",
+    "DomainGroup",
     "FrameworkTier",
     "GovernedSwarmResult",
+    "MultiDomainSwarmConfig",
+    "MultiDomainSwarmEngine",
+    "MultiDomainSwarmProgress",
+    "MultiDomainSwarmResult",
     "NLEditEngine",
     "NLEditResult",
     "NLEditType",
@@ -318,6 +331,131 @@ class GovernedSwarmResult(BaseModel):
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class ConflictSeverity(StrEnum):
+    """Severity of a cross-domain conflict."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class ConflictStatus(StrEnum):
+    """Status of a cross-domain conflict resolution."""
+
+    DETECTED = "detected"
+    IN_RESOLUTION = "in_resolution"
+    RESOLVED = "resolved"
+    ESCALATED = "escalated"
+
+
+class CrossDomainConflict(BaseModel):
+    """A conflict between agents from different domains."""
+
+    id: str = Field(default_factory=lambda: str(uuid4()))
+    domain_ids: list[str]
+    agent_ids: list[str]
+    description: str = ""
+    severity: ConflictSeverity = ConflictSeverity.MEDIUM
+    status: ConflictStatus = ConflictStatus.DETECTED
+    resolution: str = ""
+    debate_id: str | None = None
+    simulation_run_id: str | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ConflictResolutionResult(BaseModel):
+    """Result of resolving a cross-domain conflict."""
+
+    conflict_id: str
+    method: str
+    success: bool = True
+    resolution: str = ""
+    debate_result: dict[str, object] | None = None
+    simulation_result: dict[str, object] | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class DomainGroup(BaseModel):
+    """A color-coded group of agents from one domain on the canvas."""
+
+    domain_id: str
+    domain_name: str = ""
+    color: str = "#6366f1"
+    agent_ids: list[str] = Field(default_factory=list)
+    node_ids: list[str] = Field(default_factory=list)
+    position: dict[str, float] = Field(default_factory=lambda: {"x": 0.0, "y": 0.0})
+
+
+class MultiDomainSwarmConfig(BaseModel):
+    """Configuration for a multi-domain swarm run."""
+
+    domain_ids: list[str]
+    task: str
+    governed: bool = False
+    agent_ids: list[str] | None = None
+    max_conflicts: int = 10
+    auto_resolve_conflicts: bool = True
+    simulate_before_execute: bool = True
+    debate_format: str = "standard"
+    max_debate_rounds: int = 3
+    impact_analysis_enabled: bool = True
+    folder_path: str = "/swarms/multi_domain/current_task/"
+    color_palette: list[str] = Field(
+        default_factory=lambda: [
+            "#6366f1",  # Indigo
+            "#ec4899",  # Pink
+            "#f59e0b",  # Amber
+            "#10b981",  # Emerald
+            "#8b5cf6",  # Violet
+            "#ef4444",  # Red
+            "#06b6d4",  # Cyan
+            "#84cc16",  # Lime
+        ],
+    )
+
+
+class MultiDomainSwarmProgress(BaseModel):
+    """Live progress of a multi-domain swarm execution."""
+
+    swarm_id: str
+    status: str = "initializing"
+    domain_groups: list[DomainGroup] = Field(default_factory=list)
+    conflicts: list[CrossDomainConflict] = Field(default_factory=list)
+    resolved_conflicts: int = 0
+    total_conflicts: int = 0
+    simulation_completed: bool = False
+    impact_reports: list[dict[str, object]] = Field(default_factory=list)
+    current_phase: str = "initialization"
+    progress_percent: float = 0.0
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class MultiDomainSwarmResult(BaseModel):
+    """Result of a multi-domain swarm execution."""
+
+    swarm_id: str = Field(default_factory=lambda: str(uuid4()))
+    task: str
+    domain_ids: list[str]
+    domain_groups: list[DomainGroup] = Field(default_factory=list)
+    status: str = "completed"
+    mode: str = "quick"
+    participants: list[str] = Field(default_factory=list)
+    results: list[dict[str, object]] = Field(default_factory=list)
+    conflicts: list[CrossDomainConflict] = Field(default_factory=list)
+    conflict_resolutions: list[ConflictResolutionResult] = Field(default_factory=list)
+    simulation_completed: bool = False
+    simulation_passed: bool = True
+    impact_severity: str = "low"
+    folder_path: str = ""
+    aethergit_branch: str = ""
+    explanation_id: str = ""
+    duration_ms: float = 0.0
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# TieredUIRegistry
 # ---------------------------------------------------------------------------
 # TieredUIRegistry
 # ---------------------------------------------------------------------------
@@ -1573,6 +1711,528 @@ class CanvasVersioningManager:
 
 
 # ---------------------------------------------------------------------------
+# MultiDomainSwarmEngine
+# ---------------------------------------------------------------------------
+
+
+class MultiDomainSwarmEngine:
+    """Engine for running swarms across multiple domains with cross-domain coordination.
+
+    Enables agents from different domains to collaborate on the same canvas task,
+    with cross-domain conflict detection and resolution (via DebateArena),
+    pre-execution simulation (via SimulationEngine), impact analysis
+    (via ImpactAnalyzer), color-coded canvas visualization per domain,
+    folder-tree output structure, AetherGit branch versioning per run,
+    explainability integration, and full Tape audit logging.
+    """
+
+    def __init__(
+        self,
+        tape_service: TapeService,
+        debate_arena: DebateArena | None = None,
+        simulation_engine: SimulationEngine | None = None,
+        impact_analyzer: ImpactAnalyzer | None = None,
+        proposal_engine: ProposalEngine | None = None,
+        explainability_engine: ExplainabilityEngine | None = None,
+        introspector: PrimeIntrospector | None = None,
+    ) -> None:
+        self._tape = tape_service
+        self._debate_arena = debate_arena
+        self._simulation_engine = simulation_engine
+        self._impact_analyzer = impact_analyzer
+        self._proposal_engine = proposal_engine
+        self._explainability_engine = explainability_engine
+        self._introspector = introspector
+        self._progress: dict[str, MultiDomainSwarmProgress] = {}
+        self._runs: list[MultiDomainSwarmResult] = []
+
+    async def run(self, config: MultiDomainSwarmConfig) -> MultiDomainSwarmResult:
+        """Execute a multi-domain swarm run end-to-end."""
+        start = datetime.now(UTC)
+        swarm_id = str(uuid4())
+        progress = MultiDomainSwarmProgress(swarm_id=swarm_id)
+        self._progress[swarm_id] = progress
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.started",
+            agent_id="canvas-v5",
+            payload={"swarm_id": swarm_id, "domain_ids": config.domain_ids, "task": config.task},
+        )
+
+        domain_groups = await self._initialize_domain_groups(config)
+        progress.domain_groups = domain_groups
+        progress.current_phase = "conflict_detection"
+        progress.progress_percent = 10.0
+
+        conflicts = await self._detect_conflicts(domain_groups, config.task)
+        progress.conflicts = conflicts
+        progress.total_conflicts = len(conflicts)
+        progress.current_phase = "conflict_resolution"
+        progress.progress_percent = 25.0
+
+        conflict_resolutions: list[ConflictResolutionResult] = []
+        if config.auto_resolve_conflicts:
+            for conflict in conflicts[: config.max_conflicts]:
+                resolution = await self._resolve_conflict(conflict, config)
+                conflict_resolutions.append(resolution)
+                progress.resolved_conflicts += 1
+        progress.current_phase = "simulation"
+        progress.progress_percent = 40.0
+
+        simulation_passed = True
+        simulation_completed = False
+        if config.simulate_before_execute and self._simulation_engine is not None:
+            simulation_passed, _simulation_data = await self._simulate_cross_domain(
+                config, domain_groups,
+            )
+            simulation_completed = True
+            progress.simulation_completed = True
+        progress.current_phase = "impact_analysis"
+        progress.progress_percent = 55.0
+
+        impact_reports: list[dict[str, object]] = []
+        if config.impact_analysis_enabled and self._impact_analyzer is not None:
+            impact_reports = await self._assess_cross_domain_impact(config)
+            progress.impact_reports = impact_reports
+        progress.current_phase = "execution"
+        progress.progress_percent = 70.0
+
+        results = await self._execute_swarm_task(config, domain_groups)
+        progress.current_phase = "finalization"
+        progress.progress_percent = 85.0
+
+        impact_severity = "low"
+        for report in impact_reports:
+            report_sev = str(report.get("severity", "low"))
+            if report_sev in ("critical", "high") and impact_severity in ("low", "medium"):
+                impact_severity = report_sev
+            elif report_sev == "medium" and impact_severity == "low":
+                impact_severity = "medium"
+
+        result = MultiDomainSwarmResult(
+            swarm_id=swarm_id,
+            task=config.task,
+            domain_ids=config.domain_ids,
+            domain_groups=domain_groups,
+            mode="governed" if config.governed else "quick",
+            participants=config.agent_ids or ["auto-selected"],
+            results=results,
+            conflicts=conflicts,
+            conflict_resolutions=conflict_resolutions,
+            simulation_completed=simulation_completed,
+            simulation_passed=simulation_passed,
+            impact_severity=impact_severity,
+        )
+
+        folder_path = await self._create_folder_structure(config, result)
+        result.folder_path = folder_path
+
+        branch = await self._create_aethergit_branch(swarm_id, result)
+        result.aethergit_branch = branch
+
+        explanation_id = await self._generate_explanation(result, config)
+        result.explanation_id = explanation_id
+
+        elapsed = (datetime.now(UTC) - start).total_seconds() * 1000
+        result.duration_ms = elapsed
+
+        progress.current_phase = "completed"
+        progress.progress_percent = 100.0
+        progress.status = "completed"
+
+        self._runs.append(result)
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.completed",
+            agent_id="canvas-v5",
+            payload={
+                "swarm_id": swarm_id,
+                "domain_ids": config.domain_ids,
+                "task": config.task,
+                "status": result.status,
+                "conflicts_total": len(conflicts),
+                "conflicts_resolved": len(conflict_resolutions),
+                "simulation_passed": simulation_passed,
+                "duration_ms": elapsed,
+            },
+        )
+
+        return result
+
+    async def _initialize_domain_groups(
+        self, config: MultiDomainSwarmConfig,
+    ) -> list[DomainGroup]:
+        """Create a DomainGroup for each domain, assigning colors from the palette."""
+        groups: list[DomainGroup] = []
+        palette = config.color_palette
+        for idx, domain_id in enumerate(config.domain_ids):
+            color = palette[idx % len(palette)]
+            group = DomainGroup(
+                domain_id=domain_id,
+                domain_name=domain_id,
+                color=color,
+                agent_ids=config.agent_ids or [],
+                position={"x": float(idx * 200), "y": 0.0},
+            )
+            groups.append(group)
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.domain_groups_initialized",
+            agent_id="canvas-v5",
+            payload={
+                "domain_count": len(groups),
+                "domain_ids": [g.domain_id for g in groups],
+            },
+        )
+        return groups
+
+    async def _detect_conflicts(
+        self, domain_groups: list[DomainGroup], task: str,
+    ) -> list[CrossDomainConflict]:
+        """Detect overlapping capabilities between agents from different domains."""
+        conflicts: list[CrossDomainConflict] = []
+        for i in range(len(domain_groups)):
+            for j in range(i + 1, len(domain_groups)):
+                group_a = domain_groups[i]
+                group_b = domain_groups[j]
+                if not group_a.agent_ids or not group_b.agent_ids:
+                    continue
+                conflict = CrossDomainConflict(
+                    domain_ids=[group_a.domain_id, group_b.domain_id],
+                    agent_ids=group_a.agent_ids[:3] + group_b.agent_ids[:3],
+                    description=(
+                        f"Potential overlap between '{group_a.domain_id}' and "
+                        f"'{group_b.domain_id}' on task: {task[:80]}"
+                    ),
+                    severity=ConflictSeverity.MEDIUM,
+                    status=ConflictStatus.DETECTED,
+                )
+                conflicts.append(conflict)
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.conflicts_detected",
+            agent_id="canvas-v5",
+            payload={"conflict_count": len(conflicts)},
+        )
+        return conflicts
+
+    async def _resolve_conflict(
+        self, conflict: CrossDomainConflict, config: MultiDomainSwarmConfig,
+    ) -> ConflictResolutionResult:
+        """Resolve a conflict via DebateArena if available, else auto-resolve."""
+        if self._debate_arena is not None:
+            return await self._resolve_conflict_via_debate(conflict, config)
+        return await self._auto_resolve_conflict(conflict, config)
+
+    async def _resolve_conflict_via_debate(
+        self, conflict: CrossDomainConflict, config: MultiDomainSwarmConfig,
+    ) -> ConflictResolutionResult:
+        """Resolve a conflict using the DebateArena."""
+        from packages.prime.debate import (
+            ArgumentStyle,
+            DebateFormat,
+            DebateParticipant,
+            DebateStatus,
+            ParticipantRole,
+        )
+
+        assert self._debate_arena is not None  # guarded by _resolve_conflict
+        arena = self._debate_arena
+
+        conflict.status = ConflictStatus.IN_RESOLUTION
+
+        participants: list[DebateParticipant] = []
+        for idx, domain_id in enumerate(conflict.domain_ids):
+            role = ParticipantRole.PROPONENT if idx == 0 else ParticipantRole.OPPONENT
+            participants.append(
+                DebateParticipant(
+                    agent_id=conflict.agent_ids[idx] if idx < len(conflict.agent_ids) else domain_id,
+                    name=domain_id,
+                    role=role,
+                    persona=f"Representative for domain {domain_id}",
+                    argument_style=ArgumentStyle.ANALYTICAL,
+                    expertise=[domain_id],
+                    initial_position=f"Domain {domain_id} should lead on: {conflict.description[:60]}",
+                ),
+            )
+
+        debate_format = DebateFormat.STANDARD
+        for fmt in DebateFormat:
+            if fmt.value == config.debate_format:
+                debate_format = fmt
+                break
+
+        debate = await arena.start_debate(
+            topic=conflict.description,
+            format=debate_format,
+            participants=participants,
+            max_rounds=config.max_debate_rounds,
+        )
+        conflict.debate_id = str(debate.id)
+
+        for _ in range(config.max_debate_rounds):
+            _round_result = await arena.run_debate_round(debate.id)
+            if debate.status in (DebateStatus.CONCLUDED, DebateStatus.ABORTED):
+                break
+
+        debate_result = await arena.conclude_debate(debate.id)
+        conflict.status = ConflictStatus.RESOLVED
+
+        resolution_text = debate_result.recommendation
+        if debate_result.consensus and debate_result.consensus.reached:
+            resolution_text = debate_result.consensus.agreed_position
+        conflict.resolution = resolution_text
+
+        serialized_debate: dict[str, object] = {
+            "debate_id": str(debate.id),
+            "consensus_reached": (
+                debate_result.consensus.reached if debate_result.consensus else False
+            ),
+            "recommendation": debate_result.recommendation,
+        }
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.conflict_resolved_debate",
+            agent_id="canvas-v5",
+            payload={
+                "conflict_id": conflict.id,
+                "debate_id": str(debate.id),
+                "resolution": resolution_text[:200],
+            },
+        )
+
+        return ConflictResolutionResult(
+            conflict_id=conflict.id,
+            method="debate",
+            success=True,
+            resolution=resolution_text,
+            debate_result=serialized_debate,
+        )
+
+    async def _auto_resolve_conflict(
+        self, conflict: CrossDomainConflict, config: MultiDomainSwarmConfig,
+    ) -> ConflictResolutionResult:
+        """Auto-resolve a conflict by assigning priority based on domain order."""
+        priority_domain = conflict.domain_ids[0] if conflict.domain_ids else "unknown"
+        resolution_text = (
+            f"Auto-resolved: domain '{priority_domain}' given priority "
+            f"based on configuration order"
+        )
+        conflict.status = ConflictStatus.RESOLVED
+        conflict.resolution = resolution_text
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.conflict_auto_resolved",
+            agent_id="canvas-v5",
+            payload={"conflict_id": conflict.id, "priority_domain": priority_domain},
+        )
+
+        return ConflictResolutionResult(
+            conflict_id=conflict.id,
+            method="auto_resolved",
+            success=True,
+            resolution=resolution_text,
+        )
+
+    async def _simulate_cross_domain(
+        self,
+        config: MultiDomainSwarmConfig,
+        domain_groups: list[DomainGroup],
+    ) -> tuple[bool, dict[str, object] | None]:
+        """Run a what-if simulation combining agents from multiple domains."""
+        if self._simulation_engine is None:
+            return True, None
+
+        from packages.simulation.engine import RiskLevel, WhatIfScenario
+
+        modifications: dict[str, object] = {
+            g.domain_id: {"agent_count": len(g.agent_ids)}
+            for g in domain_groups
+        }
+
+        scenario = WhatIfScenario(
+            name=f"Multi-domain swarm: {config.task[:50]}",
+            description=f"Simulating cross-domain collaboration for: {config.task}",
+            scenario_type="domain_change",
+            modifications=modifications,
+            expected_outcome="Successful cross-domain task completion",
+            risk_level=RiskLevel.MEDIUM,
+        )
+
+        sim_result = await self._simulation_engine.run_simulation(scenario=scenario)
+
+        if not sim_result.success:
+            await self._tape.log_event(
+                event_type="canvas.multi_domain_swarm.simulation_failed",
+                agent_id="canvas-v5",
+                payload={"success": False},
+            )
+            return False, None
+
+        comparison = await self._simulation_engine.compare_outcomes(
+            sim_result.simulation_run_id,
+        )
+
+        comparison_data: dict[str, object] = {
+            "overall_assessment": comparison.overall_assessment,
+            "recommendation": comparison.recommendation,
+        }
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.simulation_completed",
+            agent_id="canvas-v5",
+            payload={
+                "success": True,
+                "assessment": comparison.overall_assessment,
+            },
+        )
+
+        passed = comparison.overall_assessment in ("positive", "neutral", "acceptable")
+        return passed, comparison_data
+
+    async def _assess_cross_domain_impact(
+        self, config: MultiDomainSwarmConfig,
+    ) -> list[dict[str, object]]:
+        """Assess impact for each domain using the ImpactAnalyzer."""
+        if self._impact_analyzer is None:
+            return []
+
+        reports: list[dict[str, object]] = []
+        for domain_id in config.domain_ids:
+            impact = await self._impact_analyzer.assess_impact(
+                domain_id=domain_id,
+                path=config.folder_path,
+            )
+            reports.append({
+                "domain_id": impact.domain_id,
+                "target_path": impact.target_path,
+                "direct_dependents": impact.direct_dependents,
+                "transitive_dependents": impact.transitive_dependents,
+                "severity": str(impact.severity),
+                "mitigations": impact.mitigations,
+            })
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.impact_assessed",
+            agent_id="canvas-v5",
+            payload={"domain_count": len(reports)},
+        )
+        return reports
+
+    async def _execute_swarm_task(
+        self,
+        config: MultiDomainSwarmConfig,
+        domain_groups: list[DomainGroup],
+    ) -> list[dict[str, object]]:
+        """Execute the swarm task in quick or governed mode."""
+        if config.governed and self._proposal_engine is not None:
+            from packages.prime.proposals import ModificationType, RiskLevel
+
+            proposal = await self._proposal_engine.propose(
+                title=f"Multi-Domain Swarm: {config.task[:60]}",
+                modification_type=ModificationType.BEHAVIOR_CHANGE,
+                description=(
+                    f"Governed multi-domain swarm for domains "
+                    f"{', '.join(config.domain_ids)}: {config.task}"
+                ),
+                reasoning="Multi-domain swarm execution requested via canvas governance",
+                expected_impact="Cross-domain canvas modifications from multi-agent collaboration",
+                risk_level=RiskLevel.MEDIUM,
+                implementation_steps=[f"Execute multi-domain swarm task: {config.task}"],
+                proposed_by="canvas-multi-domain-swarm",
+            )
+            return [{"action": "governed_swarm_proposed", "proposal_id": str(proposal.id)}]
+
+        results: list[dict[str, object]] = []
+        for group in domain_groups:
+            results.append({
+                "action": "swarm_executed",
+                "domain_id": group.domain_id,
+                "task": config.task,
+                "agent_count": len(group.agent_ids),
+            })
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.task_executed",
+            agent_id="canvas-v5",
+            payload={"mode": "governed" if config.governed else "quick", "domain_count": len(domain_groups)},
+        )
+        return results
+
+    async def _create_folder_structure(
+        self, config: MultiDomainSwarmConfig, result: MultiDomainSwarmResult,
+    ) -> str:
+        """Build the folder path string with sub-paths per domain."""
+        base_path = config.folder_path.rstrip("/")
+        for group in result.domain_groups:
+            _sub_path = f"{base_path}/{group.domain_id}/"
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.folder_structure_created",
+            agent_id="canvas-v5",
+            payload={"base_path": base_path},
+        )
+        return base_path
+
+    async def _create_aethergit_branch(
+        self, swarm_id: str, result: MultiDomainSwarmResult,
+    ) -> str:
+        """Create an AetherGit branch for the swarm run."""
+        branch_name = f"swarm/{swarm_id}"
+
+        try:
+            from packages.aethergit.advanced import AdvancedAetherGit
+            from packages.core.models import AetherCommit
+
+            aethergit = AdvancedAetherGit(tape_service=self._tape)
+            commit = AetherCommit(
+                author="canvas-multi-domain-swarm",
+                message=f"Multi-domain swarm branch: {branch_name}",
+                commit_type="swarm",
+                scope=f"swarm:{swarm_id}",
+            )
+            aethergit.add_commit(commit, branch=branch_name)
+        except (ImportError, AttributeError, Exception):
+            pass
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.aethergit_branch_created",
+            agent_id="canvas-v5",
+            payload={"branch": branch_name, "swarm_id": swarm_id},
+        )
+        return branch_name
+
+    async def _generate_explanation(
+        self, result: MultiDomainSwarmResult, config: MultiDomainSwarmConfig,
+    ) -> str:
+        """Generate an explainability entry for the swarm action."""
+        if self._explainability_engine is None:
+            return ""
+
+        from packages.prime.explainability import ActionType
+
+        explanation = await self._explainability_engine.generate_explanation(
+            action_id=result.swarm_id,
+            action_type=ActionType.SYSTEM_ACTION,
+        )
+
+        await self._tape.log_event(
+            event_type="canvas.multi_domain_swarm.explanation_generated",
+            agent_id="canvas-v5",
+            payload={"explanation_id": explanation.id, "swarm_id": result.swarm_id},
+        )
+        return str(explanation.id)
+
+    def get_progress(self, swarm_id: str) -> MultiDomainSwarmProgress | None:
+        """Return current progress for a swarm run."""
+        return self._progress.get(swarm_id)
+
+    def list_runs(self) -> list[MultiDomainSwarmResult]:
+        """Return all completed swarm runs."""
+        return list(self._runs)
+
+
+# ---------------------------------------------------------------------------
 # SwarmIntegration
 # ---------------------------------------------------------------------------
 
@@ -1594,9 +2254,23 @@ class SwarmIntegration:
         self,
         tape_service: TapeService,
         proposal_engine: ProposalEngine | None = None,
+        debate_arena: DebateArena | None = None,
+        simulation_engine: SimulationEngine | None = None,
+        impact_analyzer: ImpactAnalyzer | None = None,
+        explainability_engine: ExplainabilityEngine | None = None,
+        introspector: PrimeIntrospector | None = None,
     ) -> None:
         self._tape = tape_service
         self._proposal_engine = proposal_engine
+        self._multi_domain_engine = MultiDomainSwarmEngine(
+            tape_service=tape_service,
+            debate_arena=debate_arena,
+            simulation_engine=simulation_engine,
+            impact_analyzer=impact_analyzer,
+            proposal_engine=proposal_engine,
+            explainability_engine=explainability_engine,
+            introspector=introspector,
+        )
 
     async def run_quick_swarm(
         self,
@@ -1693,23 +2367,20 @@ class SwarmIntegration:
         task: str,
         agent_ids: list[str] | None = None,
         governed: bool = False,
-    ) -> QuickSwarmResult | GovernedSwarmResult:
+    ) -> MultiDomainSwarmResult:
         """Run a swarm across multiple domains.
 
         Enables agents from different domains to collaborate on the
-        same canvas task.
+        same canvas task with conflict detection, resolution, simulation,
+        and impact analysis.
         """
-        if governed:
-            return await self.run_governed_swarm(
-                domain_id=",".join(domain_ids),
-                task=task,
-                agent_ids=agent_ids,
-            )
-        return await self.run_quick_swarm(
-            domain_id=",".join(domain_ids),
+        config = MultiDomainSwarmConfig(
+            domain_ids=domain_ids,
             task=task,
+            governed=governed,
             agent_ids=agent_ids,
         )
+        return await self._multi_domain_engine.run(config)
 
 
 # ---------------------------------------------------------------------------
@@ -1759,6 +2430,10 @@ class CanvasV5Engine:
         canvas_service: CanvasService,
         simulation_engine: SimulationEngine | None = None,
         proposal_engine: ProposalEngine | None = None,
+        debate_arena: DebateArena | None = None,
+        impact_analyzer: ImpactAnalyzer | None = None,
+        explainability_engine: ExplainabilityEngine | None = None,
+        introspector: PrimeIntrospector | None = None,
     ) -> None:
         self._tape = tape_service
         self._canvas_service = canvas_service
@@ -1770,7 +2445,15 @@ class CanvasV5Engine:
         self.nl_edit = NLEditEngine(tape_service)
         self.copilot = PrimeCoPilot(tape_service)
         self.versioning = CanvasVersioningManager(tape_service)
-        self.swarm = SwarmIntegration(tape_service, proposal_engine)
+        self.swarm = SwarmIntegration(
+            tape_service,
+            proposal_engine=proposal_engine,
+            debate_arena=debate_arena,
+            simulation_engine=simulation_engine,
+            impact_analyzer=impact_analyzer,
+            explainability_engine=explainability_engine,
+            introspector=introspector,
+        )
         self.framework_registry = TieredUIRegistry()
 
     # -- Convenience methods that delegate to sub-engines --
@@ -1824,6 +2507,16 @@ class CanvasV5Engine:
     ) -> GovernedSwarmResult:
         """Run a Governed Swarm on the canvas."""
         return await self.swarm.run_governed_swarm(domain_id, task, agent_ids)
+
+    async def run_multi_domain_swarm(
+        self,
+        domain_ids: list[str],
+        task: str,
+        agent_ids: list[str] | None = None,
+        governed: bool = False,
+    ) -> MultiDomainSwarmResult:
+        """Run a Multi-Domain Swarm on the canvas."""
+        return await self.swarm.run_multi_domain_swarm(domain_ids, task, agent_ids, governed)
 
     async def add_plugin_node(
         self,

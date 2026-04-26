@@ -23,6 +23,7 @@ from packages.canvas.canvas_v5 import (
     CopilotSuggestionType,
     FrameworkTier,
     GovernedSwarmResult,
+    MultiDomainSwarmResult,
     NLEditEngine,
     NLEditType,
     PluginNodeConfig,
@@ -820,14 +821,16 @@ class TestSwarmIntegration:
         result = await swarm.run_multi_domain_swarm(
             ["domain-1", "domain-2"], "Cross-domain analysis", governed=False,
         )
-        assert isinstance(result, QuickSwarmResult)
+        assert isinstance(result, MultiDomainSwarmResult)
+        assert result.mode == "quick"
 
     async def test_run_multi_domain_swarm_governed(self, tape_service: TapeService) -> None:
         swarm = SwarmIntegration(tape_service)
         result = await swarm.run_multi_domain_swarm(
             ["domain-1", "domain-2"], "Cross-domain restructure", governed=True,
         )
-        assert isinstance(result, GovernedSwarmResult)
+        assert isinstance(result, MultiDomainSwarmResult)
+        assert result.mode == "governed"
 
 
 # ===========================================================================

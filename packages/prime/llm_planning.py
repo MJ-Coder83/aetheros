@@ -112,6 +112,20 @@ class DecompositionStore:
 
 
 @runtime_checkable
+class ActiveProviderInfo(Protocol):
+    """Minimal protocol for the active provider object returned by SettingsService."""
+
+    @property
+    def provider_id(self) -> str: ...
+
+
+class SettingsServiceProtocol(Protocol):
+    """Minimal protocol for settings service injection (avoids circular imports)."""
+
+    def get_active_provider(self) -> ActiveProviderInfo | None: ...
+    def resolve_api_key(self, provider_id: str) -> str | None: ...
+
+
 class LLMProvider(Protocol):
     """Protocol for LLM backends that can decompose goals.
 
@@ -394,7 +408,7 @@ class DSPyProvider:
     def __init__(
         self,
         fallback: MockLLMProvider | None = None,
-        settings_service: object | None = None,
+        settings_service: SettingsServiceProtocol | None = None,
     ) -> None:
         self._fallback = fallback or MockLLMProvider()
         self._provider_type = LLMProviderType.DSPY

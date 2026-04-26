@@ -24,14 +24,14 @@ from services.api.dependencies import CanvasServiceDep, CanvasV5ServiceDep
 router = APIRouter(prefix="/canvas", tags=["canvas"])
 
 # Annotated type aliases for Query defaults (avoids B008)
-SuggestionTypeParam = Annotated[CopilotSuggestionType | None, Query(None)]
-TierParam = Annotated[FrameworkTier | None, Query(None, description="Filter by tier")]
-LimitParam = Annotated[int, Query(50, description="Max events to return")]
-CommitMsgParam = Annotated[str, Query("", description="Version commit message")]
-AuthorParam = Annotated[str, Query("system", description="Author of the version")]
-OldVersionParam = Annotated[int, Query(..., description="Old version number")]
-NewVersionParam = Annotated[int, Query(..., description="New version number")]
-ExtParam = Annotated[str, Query(..., description="File extension to detect")]
+SuggestionTypeParam = Annotated[CopilotSuggestionType | None, Query()]
+TierParam = Annotated[FrameworkTier | None, Query(description="Filter by tier")]
+LimitParam = Annotated[int, Query(description="Max events to return")]
+CommitMsgParam = Annotated[str, Query(description="Version commit message")]
+AuthorParam = Annotated[str, Query(description="Author of the version")]
+OldVersionParam = Annotated[int, Query(description="Old version number")]
+NewVersionParam = Annotated[int, Query(description="New version number")]
+ExtParam = Annotated[str, Query(description="File extension to detect")]
 
 # ---------------------------------------------------------------------------
 # Request / Response schemas

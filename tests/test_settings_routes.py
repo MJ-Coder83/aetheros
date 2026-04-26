@@ -12,11 +12,10 @@ Covers:
 Run with: pytest tests/test_settings_routes.py -v
 """
 
-from httpx import ASGITransport, AsyncClient
 import pytest
+from httpx import ASGITransport, AsyncClient
 
 from services.api.main import app
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

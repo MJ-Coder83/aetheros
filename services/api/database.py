@@ -1,7 +1,7 @@
 """InkosAI database setup — async SQLAlchemy with PostgreSQL."""
 
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import JSON, Boolean, DateTime, Float, String, Text
@@ -31,7 +31,7 @@ class TapeEntryORM(Base):
     __tablename__ = "tape_entries"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now(UTC), index=True)
     event_type: Mapped[str] = mapped_column(String(255), index=True)
     agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     payload: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
@@ -52,7 +52,7 @@ class AetherCommitORM(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     parent_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     author: Mapped[str] = mapped_column(String(255))
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now(UTC), index=True)
     message: Mapped[str] = mapped_column(Text)
     commit_type: Mapped[str] = mapped_column(String(100))
     scope: Mapped[str] = mapped_column(String(255))
@@ -96,8 +96,47 @@ class ProviderSettingsORM(Base):
     encrypted_api_key: Mapped[str] = mapped_column(Text)
     selected_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+
+
+# ---------------------------------------------------------------------------
+# User ORM model for Authentication
+# ---------------------------------------------------------------------------
+
+
+class UserORM(Base):
+    """SQLAlchemy ORM mapping for users table."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    username: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False, default="")
+    hashed_password: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str] = mapped_column(String(50), default="viewer")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    profile_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now(UTC))
+    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+# ---------------------------------------------------------------------------
+# Refresh Token ORM model
+# ---------------------------------------------------------------------------
+
+
+class RefreshTokenORM(Base):
+    """SQLAlchemy ORM mapping for refresh tokens (allows revocation)."""
+
+    __tablename__ = "refresh_tokens"
+
+    jti: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), index=True, nullable=False)
+    username: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now(UTC))
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:

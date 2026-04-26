@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from packages.llm import LLMProvider
@@ -20,9 +20,9 @@ class OpenAIProvider:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -57,9 +57,9 @@ class AnthropicProvider:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 import anthropic
@@ -95,9 +95,9 @@ class OpenRouterProvider:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -140,9 +140,9 @@ class NVIDIAProvider:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -178,9 +178,9 @@ class GrokProvider:
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
-        self._client: object | None = None
+        self._client: Any = None
 
-    def _get_client(self):
+    def _get_client(self) -> Any:
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -243,4 +243,5 @@ def create_provider(
     if base_url is not None:
         kwargs["base_url"] = base_url
 
-    return cls(**kwargs)  # type: ignore[return-value]
+    instance = cls(**kwargs)
+    return instance  # type: ignore[no-any-return]

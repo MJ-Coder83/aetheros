@@ -391,10 +391,15 @@ class DSPyProvider:
     or if no LM is available.
     """
 
-    def __init__(self, fallback: MockLLMProvider | None = None) -> None:
+    def __init__(
+        self,
+        fallback: MockLLMProvider | None = None,
+        settings_service: object | None = None,
+    ) -> None:
         self._fallback = fallback or MockLLMProvider()
         self._provider_type = LLMProviderType.DSPY
         self._dspy_available = False
+        self._settings_service = settings_service
         self._setup_dspy()
 
     @property
@@ -406,14 +411,43 @@ class DSPyProvider:
         contextlib_suppress: set[type[Exception]] = {ImportError, Exception}
         import contextlib
 
+        # If a settings service is provided, try to resolve active provider
+        if self._settings_service is not None:
+            with contextlib.suppress(*contextlib_suppress):
+                active = self._settings_service.get_active_provider()
+                if active is not None:
+                    api_key = self._settings_service.resolve_api_key(
+                        active.provider_id
+                    )
+                    if api_key:
+                        import dspy
+
+                        default_model = self._get_default_model(active.provider_id)
+                        model_str = f"{active.provider_id}/{default_model}"
+                        lm = dspy.LM(model_str, api_key=api_key)
+                        dspy.configure(lm=lm)
+                        self._dspy_available = True
+                        return
+
+        # Fall back to env var defaults
         with contextlib.suppress(*contextlib_suppress):
             import dspy
 
-            # Try to configure with a default LM
-            # If no API key is set, this will fail gracefully
             lm = dspy.LM("openai/gpt-4o-mini")
             dspy.configure(lm=lm)
             self._dspy_available = True
+
+    @staticmethod
+    def _get_default_model(provider_id: str) -> str:
+        """Return a sensible default model for a given provider_id."""
+        defaults: dict[str, str] = {
+            "openai": "gpt-4o-mini",
+            "anthropic": "claude-sonnet-4-20250514",
+            "openrouter": "openai/gpt-4o",
+            "nvidia": "nvidia/llama-3.1-nemotron-70b-instruct",
+            "grok": "grok-2",
+        }
+        return defaults.get(provider_id, "gpt-4o-mini")
 
     async def decompose(
         self,

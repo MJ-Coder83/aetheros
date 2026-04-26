@@ -601,7 +601,7 @@ export function useTestConnection() {
   return useMutation({
     mutationFn: ({ providerId, apiKey }: { providerId: string; apiKey: string }) =>
       settingsApi.testConnection(providerId, apiKey),
-    onSuccess: (result: { provider_id: string; success: boolean; message: string; model_count: number | null }) => {
+    onSuccess: (result: ConnectionTestResult) => {
       if (result.success) {
         toast.success(`Connection successful — ${result.model_count ?? 0} models available`);
       } else {

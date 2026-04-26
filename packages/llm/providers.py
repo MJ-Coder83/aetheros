@@ -22,7 +22,7 @@ class OpenAIProvider:
         self.base_url = base_url.rstrip("/")
         self._client: object | None = None
 
-    def _get_client(self):  # noqa: ANN202
+    def _get_client(self):
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -59,7 +59,7 @@ class AnthropicProvider:
         self.base_url = base_url.rstrip("/")
         self._client: object | None = None
 
-    def _get_client(self):  # noqa: ANN202
+    def _get_client(self):
         if self._client is None:
             try:
                 import anthropic
@@ -97,7 +97,7 @@ class OpenRouterProvider:
         self.base_url = base_url.rstrip("/")
         self._client: object | None = None
 
-    def _get_client(self):  # noqa: ANN202
+    def _get_client(self):
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -142,7 +142,7 @@ class NVIDIAProvider:
         self.base_url = base_url.rstrip("/")
         self._client: object | None = None
 
-    def _get_client(self):  # noqa: ANN202
+    def _get_client(self):
         if self._client is None:
             try:
                 from openai import OpenAI
@@ -180,7 +180,7 @@ class GrokProvider:
         self.base_url = base_url.rstrip("/")
         self._client: object | None = None
 
-    def _get_client(self):  # noqa: ANN202
+    def _get_client(self):
         if self._client is None:
             try:
                 from openai import OpenAI

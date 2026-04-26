@@ -1,5 +1,7 @@
 """Shared FastAPI dependencies for the InkosAI API."""
 
+from __future__ import annotations
+
 from typing import Annotated
 
 from fastapi import Depends
@@ -271,10 +273,10 @@ DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
 # Settings service (singleton backed by provider registry + DB)
 # ---------------------------------------------------------------------------
 
-_settings_service_singleton: "SettingsService | None" = None
+_settings_service_singleton: SettingsService | None = None
 
 
-def get_settings_service() -> "SettingsService":
+def get_settings_service() -> SettingsService:
     """Return the singleton SettingsService."""
     global _settings_service_singleton
     if _settings_service_singleton is None:
@@ -285,4 +287,4 @@ def get_settings_service() -> "SettingsService":
     return _settings_service_singleton
 
 
-SettingsServiceDep = Annotated["SettingsService", Depends(get_settings_service)]
+SettingsServiceDep = Annotated[SettingsService, Depends(get_settings_service)]

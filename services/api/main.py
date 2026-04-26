@@ -29,6 +29,7 @@ from services.api.routes import (
     plugins,
     prime,
     profiles,
+    settings,
     tape,
 )
 
@@ -70,3 +71,4 @@ app.include_router(folder_tree.router)
 app.include_router(canvas.router)
 app.include_router(plugins.router)
 app.include_router(marketplace.router)
+app.include_router(settings.router)

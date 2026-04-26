@@ -1,4 +1,4 @@
-"""InkosAI Canvas — Visual graph representation with dual-mode support.
+"""InkosAI Canvas -- Visual graph representation with dual-mode support.
 
 The Canvas provides a visual interface for domains alongside the canonical
 folder-tree representation. It supports:
@@ -9,8 +9,35 @@ folder-tree representation. It supports:
 - Browser nodes with live embedding for web frameworks
 - Terminal nodes with TUI layout editing
 - Tape logging for all canvas operations
+- Canvas v5: Plugin Nodes, Simulation/Tape Overlays, NL Editing,
+  Prime Co-Pilot, AetherGit Versioning, Swarm Integration
 """
 
+from packages.canvas.canvas_v5 import (
+    CanvasV5Engine,
+    CanvasVersion,
+    CanvasVersioningManager,
+    CopilotSuggestion,
+    CopilotSuggestionType,
+    FrameworkTier,
+    GovernedSwarmResult,
+    NLEditEngine,
+    NLEditResult,
+    NLEditType,
+    PluginNodeConfig,
+    PluginNodeManager,
+    PrimeCoPilot,
+    QuickSwarmResult,
+    SimulationMetric,
+    SimulationOverlay,
+    SwarmIntegration,
+    SwarmMode,
+    TapeEventEntry,
+    TapeOverlay,
+    TieredFramework,
+    TieredUIRegistry,
+    UIFramework,
+)
 from packages.canvas.core import (
     Canvas,
     CanvasDiff,
@@ -59,16 +86,39 @@ __all__ = [
     "CanvasNotFoundError",
     "CanvasService",
     "CanvasStore",
+    "CanvasV5Engine",
+    "CanvasVersion",
+    "CanvasVersioningManager",
     "CanvasViewMode",
+    "CopilotSuggestion",
+    "CopilotSuggestionType",
     "DetectedElement",
     "EdgeNotFoundError",
     "ElementTag",
+    "FrameworkTier",
     "FrameworkType",
+    "GovernedSwarmResult",
     "InvalidEdgeError",
     "LayoutEngine",
     "LivePreviewState",
+    "NLEditEngine",
+    "NLEditResult",
+    "NLEditType",
     "NaturalLanguageEdit",
     "NodeAlreadyExistsError",
     "NodeNotFoundError",
+    "PluginNodeConfig",
+    "PluginNodeManager",
     "PreviewMode",
+    "PrimeCoPilot",
+    "QuickSwarmResult",
+    "SimulationMetric",
+    "SimulationOverlay",
+    "SwarmIntegration",
+    "SwarmMode",
+    "TapeEventEntry",
+    "TapeOverlay",
+    "TieredFramework",
+    "TieredUIRegistry",
+    "UIFramework",
 ]

@@ -1,10 +1,16 @@
-"""Canvas API router — manage Domain Canvases."""
+"""Canvas API router -- manage Domain Canvases (core + v5)."""
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+from packages.canvas.canvas_v5 import (
+    CopilotSuggestionType,
+    FrameworkTier,
+    PluginNodeConfig,
+    SwarmMode,
+)
 from packages.canvas.core import (
     CanvasError,
     CanvasNotFoundError,
@@ -13,9 +19,23 @@ from packages.canvas.core import (
     NodeNotFoundError,
 )
 from packages.canvas.models import CanvasLayout, CanvasNodeType
-from services.api.dependencies import CanvasServiceDep
+from services.api.dependencies import CanvasServiceDep, CanvasV5ServiceDep
 
 router = APIRouter(prefix="/canvas", tags=["canvas"])
+
+# Annotated type aliases for Query defaults (avoids B008)
+SuggestionTypeParam = Annotated[CopilotSuggestionType | None, Query(None)]
+TierParam = Annotated[FrameworkTier | None, Query(None, description="Filter by tier")]
+LimitParam = Annotated[int, Query(50, description="Max events to return")]
+CommitMsgParam = Annotated[str, Query("", description="Version commit message")]
+AuthorParam = Annotated[str, Query("system", description="Author of the version")]
+OldVersionParam = Annotated[int, Query(..., description="Old version number")]
+NewVersionParam = Annotated[int, Query(..., description="New version number")]
+ExtParam = Annotated[str, Query(..., description="File extension to detect")]
+
+# ---------------------------------------------------------------------------
+# Request / Response schemas
+# ---------------------------------------------------------------------------
 
 
 class CreateCanvasRequest(BaseModel):
@@ -45,6 +65,38 @@ class AddEdgeRequest(BaseModel):
     edge_type: str = "contains"
     label: str = ""
     animated: bool = False
+
+
+class NLEditRequest(BaseModel):
+    """Schema for a natural language canvas edit."""
+    instruction: str
+
+
+class PluginNodeRequest(BaseModel):
+    """Schema for adding a plugin node."""
+    plugin_id: str
+    label: str
+    plugin_type: str = ""
+    capabilities: list[str] = []
+    command_registry: list[str] = []
+    embed_url: str | None = None
+
+
+class SwarmRequest(BaseModel):
+    """Schema for running a swarm on the canvas."""
+    task: str
+    agent_ids: list[str] | None = None
+    mode: SwarmMode = SwarmMode.QUICK
+
+
+class SimulationOverlayRequest(BaseModel):
+    """Schema for updating simulation overlay metrics."""
+    node_metrics: dict[str, dict[str, float]]
+
+
+# ---------------------------------------------------------------------------
+# Core canvas endpoints (unchanged)
+# ---------------------------------------------------------------------------
 
 
 @router.get("/{domain_id}")
@@ -87,6 +139,7 @@ async def add_node(
     """Add a node to the canvas."""
     try:
         from packages.canvas.models import CanvasNode
+
         node = CanvasNode(
             id=body.id,
             node_type=body.node_type,
@@ -141,6 +194,7 @@ async def add_edge(
     try:
         from packages.canvas.core import CanvasEdgeType
         from packages.canvas.models import CanvasEdge
+
         edge = CanvasEdge(
             id=body.id if body.id else "",
             source=body.source,
@@ -204,8 +258,244 @@ async def get_diff(
 ) -> dict[str, Any]:
     """Get the diff between two canvas versions."""
     try:
-        canvas_new = svc._get_canvas(domain_id)
-        # Simplified: return current canvas state
+        canvas_new = svc._get_canvas(domain_id)  # Simplified: return current canvas state
         return canvas_new.model_dump()
     except CanvasNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Canvas v5 endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{domain_id}/nl-edit")
+async def natural_language_edit(
+    domain_id: str,
+    body: NLEditRequest,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Apply a natural language edit to the canvas.
+
+    Accepts instructions like "Move the domain node to the center" or
+    "Make the analyst agent larger" and parses them into structured
+    canvas mutations.
+    """
+    try:
+        result = await v5.natural_language_edit(domain_id, body.instruction)
+        return result.model_dump()
+    except CanvasNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{domain_id}/copilot")
+async def get_copilot_suggestions(
+    domain_id: str,
+    v5: CanvasV5ServiceDep,
+    suggestion_type: SuggestionTypeParam = None,
+) -> dict[str, Any]:
+    """Get Prime Co-Pilot suggestions for the canvas."""
+    try:
+        suggestions = await v5.get_copilot_suggestions(domain_id)
+        if suggestion_type is not None:
+            suggestions = [s for s in suggestions if s.suggestion_type == suggestion_type]
+        return {
+            "domain_id": domain_id,
+            "suggestions": [s.model_dump() for s in suggestions],
+            "count": len(suggestions),
+        }
+    except CanvasNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{domain_id}/copilot/{suggestion_id}/apply")
+async def apply_copilot_suggestion(
+    domain_id: str,
+    suggestion_id: str,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Apply a Prime Co-Pilot suggestion to the canvas."""
+    try:
+        suggestions = await v5.get_copilot_suggestions(domain_id)
+        target = None
+        for s in suggestions:
+            if s.suggestion_id == suggestion_id:
+                target = s
+                break
+        if target is None:
+            raise HTTPException(status_code=404, detail=f"Suggestion '{suggestion_id}' not found")
+        applied = await v5.apply_copilot_suggestion(domain_id, target)
+        return {"suggestion_id": suggestion_id, "applied": applied}
+    except CanvasNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{domain_id}/plugin-nodes")
+async def add_plugin_node(
+    domain_id: str,
+    body: PluginNodeRequest,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Add a Plugin Node to the canvas."""
+    try:
+        config = PluginNodeConfig(
+            plugin_id=body.plugin_id,
+            label=body.label,
+            plugin_type=body.plugin_type,
+            capabilities=body.capabilities,
+            command_registry=body.command_registry,
+            embed_url=body.embed_url,
+        )
+        plugin_config, canvas_node = await v5.add_plugin_node(domain_id, config)
+        return {
+            "plugin_node": plugin_config.model_dump(),
+            "canvas_node": canvas_node.model_dump(),
+        }
+    except CanvasNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CanvasError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{domain_id}/plugin-nodes")
+async def list_plugin_nodes(
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """List all registered plugin nodes."""
+    nodes = v5.plugin_nodes.list_plugin_nodes()
+    return {"plugin_nodes": [n.model_dump() for n in nodes], "count": len(nodes)}
+
+
+@router.post("/{domain_id}/simulation-overlay")
+async def update_simulation_overlay(
+    domain_id: str,
+    body: SimulationOverlayRequest,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Update simulation overlay metrics for canvas nodes."""
+    overlay = await v5.update_simulation_overlay(domain_id, body.node_metrics)
+    serialized: dict[str, Any] = {}
+    for node_id, metrics in overlay.items():
+        serialized[node_id] = {k: v.model_dump() for k, v in metrics.items()}
+    return {"domain_id": domain_id, "overlay": serialized}
+
+
+@router.get("/{domain_id}/simulation-overlay")
+async def get_simulation_overlay(
+    domain_id: str,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Get current simulation overlay data for the canvas."""
+    overlay = v5.simulation_overlay.get_overlay_data()
+    serialized: dict[str, Any] = {}
+    for node_id, metrics in overlay.items():
+        serialized[node_id] = {k: v.model_dump() for k, v in metrics.items()}
+    return {"domain_id": domain_id, "overlay": serialized}
+
+
+@router.get("/{domain_id}/tape-overlay")
+async def get_tape_overlay(
+    domain_id: str,
+    v5: CanvasV5ServiceDep,
+    limit: LimitParam = 50,
+) -> dict[str, Any]:
+    """Get recent Tape events for the canvas overlay."""
+    events = v5.get_tape_overlay_events(limit)
+    return {
+        "domain_id": domain_id,
+        "events": [e.model_dump() for e in events],
+        "count": len(events),
+    }
+
+
+@router.post("/{domain_id}/versions")
+async def save_canvas_version(
+    domain_id: str,
+    v5: CanvasV5ServiceDep,
+    commit_message: CommitMsgParam = "",
+    author: AuthorParam = "system",
+) -> dict[str, Any]:
+    """Save a version snapshot of the canvas (AetherGit-style versioning)."""
+    try:
+        version = await v5.save_canvas_version(domain_id, commit_message, author)
+        return version.model_dump()
+    except CanvasNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/{domain_id}/versions")
+async def list_canvas_versions(
+    domain_id: str,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """List all version snapshots for a canvas."""
+    versions = v5.versioning.list_versions(domain_id)
+    return {
+        "domain_id": domain_id,
+        "versions": [v.model_dump() for v in versions],
+        "count": len(versions),
+    }
+
+
+@router.get("/{domain_id}/versions/diff")
+async def diff_canvas_versions(
+    domain_id: str,
+    v5: CanvasV5ServiceDep,
+    old_version: OldVersionParam,
+    new_version: NewVersionParam,
+) -> dict[str, Any]:
+    """Get the diff between two canvas versions."""
+    diff = v5.versioning.diff_versions(domain_id, old_version, new_version)
+    return diff
+
+
+@router.post("/{domain_id}/versions/{version}/rewind")
+async def rewind_canvas_version(
+    domain_id: str,
+    version: int,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Rewind the canvas to a previous version."""
+    canvas = v5.versioning.rewind_to_version(domain_id, version, v5._canvas_service)
+    if canvas is None:
+        raise HTTPException(status_code=404, detail=f"Version {version} not found")
+    return canvas.model_dump()
+
+
+@router.post("/{domain_id}/swarm")
+async def run_swarm(
+    domain_id: str,
+    body: SwarmRequest,
+    v5: CanvasV5ServiceDep,
+) -> dict[str, Any]:
+    """Run a swarm (Quick or Governed) on the canvas."""
+    if body.mode == SwarmMode.GOVERNED:
+        governed = await v5.run_governed_swarm(domain_id, body.task, body.agent_ids)
+        return governed.model_dump()
+    quick = await v5.run_quick_swarm(domain_id, body.task, body.agent_ids)
+    return quick.model_dump()
+
+
+@router.get("/frameworks")
+async def list_frameworks(
+    v5: CanvasV5ServiceDep,
+    tier: TierParam = None,
+) -> dict[str, Any]:
+    """List all supported UI frameworks, optionally by tier."""
+    frameworks = v5.list_frameworks(tier)
+    return {
+        "frameworks": [f.model_dump() for f in frameworks],
+        "count": len(frameworks),
+    }
+
+
+@router.get("/frameworks/detect")
+async def detect_framework(
+    v5: CanvasV5ServiceDep,
+    extension: ExtParam,
+) -> dict[str, Any]:
+    """Detect a UI framework from a file extension."""
+    framework = v5.detect_framework(extension)
+    if framework is None:
+        return {"framework": None, "found": False}
+    return {"framework": framework.model_dump(), "found": True}

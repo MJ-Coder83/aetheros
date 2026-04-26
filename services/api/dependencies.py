@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from packages.aethergit.advanced import AdvancedAetherGit
 from packages.auth import AuthService
+from packages.canvas.canvas_v5 import CanvasV5Engine
 from packages.canvas.core import CanvasService
 from packages.domain.creation import OneClickDomainCreationEngine
 from packages.folder_tree import FolderTreeService
@@ -231,7 +232,24 @@ def get_canvas_service() -> CanvasService:
     )
 
 # Type aliases for FastAPI Depends
+# Canvas V5 singleton
+_canvas_v5_singleton: CanvasV5Engine | None = None
+
+
+def get_canvas_v5_service() -> CanvasV5Engine:
+    """Return the singleton CanvasV5Engine."""
+    global _canvas_v5_singleton
+    if _canvas_v5_singleton is None:
+        _canvas_v5_singleton = CanvasV5Engine(
+            tape_service=get_tape_service(),
+            canvas_service=get_canvas_service(),
+            proposal_engine=None,
+        )
+    return _canvas_v5_singleton
+
+
 CanvasServiceDep = Annotated[CanvasService, Depends(get_canvas_service)]
+CanvasV5ServiceDep = Annotated[CanvasV5Engine, Depends(get_canvas_v5_service)]
 AetherGitServiceDep = Annotated[AdvancedAetherGit, Depends(get_aethergit_service)]
 DebateServiceDep = Annotated[DebateArena, Depends(get_debate_service)]
 ExplainabilityServiceDep = Annotated[ExplainabilityEngine, Depends(get_explainability_service)]

@@ -662,29 +662,36 @@ color: #E8ECF4;
   left: 100%;
   top: 50%;
   transform: translateY(-50%) translateX(4px);
-  padding: 6px 10px;
-  margin-left: 8px;
-  background: rgba(5, 8, 16, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(34, 211, 238, 0.2);
+  padding: 8px 12px;
+  margin-left: 12px;
+  background: rgba(5, 8, 16, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(34, 211, 238, 0.3);
   color: #E8ECF4;
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-plex-mono), monospace;
+  letter-spacing: 0.05em;
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
   border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 0 20px rgba(34, 211, 238, 0.1);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 32px rgba(34, 211, 238, 0.15),
+    inset 0 1px 0 rgba(34, 211, 238, 0.1);
+  /* Scan-line reveal effect */
+  clip-path: polygon(0 0, 0 0, 0 100%, 0 100%);
 }
 
 .tooltip-right:hover::after {
   opacity: 1;
   visibility: visible;
   transform: translateY(-50%) translateX(8px);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 }
 
 /* Scan-line tooltip reveal */

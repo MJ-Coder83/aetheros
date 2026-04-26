@@ -27,6 +27,7 @@ from packages.prime.profile import (
     ProfileStorage,
 )
 from packages.prime.proposals import ProposalEngine
+from packages.settings.service import SettingsService
 from packages.tape.nlq import SemanticTapeQueryEngine
 from packages.tape.repository import TapeRepository
 from packages.tape.service import TapeService

@@ -13,10 +13,11 @@ import {
   domainApi,
   profileApi,
   marketplaceApi,
+  settingsApi,
   type DomainCreationOption,
   type CreationMode,
 } from "@/lib/api";
-import type { ProposalStatus, SimulationStatus, WhatIfScenario, InteractionType, PreferenceCategory, MarketplaceSearchParams, PluginPermission } from "@/types";
+import type { ProposalStatus, SimulationStatus, WhatIfScenario, InteractionType, PreferenceCategory, MarketplaceSearchParams, PluginPermission, Settings, ConnectionTestResult } from "@/types";
 
 /* ── Tape ─────────────────────────────────────────────────────── */
 
@@ -560,6 +561,55 @@ export function useRatePlugin() {
     },
     onError: (error: Error) => {
       toast.error("Failed to submit rating", { description: error.message });
+    },
+  });
+}
+
+/* ── Settings / Provider Selector ── */
+
+export function useProviders() {
+  return useQuery({
+    queryKey: ["settings", "providers"],
+    queryFn: () => settingsApi.getProviders(),
+  });
+}
+
+export function useSettings() {
+  return useQuery({
+    queryKey: ["settings"],
+    queryFn: () => settingsApi.getSettings(),
+  });
+}
+
+export function useSaveSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof settingsApi.saveSettings>[0]) =>
+      settingsApi.saveSettings(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["settings", "providers"] });
+      toast.success("Settings saved");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to save settings: ${error.message}`);
+    },
+  });
+}
+
+export function useTestConnection() {
+  return useMutation({
+    mutationFn: ({ providerId, apiKey }: { providerId: string; apiKey: string }) =>
+      settingsApi.testConnection(providerId, apiKey),
+    onSuccess: (result: { provider_id: string; success: boolean; message: string; model_count: number | null }) => {
+      if (result.success) {
+        toast.success(`Connection successful — ${result.model_count ?? 0} models available`);
+      } else {
+        toast.error(`Connection failed: ${result.message}`);
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Connection test error: ${error.message}`);
     },
   });
 }

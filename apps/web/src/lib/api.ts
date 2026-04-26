@@ -608,3 +608,30 @@ export const marketplaceApi = {
     });
   },
 };
+
+/* ── Settings / Provider Selector ────────────────────────────── */
+
+import type { ProviderInfo, Settings, ConnectionTestResult } from "@/types";
+
+export const settingsApi = {
+  getProviders(): Promise<{ providers: ProviderInfo[] }> {
+    return request("/api/settings/providers");
+  },
+
+  getSettings(): Promise<Settings> {
+    return request("/api/settings");
+  },
+
+  saveSettings(data: Partial<Settings> & { provider_keys?: Record<string, string>; default_models?: Record<string, string> }): Promise<Settings> {
+    return request("/api/settings", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  testConnection(providerId: string, apiKey: string): Promise<ConnectionTestResult> {
+    return request(`/api/settings/test-connection?provider_id=${encodeURIComponent(providerId)}&api_key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+    });
+  },
+};

@@ -241,6 +241,33 @@ The profile system uses a unified `UserProfile` model that embeds the `Intellige
 - Full visual + folder-tree dual representation works seamlessly.
 - Plugin marketplace allows easy extension with external tools.
 
+## Technical Debt Cleanup Notes (v5)
+
+### Completed Cleanup (April 26, 2026)
+
+1. **Mock Data Removal**
+   - Moved all mock data generators from `canvas/page.tsx` to `__fixtures__/canvas-mocks.ts`
+   - Production code now uses real API calls with proper empty states
+
+2. **Error Handling Improvements**
+   - Replaced silent catch blocks with proper error logging
+   - Added `error` state for user-facing error messages
+   - All canvas operations now surface errors to console and UI
+   - API calls use `encodeURIComponent(domainId)` for safety
+
+3. **Canvas Performance** (Future work)
+   - Edge rendering still uses SVG `<line>` — consider Canvas API or WebGL for >200 nodes
+   - Node virtualization to be implemented for large graphs
+   - Memoization opportunities in `NodeCardV5` and `EdgeLine`
+
+4. **Type Safety** (Future work)
+   - Strict mode compliance needs full audit of `any` types
+   - Canvas v5 types are well-defined but some internal functions need refinement
+
+5. **Bundle Size** (Future work)
+   - Lucide icons are already tree-shakable via individual imports
+   - Consider dynamic imports for heavy canvas features
+
 ## Tech Stack
 
 Python 3.13+, FastAPI, LangGraph, Pydantic v2, PostgreSQL, Next.js 16, shadcn/ui, AetherGit (custom), Tape (immutable log)

@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import JSON, DateTime, Float, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, String, Text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -79,6 +79,25 @@ class BranchMappingORM(Base):
     branch: Mapped[str] = mapped_column(String(255), index=True)
     commit_id: Mapped[str] = mapped_column(String(36), index=True)
     position: Mapped[int] = mapped_column(default=0)
+
+
+# ---------------------------------------------------------------------------
+# Provider settings ORM model
+# ---------------------------------------------------------------------------
+
+
+class ProviderSettingsORM(Base):
+    """SQLAlchemy ORM mapping for provider settings."""
+
+    __tablename__ = "provider_settings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    provider_id: Mapped[str] = mapped_column(String(255), index=True)
+    encrypted_api_key: Mapped[str] = mapped_column(Text)
+    selected_model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession]:

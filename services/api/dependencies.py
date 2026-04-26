@@ -266,3 +266,23 @@ NLQServiceDep = Annotated[SemanticTapeQueryEngine, Depends(get_nlq_service)]
 IntrospectorForAnalysisDep = Annotated[PrimeIntrospector, Depends(get_introspector_for_analysis)]
 FolderTreeServiceDep = Annotated[FolderTreeService, Depends(get_folder_tree_service)]
 DbSessionDep = Annotated[AsyncSession, Depends(get_db)]
+
+# ---------------------------------------------------------------------------
+# Settings service (singleton backed by provider registry + DB)
+# ---------------------------------------------------------------------------
+
+_settings_service_singleton: "SettingsService | None" = None
+
+
+def get_settings_service() -> "SettingsService":
+    """Return the singleton SettingsService."""
+    global _settings_service_singleton
+    if _settings_service_singleton is None:
+        from packages.settings.registry import ProviderRegistry
+        from packages.settings.service import SettingsService
+
+        _settings_service_singleton = SettingsService(db=None, registry=ProviderRegistry())
+    return _settings_service_singleton
+
+
+SettingsServiceDep = Annotated["SettingsService", Depends(get_settings_service)]

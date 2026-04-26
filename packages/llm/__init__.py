@@ -8,6 +8,15 @@ When disabled, the system falls back to heuristic/rule-based behaviour.
 import os
 from typing import Protocol
 
+from packages.llm.providers import (
+    AnthropicProvider,
+    GrokProvider,
+    NVIDIAProvider,
+    OpenAIProvider,
+    OpenRouterProvider,
+    create_provider,
+)
+
 
 class LLMProvider(Protocol):
     """Protocol for LLM providers."""

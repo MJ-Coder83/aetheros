@@ -1,5 +1,8 @@
-import type { TapeEntry } from "@/types";
+"use client";
+
+import { motion } from "framer-motion";
 import { Sparkline } from "./sparkline";
+import type { TapeEntry } from "@/types";
 
 interface HealthSparklinesProps {
   tapeEntries: TapeEntry[];
@@ -96,34 +99,58 @@ export function HealthSparklines({ tapeEntries }: HealthSparklinesProps) {
   const simSuccessData = deriveSimSuccessRate(tapeEntries);
 
   return (
-    <div className="flex-1 bg-card rounded border border-border p-2">
-      <span className="text-[10px] font-semibold text-foreground mb-2 block">
+    <motion.div
+      className="flex-1 rounded-lg p-2 relative overflow-hidden"
+      style={{
+        background: `
+          linear-gradient(135deg, rgba(34, 211, 238, 0.02) 0%, transparent 50%, rgba(16, 185, 129, 0.02) 100%),
+          rgba(15, 22, 41, 0.7)
+        `,
+        backdropFilter: "blur(16px)",
+        border: "1px solid rgba(34, 211, 238, 0.1)",
+        boxShadow: "inset 0 1px 0 rgba(34, 211, 238, 0.04), 0 4px 8px rgba(0, 0, 0, 0.2)",
+      }}
+      initial={{ opacity: 0, x: 8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.6 }}
+    >
+      {/* Animated glow overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse at bottom left, rgba(16, 185, 129, 0.04) 0%, transparent 50%)",
+        }}
+      />
+
+      <span className="text-[10px] font-semibold text-foreground mb-2 block tracking-wide relative z-10">
         HEALTH
       </span>
-      <div className="space-y-2">
+      <div className="space-y-2 relative z-10">
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-muted-foreground w-20">Event rate</span>
-          <Sparkline data={eventRateData} width={100} height={16} color="cyan" />
+          <span className="text-[9px] text-muted-foreground w-20 font-[family-name:var(--font-plex-mono)]">Event rate</span>
+          <Sparkline data={eventRateData} width={100} height={16} color="cyan" animated />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-muted-foreground w-20">Approval rate</span>
+          <span className="text-[9px] text-muted-foreground w-20 font-[family-name:var(--font-plex-mono)]">Approval rate</span>
           <Sparkline
             data={approvalRateData}
             width={100}
             height={16}
             color="emerald"
+            animated
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-muted-foreground w-20">Sim success</span>
+          <span className="text-[9px] text-muted-foreground w-20 font-[family-name:var(--font-plex-mono)]">Sim success</span>
           <Sparkline
             data={simSuccessData}
             width={100}
             height={16}
             color="emerald"
+            animated
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

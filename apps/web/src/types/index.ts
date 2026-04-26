@@ -575,3 +575,29 @@ export interface MarketplaceSearchParams {
   limit?: number;
   offset?: number;
 }
+
+// ── Settings / Provider Selector ──
+
+export interface ProviderInfo {
+  provider_id: string;
+  display_name: string;
+  base_url: string;
+  icon: string | null;
+  models: string[];
+  has_key_configured: boolean;
+  selected_model: string | null;
+}
+
+export interface Settings {
+  active_provider_id: string;
+  active_model_id: string;
+  provider_keys: Record<string, string>;
+  default_models: Record<string, string>;
+}
+
+export interface ConnectionTestResult {
+  provider_id: string;
+  success: boolean;
+  message: string;
+  model_count: number | null;
+}

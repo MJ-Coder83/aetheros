@@ -1,16 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  Suspense,
+  useRef,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import {
   Network,
   Layers,
-  ArrowLeft,
   CheckCircle2,
   X,
   Cpu,
-  FlaskConical,
   Lightbulb,
   Users,
   History,
@@ -18,22 +23,16 @@ import {
   Terminal,
   Monitor,
   Puzzle,
-  Search,
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  ChevronRight,
-  ChevronDown,
   Folder,
   FileCode,
   GitBranch,
   Sparkles,
   AlertTriangle,
   ArrowRight,
-  Clock,
   Activity,
-  Eye,
-  EyeOff,
   Maximize2,
   LayoutGrid,
   Send,
@@ -43,12 +42,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type {
-  CanvasNode,
-  CanvasEdge,
-  CanvasLayout,
-  FolderItem,
-} from "@/types/canvas";
+import type { CanvasNode, CanvasEdge, CanvasLayout } from "@/types/canvas";
 import type {
   CopilotSuggestion,
   CopilotSuggestionType,
@@ -103,16 +97,23 @@ function CanvasPageContent() {
   const [nlLastResult, setNlLastResult] = useState<NLEditResult | null>(null);
 
   // Copilot state
-  const [copilotSuggestions, setCopilotSuggestions] = useState<CopilotSuggestion[]>([]);
+  const [copilotSuggestions, setCopilotSuggestions] = useState<
+    CopilotSuggestion[]
+  >([]);
 
-  // Simulation overlay data (mock)
-  const [simulationMetrics, setSimulationMetrics] = useState<Record<string, Record<string, SimulationMetric>>>({});
+  // Simulation overlay data
+  const [simulationMetrics, setSimulationMetrics] = useState<
+    Record<string, Record<string, SimulationMetric>>
+  >({});
 
-  // Tape overlay data (mock)
+  // Tape overlay data
   const [tapeEvents, setTapeEvents] = useState<TapeEventEntry[]>([]);
 
-  // Version history (mock)
+  // Version history
   const [versions, setVersions] = useState<CanvasVersion[]>([]);
+
+  // Error state
+  const [error, setError] = useState<string | null>(null);
 
   // Success banner
   const [showBanner, setShowBanner] = useState(isNewlyCreated);
@@ -124,24 +125,32 @@ function CanvasPageContent() {
     }
   }, [isNewlyCreated]);
 
-  // Load canvas data
+  // Load canvas data with proper error handling
   useEffect(() => {
     async function fetchCanvas() {
+      setError(null);
       try {
-        const res = await fetch(`/api/canvas/${domainId}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCanvasNodes(data.nodes ?? generateMockNodes());
-          setCanvasEdges(data.edges ?? generateMockEdges());
-          setCanvasLoaded(true);
-          return;
+        const res = await fetch(`/api/canvas/${encodeURIComponent(domainId)}`);
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => null);
+          throw new Error(
+            errorData?.detail || `Failed to load canvas: ${res.status}`,
+          );
         }
-      } catch {
-        // Fall through to mock data
+        const data = await res.json();
+        setCanvasNodes(data.nodes ?? []);
+        setCanvasEdges(data.edges ?? []);
+        setCanvasLoaded(true);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load canvas";
+        setError(message);
+        setCanvasNodes([]);
+        setCanvasEdges([]);
+        setCanvasLoaded(true);
+        // Log to console for debugging
+        console.error("Canvas load error:", err);
       }
-      setCanvasNodes(generateMockNodes());
-      setCanvasEdges(generateMockEdges());
-      setCanvasLoaded(true);
     }
     fetchCanvas();
   }, [domainId]);
@@ -155,10 +164,10 @@ function CanvasPageContent() {
         setCopilotSuggestions(data.suggestions ?? []);
         return;
       }
-    } catch {
-      // Use mock
+    } catch (err) {
+      console.error("Fetch error:", err);
     }
-    setCopilotSuggestions(generateMockSuggestions());
+    setCopilotSuggestions([]);
   }, [domainId]);
 
   // Fetch simulation overlay
@@ -170,10 +179,10 @@ function CanvasPageContent() {
         setSimulationMetrics(data.overlay ?? {});
         return;
       }
-    } catch {
-      // Use mock
+    } catch (err) {
+      console.error("Fetch error:", err);
     }
-    setSimulationMetrics(generateMockSimulationMetrics(canvasNodes));
+    setSimulationMetrics({});
   }, [domainId, canvasNodes]);
 
   // Fetch tape overlay
@@ -185,10 +194,10 @@ function CanvasPageContent() {
         setTapeEvents(data.events ?? []);
         return;
       }
-    } catch {
-      // Use mock
+    } catch (err) {
+      console.error("Fetch error:", err);
     }
-    setTapeEvents(generateMockTapeEvents());
+    setTapeEvents([]);
   }, [domainId]);
 
   // Fetch version history
@@ -200,10 +209,10 @@ function CanvasPageContent() {
         setVersions(data.versions ?? []);
         return;
       }
-    } catch {
-      // Use mock
+    } catch (err) {
+      console.error("Fetch error:", err);
     }
-    setVersions(generateMockVersions());
+    setVersions([]);
   }, [domainId]);
 
   // NL edit handler
@@ -228,7 +237,7 @@ function CanvasPageContent() {
           setCanvasEdges(canvasData.edges ?? canvasEdges);
         }
       }
-    } catch {
+    } catch (err) {
       setNlLastResult({
         edit_id: "error",
         instruction: nlInput,
@@ -245,14 +254,15 @@ function CanvasPageContent() {
   // Swarm handler
   const handleSwarm = useCallback(
     async (mode: SwarmMode) => {
-      const task = mode === "quick" ? "Optimize layout" : "Reorganize domain structure";
+      const task =
+        mode === "quick" ? "Optimize layout" : "Reorganize domain structure";
       try {
         await fetch(`/api/canvas/${domainId}/swarm`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ task, mode }),
         });
-      } catch {
+      } catch (err) {
         // Silent
       }
     },
@@ -351,7 +361,10 @@ function CanvasPageContent() {
             />
             <div className="h-4 w-px bg-white/[0.06] mx-1" />
             <SwarmButton mode="quick" onClick={() => handleSwarm("quick")} />
-            <SwarmButton mode="governed" onClick={() => handleSwarm("governed")} />
+            <SwarmButton
+              mode="governed"
+              onClick={() => handleSwarm("governed")}
+            />
           </div>
 
           {/* Right: Layout + View mode */}
@@ -375,7 +388,8 @@ function CanvasPageContent() {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                 <span className="text-xs font-medium text-emerald-300">
-                  Canvas v5 ready -- visual development environment with Co-Pilot, Swarms, and AetherGit versioning
+                  Canvas v5 ready -- visual development environment with
+                  Co-Pilot, Swarms, and AetherGit versioning
                 </span>
               </div>
               <button
@@ -419,9 +433,16 @@ function CanvasPageContent() {
 
                 {/* Tape overlay particles */}
                 {showTapeOverlay &&
-                  tapeEvents.slice(0, 10).map((event, i) => (
-                    <TapeParticle key={event.event_id} event={event} nodes={canvasNodes} index={i} />
-                  ))}
+                  tapeEvents
+                    .slice(0, 10)
+                    .map((event, i) => (
+                      <TapeParticle
+                        key={event.event_id}
+                        event={event}
+                        nodes={canvasNodes}
+                        index={i}
+                      />
+                    ))}
 
                 {/* Nodes */}
                 {canvasNodes.map((node) => (
@@ -431,7 +452,9 @@ function CanvasPageContent() {
                     isSelected={selectedNodeId === node.id}
                     onSelect={setSelectedNodeId}
                     simulationMetrics={
-                      showSimulationOverlay ? simulationMetrics[node.id] : undefined
+                      showSimulationOverlay
+                        ? simulationMetrics[node.id]
+                        : undefined
                     }
                   />
                 ))}
@@ -550,11 +573,17 @@ function CanvasPageContent() {
 
               <div className="flex-1 overflow-auto">
                 {showCopilot ? (
-                  <CopilotPanel suggestions={copilotSuggestions} domainId={domainId} />
+                  <CopilotPanel
+                    suggestions={copilotSuggestions}
+                    domainId={domainId}
+                  />
                 ) : showVersionHistory ? (
                   <VersionPanel versions={versions} domainId={domainId} />
                 ) : selectedNode ? (
-                  <NodeDetailsPanel node={selectedNode} metrics={simulationMetrics[selectedNode.id]} />
+                  <NodeDetailsPanel
+                    node={selectedNode}
+                    metrics={simulationMetrics[selectedNode.id]}
+                  />
                 ) : (
                   <EmptyPanel />
                 )}
@@ -602,7 +631,13 @@ function FeatureToggle({
   );
 }
 
-function SwarmButton({ mode, onClick }: { mode: SwarmMode; onClick: () => void }) {
+function SwarmButton({
+  mode,
+  onClick,
+}: {
+  mode: SwarmMode;
+  onClick: () => void;
+}) {
   const isQuick = mode === "quick";
   return (
     <button
@@ -614,7 +649,11 @@ function SwarmButton({ mode, onClick }: { mode: SwarmMode; onClick: () => void }
           : "text-amber-400 border border-amber-400/15 hover:bg-amber-400/5",
       )}
     >
-      {isQuick ? <Zap className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
+      {isQuick ? (
+        <Zap className="h-3.5 w-3.5" />
+      ) : (
+        <Shield className="h-3.5 w-3.5" />
+      )}
       <span className="hidden lg:inline">{isQuick ? "Quick" : "Governed"}</span>
     </button>
   );
@@ -664,7 +703,11 @@ function LayoutSelector({
   layout: CanvasLayout;
   onChange: (l: CanvasLayout) => void;
 }) {
-  const options: { value: CanvasLayout; label: string; icon: React.ElementType }[] = [
+  const options: {
+    value: CanvasLayout;
+    label: string;
+    icon: React.ElementType;
+  }[] = [
     { value: "smart", label: "Smart Auto", icon: Cpu },
     { value: "layered", label: "Layered", icon: LayoutGrid },
     { value: "hub-and-spoke", label: "Hub & Spoke", icon: Network },
@@ -812,7 +855,12 @@ function NodeCardV5({
       <div className="flex items-center gap-2 mb-1.5">
         <span className="text-inkos-cyan">{iconEl}</span>
         <span className="text-xs font-semibold truncate">{node.label}</span>
-        <span className={cn("ml-auto text-[9px] font-mono uppercase px-1 py-0.5 rounded border", colorClass)}>
+        <span
+          className={cn(
+            "ml-auto text-[9px] font-mono uppercase px-1 py-0.5 rounded border",
+            colorClass,
+          )}
+        >
           {typeKey}
         </span>
       </div>
@@ -833,8 +881,10 @@ function NodeCardV5({
                 key={name}
                 className={cn(
                   "text-[8px] font-mono px-1 py-0.5 rounded",
-                  metric.status === "normal" && "bg-emerald-500/10 text-emerald-400",
-                  metric.status === "warning" && "bg-amber-500/10 text-amber-400",
+                  metric.status === "normal" &&
+                    "bg-emerald-500/10 text-emerald-400",
+                  metric.status === "warning" &&
+                    "bg-amber-500/10 text-amber-400",
                   metric.status === "critical" && "bg-red-500/10 text-red-400",
                 )}
               >
@@ -875,7 +925,10 @@ function EdgeLine({ edge, nodes }: { edge: CanvasEdge; nodes: CanvasNode[] }) {
   };
 
   return (
-    <svg className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%" }}>
+    <svg
+      className="absolute inset-0 pointer-events-none"
+      style={{ width: "100%", height: "100%" }}
+    >
       <line
         x1={sx}
         y1={sy}
@@ -900,8 +953,12 @@ function TapeParticle({
   nodes: CanvasNode[];
   index: number;
 }) {
-  const source = event.source_node_id ? nodes.find((n) => n.id === event.source_node_id) : null;
-  const target = event.target_node_id ? nodes.find((n) => n.id === event.target_node_id) : null;
+  const source = event.source_node_id
+    ? nodes.find((n) => n.id === event.source_node_id)
+    : null;
+  const target = event.target_node_id
+    ? nodes.find((n) => n.id === event.target_node_id)
+    : null;
   if (source == null || target == null) return null;
 
   const sx = source.x + source.width / 2;
@@ -942,10 +999,13 @@ function CopilotPanel({
       if (!suggestion.auto_applicable) return;
       setApplyingId(suggestion.suggestion_id);
       try {
-        await fetch(`/api/canvas/${domainId}/copilot/${suggestion.suggestion_id}/apply`, {
-          method: "POST",
-        });
-      } catch {
+        await fetch(
+          `/api/canvas/${domainId}/copilot/${suggestion.suggestion_id}/apply`,
+          {
+            method: "POST",
+          },
+        );
+      } catch (err) {
         // Silent
       }
       setApplyingId(null);
@@ -980,7 +1040,9 @@ function CopilotPanel({
           <Sparkles className="h-3.5 w-3.5 text-inkos-purple" />
           Prime Co-Pilot
         </h3>
-        <span className="text-[10px] text-muted-foreground/50">{suggestions.length} suggestions</span>
+        <span className="text-[10px] text-muted-foreground/50">
+          {suggestions.length} suggestions
+        </span>
       </div>
 
       {suggestions.length === 0 ? (
@@ -990,7 +1052,8 @@ function CopilotPanel({
       ) : (
         suggestions.map((s) => {
           const Icon = typeIcons[s.suggestion_type] ?? Lightbulb;
-          const color = typeColors[s.suggestion_type] ?? "text-muted-foreground";
+          const color =
+            typeColors[s.suggestion_type] ?? "text-muted-foreground";
           return (
             <motion.div
               key={s.suggestion_id}
@@ -1001,7 +1064,9 @@ function CopilotPanel({
               <div className="flex items-start gap-2">
                 <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", color)} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">{s.title}</p>
+                  <p className="text-xs font-semibold text-foreground">
+                    {s.title}
+                  </p>
                   <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
                     {s.description}
                   </p>
@@ -1027,7 +1092,9 @@ function CopilotPanel({
                         disabled={applyingId === s.suggestion_id}
                         className="ml-auto text-[9px] font-medium px-2 py-0.5 rounded bg-inkos-cyan/10 text-inkos-cyan border border-inkos-cyan/15 hover:bg-inkos-cyan/20 transition-all disabled:opacity-30"
                       >
-                        {applyingId === s.suggestion_id ? "Applying..." : "Apply"}
+                        {applyingId === s.suggestion_id
+                          ? "Applying..."
+                          : "Apply"}
                       </button>
                     )}
                   </div>
@@ -1053,8 +1120,10 @@ function VersionPanel({
   const handleRewind = useCallback(
     async (version: number) => {
       try {
-        await fetch(`/api/canvas/${domainId}/versions/${version}/rewind`, { method: "POST" });
-      } catch {
+        await fetch(`/api/canvas/${domainId}/versions/${version}/rewind`, {
+          method: "POST",
+        });
+      } catch (err) {
         // Silent
       }
     },
@@ -1069,7 +1138,9 @@ function VersionPanel({
       </h3>
 
       {versions.length === 0 ? (
-        <div className="text-xs text-muted-foreground text-center py-8">No versions saved yet</div>
+        <div className="text-xs text-muted-foreground text-center py-8">
+          No versions saved yet
+        </div>
       ) : (
         versions.map((v) => (
           <div
@@ -1120,11 +1191,17 @@ function NodeDetailsPanel({
       <div className="space-y-2">
         <DetailRow label="Label" value={node.label} />
         <DetailRow label="Type" value={node.type} />
-        {node.folderPath && <DetailRow label="Path" value={node.folderPath} mono />}
+        {node.folderPath && (
+          <DetailRow label="Path" value={node.folderPath} mono />
+        )}
         {node.description && (
           <div>
-            <span className="text-[10px] text-muted-foreground uppercase">Description</span>
-            <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{node.description}</p>
+            <span className="text-[10px] text-muted-foreground uppercase">
+              Description
+            </span>
+            <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+              {node.description}
+            </p>
           </div>
         )}
       </div>
@@ -1163,11 +1240,23 @@ function NodeDetailsPanel({
   );
 }
 
-function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function DetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div>
-      <span className="text-[10px] text-muted-foreground uppercase">{label}</span>
-      <p className={cn("text-xs", mono && "font-mono text-muted-foreground")}>{value}</p>
+      <span className="text-[10px] text-muted-foreground uppercase">
+        {label}
+      </span>
+      <p className={cn("text-xs", mono && "font-mono text-muted-foreground")}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -1178,7 +1267,9 @@ function EmptyPanel() {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <Network className="h-8 w-8 text-muted-foreground/20 mb-3" />
-      <p className="text-xs text-muted-foreground/50">Select a node to view details</p>
+      <p className="text-xs text-muted-foreground/50">
+        Select a node to view details
+      </p>
     </div>
   );
 }
@@ -1190,7 +1281,9 @@ function FolderModeView() {
     <div className="flex flex-col flex-1 min-h-0">
       <div className="px-4 py-2 border-b border-white/[0.04] flex items-center gap-2">
         <Layers className="h-3.5 w-3.5 text-inkos-cyan" />
-        <span className="text-xs font-medium text-muted-foreground">Folder Tree View</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          Folder Tree View
+        </span>
         <span className="text-[10px] text-muted-foreground/50 ml-2">
           Synchronized with visual canvas
         </span>
@@ -1202,234 +1295,12 @@ function FolderModeView() {
       </div>
     </div>
   );
+
+  /* ═══════════════════════════════════════════════════════════════════
+Licensed under MIT - InkosAI Technical Debt Cleanup
+═══════════════════════════════════════════════════════════════════ */
+
+  // Add closing brace for FolderModeView function
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   Mock Data Generators
-   ═══════════════════════════════════════════════════════════════════ */
-
-function generateMockNodes(): CanvasNode[] {
-  return [
-    {
-      id: "domain-1",
-      type: "domain",
-      label: "Legal Research Domain",
-      status: "active",
-      x: 350,
-      y: 40,
-      width: 200,
-      height: 70,
-      description: "Contract analysis and compliance checking domain",
-      metadata: {},
-      folderPath: "/",
-    },
-    {
-      id: "agent-1",
-      type: "agent",
-      label: "Contract Analyst",
-      status: "active",
-      x: 120,
-      y: 170,
-      width: 170,
-      height: 85,
-      description: "Analyzes legal contracts for risks and obligations",
-      metadata: {},
-      folderPath: "/agents/contract_analyst",
-    },
-    {
-      id: "agent-2",
-      type: "agent",
-      label: "Compliance Checker",
-      status: "idle",
-      x: 360,
-      y: 170,
-      width: 170,
-      height: 85,
-      description: "Validates regulatory compliance",
-      metadata: {},
-      folderPath: "/agents/compliance_checker",
-    },
-    {
-      id: "skill-1",
-      type: "skill",
-      label: "contract_analysis.py",
-      status: "active",
-      x: 120,
-      y: 320,
-      width: 170,
-      height: 60,
-      description: "Contract parsing and clause extraction",
-      metadata: {},
-      folderPath: "/skills/contract_analysis.py",
-    },
-    {
-      id: "skill-2",
-      type: "skill",
-      label: "risk_scoring.py",
-      status: "active",
-      x: 360,
-      y: 320,
-      width: 170,
-      height: 60,
-      description: "Risk assessment algorithms",
-      metadata: {},
-      folderPath: "/skills/risk_scoring.py",
-    },
-    {
-      id: "browser-1",
-      type: "browser",
-      label: "Contract Preview",
-      status: "active",
-      x: 600,
-      y: 170,
-      width: 170,
-      height: 85,
-      description: "Live HTML preview of contract UI",
-      metadata: {},
-      folderPath: "/ui/contract_preview",
-    },
-    {
-      id: "wf-1",
-      type: "workflow",
-      label: "Full Contract Review",
-      status: "active",
-      x: 280,
-      y: 440,
-      width: 200,
-      height: 70,
-      description: "End-to-end contract review workflow",
-      metadata: {},
-      folderPath: "/workflows/full_contract_review",
-    },
-  ];
-}
-
-function generateMockEdges(): CanvasEdge[] {
-  return [
-    { id: "e1", source: "domain-1", target: "agent-1", type: "group", metadata: {} },
-    { id: "e2", source: "domain-1", target: "agent-2", type: "group", metadata: {} },
-    { id: "e3", source: "domain-1", target: "browser-1", type: "group", metadata: {} },
-    { id: "e4", source: "agent-1", target: "skill-1", type: "dependency", metadata: {} },
-    { id: "e5", source: "agent-2", target: "skill-2", type: "dependency", metadata: {} },
-    { id: "e6", source: "agent-1", target: "wf-1", type: "flow", label: "inputs", metadata: {} },
-    { id: "e7", source: "agent-2", target: "wf-1", type: "flow", label: "validates", metadata: {} },
-    { id: "e8", source: "skill-1", target: "wf-1", type: "data", metadata: {} },
-  ];
-}
-
-function generateMockSuggestions(): CopilotSuggestion[] {
-  return [
-    {
-      suggestion_id: "s1",
-      suggestion_type: "best_practice",
-      title: "Add a Terminal node",
-      description: "Consider adding a TUI node for command-line interaction with the domain.",
-      confidence: 0.85,
-      impact: "medium",
-      target_node_ids: [],
-      auto_applicable: false,
-      details: {},
-    },
-    {
-      suggestion_id: "s2",
-      suggestion_type: "layout_optimization",
-      title: "Reduce edge crossings",
-      description: "Switching to clustered layout would improve readability.",
-      confidence: 0.75,
-      impact: "medium",
-      target_node_ids: [],
-      auto_applicable: true,
-      details: {},
-    },
-    {
-      suggestion_id: "s3",
-      suggestion_type: "missing_connection",
-      title: "Compliance Checker lacks skill access",
-      description: "Connect the compliance checker to risk_scoring.py for better analysis.",
-      confidence: 0.7,
-      impact: "low",
-      target_node_ids: ["agent-2"],
-      auto_applicable: false,
-      details: {},
-    },
-  ];
-}
-
-function generateMockSimulationMetrics(
-  nodes: CanvasNode[],
-): Record<string, Record<string, SimulationMetric>> {
-  const metrics: Record<string, Record<string, SimulationMetric>> = {};
-  for (const node of nodes) {
-    if (node.type === "agent" || node.type === "skill") {
-      metrics[node.id] = {
-        exec_time: {
-          metric_name: "exec_time",
-          value: Math.random() * 3 + 0.5,
-          unit: "ms",
-          status: "normal",
-          trend: "stable",
-        },
-        success_rate: {
-          metric_name: "success_rate",
-          value: Math.random() * 0.3 + 0.7,
-          unit: "%",
-          status: "normal",
-          trend: "improving",
-        },
-      };
-    }
-  }
-  return metrics;
-}
-
-function generateMockTapeEvents(): TapeEventEntry[] {
-  return [
-    {
-      event_id: "te1",
-      event_type: "canvas.node_added",
-      agent_id: "prime",
-      source_node_id: "domain-1",
-      target_node_id: "agent-1",
-      payload: {},
-      direction: "through",
-    },
-    {
-      event_id: "te2",
-      event_type: "canvas.edge_added",
-      agent_id: "canvas-service",
-      source_node_id: "agent-1",
-      target_node_id: "skill-1",
-      payload: {},
-      direction: "through",
-    },
-  ];
-}
-
-function generateMockVersions(): CanvasVersion[] {
-  return [
-    {
-      version: 1,
-      canvas_id: "mock-id",
-      domain_id: "demo-domain",
-      commit_message: "Initial canvas creation",
-      author: "system",
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-    },
-    {
-      version: 2,
-      canvas_id: "mock-id",
-      domain_id: "demo-domain",
-      commit_message: "Added compliance checker agent",
-      author: "prime",
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-    },
-    {
-      version: 3,
-      canvas_id: "mock-id",
-      domain_id: "demo-domain",
-      commit_message: "Applied smart auto-layout",
-      author: "copilot",
-      created_at: new Date().toISOString(),
-    },
-  ];
-}
+export {}; // Module boundary

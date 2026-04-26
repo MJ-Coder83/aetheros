@@ -1,9 +1,14 @@
+"use client";
+
+import { motion } from "framer-motion";
+
 interface SparklineProps {
   data: number[];
   width?: number;
   height?: number;
   color?: "cyan" | "emerald" | "amber" | "violet";
   strokeWidth?: number;
+  animated?: boolean;
 }
 
 const colorMap: Record<NonNullable<SparklineProps["color"]>, string> = {
@@ -19,6 +24,7 @@ export function Sparkline({
   height = 16,
   color = "cyan",
   strokeWidth = 1.5,
+  animated = false,
 }: SparklineProps) {
   if (!data || data.length < 2) return null;
 
@@ -34,6 +40,76 @@ export function Sparkline({
     })
     .join(" ");
 
+  const strokeColor = colorMap[color];
+
+  if (animated) {
+    return (
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        className="overflow-visible"
+      >
+        {/* Glow effect underneath */}
+        <motion.polyline
+          points={points}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={strokeWidth * 2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 0.3 }}
+          transition={{
+            duration: 1.5,
+            ease: "easeOut",
+            repeat: Infinity,
+            repeatDelay: 0.5,
+          }}
+        />
+        {/* Main line */}
+        <motion.polyline
+          points={points}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{
+            duration: 1,
+            ease: "easeOut",
+            repeat: Infinity,
+            repeatDelay: 2,
+          }}
+        />
+        {/* Data point highlights */}
+        {data.map((_, index) => {
+          const x = (index / (data.length - 1)) * width;
+          const y = height - ((data[index] - min) / range) * (height - 2) - 1;
+          return (
+            <motion.circle
+              key={index}
+              cx={x}
+              cy={y}
+              r={2}
+              fill={strokeColor}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: [0, 1, 0], scale: [0, 1.5, 0] }}
+              transition={{
+                duration: 2,
+                delay: index * 0.1,
+                repeat: Infinity,
+                repeatDelay: 1,
+              }}
+            />
+          );
+        })}
+      </svg>
+    );
+  }
+
   return (
     <svg
       width={width}
@@ -44,7 +120,7 @@ export function Sparkline({
       <polyline
         points={points}
         fill="none"
-        stroke={colorMap[color]}
+        stroke={strokeColor}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"

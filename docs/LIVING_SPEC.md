@@ -268,6 +268,111 @@ The profile system uses a unified `UserProfile` model that embeds the `Intellige
    - Lucide icons are already tree-shakable via individual imports
    - Consider dynamic imports for heavy canvas features
 
+## Planning Methodologies Integration
+
+InkosAI officially supports three leading AI planning methodologies as first-class Domains and Plugins:
+
+### Gastown Domain
+
+Multi-agent workspace orchestration domain providing persistent coordination, session management, and resource allocation for distributed agent systems.
+
+**Key Agents:**
+- Workspace Manager — Initializes and maintains multi-agent workspaces
+- Agent Coordinator — Orchestrates agent interactions and message routing
+- Session Manager — Manages session lifecycles and recovery
+- Resource Allocator — Distributes computational resources
+- Task Distributor — Matches tasks to agents with appropriate capabilities
+
+**Key Workflows:**
+- Workspace Initialization
+- Multi-Agent Coordination
+- Session Lifecycle Management
+
+**Visual Style:** Indigo (#6366f1)
+
+### GSD Domain (Get Shit Done)
+
+Meta-prompting and phase-based autonomous development domain providing structured development cycles with context engineering and quality validation at each phase.
+
+**Key Agents:**
+- Phase Manager — Orchestrates the 6 GSD phases
+- Context Engineer — Optimizes context for agent effectiveness
+- Meta-Prompt Designer — Designs and refines meta-prompts
+- Execution Tracker — Monitors task execution and identifies blockers
+- Quality Validator — Enforces quality gates
+- Implementation Builder — Executes implementation phase
+
+**GSD Phases:**
+1. Research
+2. Design
+3. Implement
+4. Test
+5. Deploy
+6. Validate
+
+**Visual Style:** Emerald (#10b981)
+
+### BMAD Domain
+
+Breakthrough Method for Agile AI-Driven Development providing sprint-based planning with multi-track coordination and breakthrough facilitation.
+
+**Key Agents:**
+- Sprint Planner — Plans sprints and coordinates across tracks
+- Breakthrough Facilitator — Facilitates creative problem-solving sessions
+- Agile Coach — Guides agile practices and ceremonies
+- Track Coordinator — Manages Research, Design, Build, Review tracks
+- Sprint Reviewer — Conducts sprint reviews and gathers feedback
+- Implementation Executor — Executes sprint backlog items
+
+**Key Workflows:**
+- BMAD Sprint Cycle
+- Breakthrough Session
+- Track Coordination Flow
+
+**Visual Style:** Amber (#f59e0b)
+
+### Planning Super Domain
+
+Unified planning environment combining Gastown, GSD, and BMAD methodologies with smart Prime orchestration and intelligent methodology selection.
+
+**Key Agents:**
+- Planning Orchestrator — Coordinates across all methodologies
+- Methodology Selector — Recommends optimal methodology mix
+- Conflict Resolver — Detects and resolves methodology conflicts
+- Hybrid Tracker — Tracks progress across hybrid workflows
+- Gastown Liaison — Bridges to Gastown methodology
+- GSD Liaison — Bridges to GSD methodology
+- BMAD Liaison — Bridges to BMAD methodology
+
+**Key Workflows:**
+- Hybrid Planning Pipeline
+- Cross-Methodology Swarm
+- Conflict Resolution Workflow
+
+**Visual Style:** Violet (#8b5cf6)
+
+### Cross-Methodology Swarm Support
+
+**Hybrid Patterns:**
+- GSD Research → BMAD Sprint Planning
+- Gastown Execution → BMAD Sprint Review
+- GSD Context Engineering → Gastown Coordination
+- BMAD Breakthrough → GSD Build Phase
+- Full Hybrid (all three methodologies)
+
+**Conflict Resolution:**
+- Debate Arena for agent discussions
+- Simulation Engine for outcome prediction
+- Prime Override for final decisions
+- Methodology hierarchy (GSD > BMAD > Gastown for conflicts)
+
+### Plugin Marketplace
+
+Official plugins available for each methodology:
+- `gastown-plugin` — Workspace orchestration commands
+- `gsd-plugin` — Phase management and meta-prompting
+- `bmad-plugin` — Sprint planning and breakthrough facilitation
+
 ## Tech Stack
 
 Python 3.13+, FastAPI, LangGraph, Pydantic v2, PostgreSQL, Next.js 16, shadcn/ui, AetherGit (custom), Tape (immutable log)

@@ -1,0 +1,85 @@
+{
+  "id": "bmad-plugin",
+  "name": "BMAD Planning Domain Plugin",
+  "version": "1.0.0",
+  "description": "Official InkosAI plugin for BMAD (Breakthrough Method for Agile AI-Driven Development). Provides sprint-based planning with breakthrough facilitation.",
+  "author": "InkosAI",
+  "homepage_url": "https://inkos.ai/plugins/bmad",
+  "repository_url": "https://github.com/inkosai/plugins/bmad",
+  "license": "MIT",
+  "plugin_type": "agent",
+  "permissions": [
+    "read",
+    "write",
+    "agent_comm",
+    "tape_read",
+    "tape_write",
+    "domain_read",
+    "domain_write"
+  ],
+  "commands": [
+    {
+      "name": "start_sprint",
+      "description": "Start a new BMAD sprint",
+      "parameters": {
+        "sprint_name": {"type": "string", "required": true},
+        "goals": {"type": "array", "required": true},
+        "duration_days": {"type": "integer", "required": false, "default": 14}
+      }
+    },
+    {
+      "name": "schedule_breakthrough",
+      "description": "Schedule a breakthrough session",
+      "parameters": {
+        "challenge": {"type": "string", "required": true},
+        "participants": {"type": "array", "required": true}
+      }
+    },
+    {
+      "name": "track_velocity",
+      "description": "Track team velocity metrics",
+      "parameters": {
+        "sprint_id": {"type": "string", "required": true}
+      }
+    },
+    {
+      "name": "coordinate_tracks",
+      "description": "Coordinate work across Research, Design, Build, Review tracks",
+      "parameters": {
+        "tracks": {"type": "array", "required": true},
+        "dependencies": {"type": "object", "required": false}
+      }
+    },
+    {
+      "name": "conduct_sprint_review",
+      "description": "Conduct sprint review and gather feedback",
+      "parameters": {
+        "sprint_id": {"type": "string", "required": true},
+        "deliverables": {"type": "array", "required": true}
+      }
+    }
+  ],
+  "event_subscriptions": [
+    {
+      "event_type": "sprint.started",
+      "description": "Track sprint lifecycle"
+    },
+    {
+      "event_type": "breakthrough.scheduled",
+      "description": "Track breakthrough sessions"
+    }
+  ],
+  "events_published": [
+    "bmad.sprint_started",
+    "bmad.sprint_completed",
+    "bmad.breakthrough_scheduled",
+    "bmad.breakthrough_completed",
+    "bmad.velocity_updated",
+    "bmad.track_coordinated"
+  ],
+  "tags": ["planning", "agile", "sprint", "breakthrough", "tracks"],
+  "category": "Planning",
+  "icon": "Rocket",
+  "min_platform_version": "1.0.0",
+  "target_domains": ["bmad"]
+}

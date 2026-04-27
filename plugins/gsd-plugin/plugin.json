@@ -1,0 +1,80 @@
+{
+  "id": "gsd-plugin",
+  "name": "GSD Planning Domain Plugin",
+  "version": "1.0.0",
+  "description": "Official InkosAI plugin for GSD (Get Shit Done) meta-prompting and phase-based autonomous development. Provides structured development cycles with context engineering.",
+  "author": "InkosAI",
+  "homepage_url": "https://inkos.ai/plugins/gsd",
+  "repository_url": "https://github.com/inkosai/plugins/gsd",
+  "license": "MIT",
+  "plugin_type": "agent",
+  "permissions": [
+    "read",
+    "write",
+    "agent_comm",
+    "tape_read",
+    "tape_write",
+    "domain_read"
+  ],
+  "commands": [
+    {
+      "name": "start_phase",
+      "description": "Start a GSD development phase",
+      "parameters": {
+        "phase": {"type": "string", "required": true},
+        "context": {"type": "object", "required": false}
+      }
+    },
+    {
+      "name": "validate_phase_output",
+      "description": "Validate output from a phase against quality criteria",
+      "parameters": {
+        "phase": {"type": "string", "required": true},
+        "output": {"type": "object", "required": true}
+      }
+    },
+    {
+      "name": "optimize_context",
+      "description": "Optimize context for maximum agent effectiveness",
+      "parameters": {
+        "target_agent": {"type": "string", "required": true},
+        "context_data": {"type": "object", "required": true}
+      }
+    },
+    {
+      "name": "get_phase_status",
+      "description": "Get current phase execution status",
+      "parameters": {}
+    },
+    {
+      "name": "design_meta_prompt",
+      "description": "Design a meta-prompt for a specific task",
+      "parameters": {
+        "task_type": {"type": "string", "required": true},
+        "requirements": {"type": "object", "required": true}
+      }
+    }
+  ],
+  "event_subscriptions": [
+    {
+      "event_type": "phase.started",
+      "description": "Track phase transitions"
+    },
+    {
+      "event_type": "phase.validated",
+      "description": "Track phase validations"
+    }
+  ],
+  "events_published": [
+    "gsd.phase_started",
+    "gsd.phase_completed",
+    "gsd.phase_validated",
+    "gsd.context_optimized",
+    "gsd.meta_prompt_designed"
+  ],
+  "tags": ["planning", "phase-based", "meta-prompting", "context-engineering"],
+  "category": "Planning",
+  "icon": "Zap",
+  "min_platform_version": "1.0.0",
+  "target_domains": ["gsd"]
+}

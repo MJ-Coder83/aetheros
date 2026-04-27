@@ -455,3 +455,116 @@ Services: postgres, redis, api, plugin-sandbox
 - All events log to Tape (immutable audit log)
 - Console logging for debugging
 - Sentry integration ready (set `SENTRY_DSN`)
+
+## Production Readiness Phase 2
+
+### Observability
+
+**OpenTelemetry Tracing:**
+- Distributed tracing across FastAPI and key services
+- Automatic instrumentation via `opentelemetry-instrumentation-fastapi`
+- Export to Jaeger (OTLP HTTP endpoint at `http://localhost:4318`)
+- Manual span creation for critical paths:
+  ```python
+  from packages.observability.tracing import get_tracer, add_span_attribute
+  tracer = get_tracer("inkosai")
+  with tracer.start_as_current_span("domain_operation") as span:
+      span.set_attribute("domain.id", domain_id)
+  ```
+
+**Instrumentation Points:**
+- Domain creation/deletion
+- Swarm execution (start to completion)
+- Canvas operations (CRUD, layout, simulation)
+- Plugin execution (with status and duration)
+- Authentication events (login, logout, token refresh)
+
+### Structured Logging
+
+**Configuration:**
+- JSON format for production (`LOG_FORMAT=json`)
+- Correlation ID propagation via `correlation_id` context variable
+- Log record includes: `service`, `version`, `correlation_id`, `timestamp`
+
+**Usage:**
+```python
+from packages.observability.logging import get_logger, set_correlation_id
+logger = get_logger(__name__)
+set_correlation_id("req-123")
+logger.info("domain_created", domain_id="abc123", domain_type="user")
+```
+
+**Log Levels:**
+- `INFO`: Business events (authentication, domain creation)
+- `WARNING`: Degraded states (slow queries, rate limiting)
+- `ERROR`: Failures (DB unavailable, plugin crash)
+
+### Health & Readiness Endpoints
+
+**Endpoint Matrix:**
+| Endpoint | Purpose | K8s Use | Response |
+|----------|---------|---------|----------|
+| `/api/health` | Basic liveness | livenessProbe | `{"status": "healthy"}` |
+| `/api/live` | Process alive | livenessProbe | `{"status": "alive"}` |
+| `/api/ready` | Dependencies ready | readinessProbe | 200 or 503 |
+| `/api/health/detailed` | Full diagnostics | Monitoring | Complete check results |
+
+**Registered Health Checks:**
+- `database`: PostgreSQL connectivity (`SELECT 1`)
+- `redis`: Redis PING
+- `plugin_sandbox`: Filesystem writable
+- `disk_space`: /tmp usage (<80% healthy, <95% degraded)
+
+### Prometheus Metrics
+
+**HTTP Metrics:**
+- `inkosai_http_requests_total{method,endpoint,status_code}`
+- `inkosai_http_request_duration_seconds{method,endpoint}`
+
+**Business Metrics:**
+- `inkosai_domains_created_total{domain_type}`
+- `inkosai_swarm_invocations_total{domain}`
+- `inkosai_swarm_invocation_duration_seconds{domain}`
+- `inkosai_plugins_executed_total{plugin_id,status}`
+- `inkosai_canvas_operations_total{operation,canvas_type}`
+- `inkosai_auth_events_total{event_type,result}`
+
+**Infrastructure Metrics:**
+- `inkosai_db_connections_active`
+- `inkosai_redis_connections_active`
+- `inkosai_health_check_duration_seconds{check_type}`
+
+Metrics endpoint: `/api/metrics`
+
+### Monitoring Stack (Docker Compose)
+
+**Prometheus:** Port 9090
+- Scrapes metrics from API every 15s
+- 15-day retention
+- Targets: API, postgres-exporter, redis-exporter
+
+**Jaeger:** OTLP on ports 4317/4318, UI on 16686
+- Receives distributed traces
+- Service name: `inkosai-api`
+
+**Grafana:** Port 3001
+- Pre-configured with Prometheus datasource
+- Dashboard: "InkosAI Overview" (requests, domains, swarms, plugins)
+
+### Deployment Configuration
+
+**Production Environment:**
+See `.env.production` for complete production configuration template.
+
+**Required Security Values:**
+- `JWT_SECRET_KEY` (64-byte hex, generated with `openssl rand -hex 64`)
+- `DB_PASSWORD` (strong password)
+- `REDIS_PASSWORD` (strong password)
+- `ADMIN_PASSWORD` (strong password)
+
+**CI/CD Enhancements:**
+- Security scanning: Bandit (source), Safety (dependencies)
+- Container scanning: Trivy vulnerability scanner
+- Integration tests: Full stack with PostgreSQL + Redis
+- Artifact uploads: Security scan results
+- Conditional Docker push (main branch only)

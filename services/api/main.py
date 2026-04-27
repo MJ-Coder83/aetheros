@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from packages.health import create_health_router
+from packages.observability import setup_observability
 from services.api.database import init_db
 from services.api.middleware import (
     HealthCheckMiddleware,
@@ -36,7 +38,9 @@ from services.api.routes import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Application lifespan handler — initialise database on startup."""
+    """Application lifespan handler — initialise database and observability on startup."""
+    # Initialize observability (logging, tracing, metrics)
+    setup_observability(app)
     await init_db()
     yield
 
@@ -53,6 +57,8 @@ app.add_middleware(RateLimitMiddleware, max_requests=120, window_seconds=60)  # 
 app.add_middleware(HealthCheckMiddleware)
 
 # Include all routers
+# Health checks first (must be available for k8s probes)
+app.include_router(create_health_router())
 app.include_router(health.router)
 app.include_router(tape.router)
 app.include_router(aethergit.router)

@@ -106,11 +106,66 @@ services:
     command: ["deno", "repl"]
     profiles: ["sandbox"]
 
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    container_name: inkosai-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - default
+
+  # Jaeger for distributed tracing (receives OTLP)
+  jaeger:
+    image: jaegertracing/all-in-one:1.54
+    container_name: inkosai-jaeger
+    restart: unless-stopped
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC receiver
+      - "4318:4318"    # OTLP HTTP receiver
+    networks:
+      - default
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: inkosai-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    networks:
+      - default
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
   redis_data:
   tape_data:
   plugin_sandbox:
+  prometheus_data:
+  grafana_data:
 
 networks:
   default:

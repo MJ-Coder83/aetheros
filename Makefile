@@ -10,10 +10,10 @@ install: ## Install Python dependencies
 	uv sync
 
 dev: ## Start full development stack (backend + frontend)
-	@which concurrently > /dev/null 2>&1 || (cd apps/web && npm install)
-	@concurrently \
-		"docker compose up" \
-		"cd apps/web && npm run dev" \
+	@cd apps/web && npm install
+	@cd apps/web && npx concurrently \
+		"cd .. && docker compose up" \
+		"npm run dev" \
 		--names "backend,frontend" \
 		--prefix-colors "blue,cyan" \
 		--kill-others-on-fail

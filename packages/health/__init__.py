@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 from packages.health.checks import (
+    CheckResult,
     HealthChecker,
     HealthStatus,
-    CheckResult,
     check_database,
-    check_redis,
     check_plugin_sandbox,
+    check_redis,
 )
 from packages.health.routes import create_health_router
 
 __all__ = [
+    "CheckResult",
     "HealthChecker",
     "HealthStatus",
-    "CheckResult",
     "check_database",
-    "check_redis",
     "check_plugin_sandbox",
+    "check_redis",
     "create_health_router",
 ]

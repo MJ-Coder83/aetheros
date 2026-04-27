@@ -11,16 +11,16 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
 
 from packages.observability.logging import configure_logging, get_logger
-from packages.observability.tracing import configure_tracing, get_tracer
 from packages.observability.metrics import configure_metrics, get_meter
+from packages.observability.tracing import configure_tracing, get_tracer
 
 __all__ = [
     "configure_logging",
-    "configure_tracing",
     "configure_metrics",
+    "configure_tracing",
     "get_logger",
-    "get_tracer",
     "get_meter",
+    "get_tracer",
     "setup_observability",
 ]
 

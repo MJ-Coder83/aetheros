@@ -1,13 +1,13 @@
 """Observability and metrics tests."""
 
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from packages.observability.logging import (
-    set_correlation_id,
-    get_correlation_id,
     add_correlation_id,
     add_service_info,
+    get_correlation_id,
+    set_correlation_id,
 )
 
 
@@ -74,11 +74,11 @@ class TestMetrics:
     def test_metrics_imports(self) -> None:
         """Test metrics module imports correctly."""
         from packages.observability.metrics import (
-            http_requests_total,
-            http_request_duration,
             domains_created_total,
-            swarm_invocations_total,
+            http_request_duration,
+            http_requests_total,
             plugins_executed_total,
+            swarm_invocations_total,
         )
 
         assert http_requests_total is not None

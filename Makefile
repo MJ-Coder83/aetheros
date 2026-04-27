@@ -1,4 +1,4 @@
-.PHONY: dev test lint run-api install format typecheck clean help
+.PHONY: dev dev-full test lint run-api install format typecheck clean help start stop
 .PHONY: worktree-add worktree-list worktree-remove worktree-clean
 
 # Default target
@@ -9,23 +9,38 @@ help: ## Show this help
 install: ## Install Python dependencies
 	uv sync
 
-dev: ## Start the API dev server with hot reload
-	uvicorn services.api.main:app --reload --host 0.0.0.0 --port 8000
+dev: ## Start full development stack (backend + frontend)
+	@which concurrently > /dev/null 2>&1 || (cd apps/web && npm install)
+	@concurrently \
+		"docker compose up" \
+		"cd apps/web && npm run dev" \
+		--names "backend,frontend" \
+		--prefix-colors "blue,cyan" \
+		--kill-others-on-fail
+
+dev-api: ## Start the API dev server with hot reload
+	uv run uvicorn services.api.main:app --reload --host 0.0.0.0 --port 8000
+
+start: ## Start production-like stack in background
+	@docker compose up -d
+
+stop: ## Stop all running containers
+	@docker compose down
 
 run-api: ## Start the API server (production)
-	uvicorn services.api.main:app --host 0.0.0.0 --port 8000 --workers 4
+	uv run uvicorn services.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 test: ## Run the test suite
-	pytest tests/ -v --tb=short
+	uv run pytest tests/ -v --tb=short
 
 lint: ## Run ruff linter
-	ruff check . --fix
+	uv run ruff check . --fix
 
 format: ## Run ruff formatter
-	ruff format .
+	uv run ruff format .
 
 typecheck: ## Run mypy type checking
-	mypy packages/ services/ --ignore-missing-imports
+	uv run mypy packages/ services/ --ignore-missing-imports
 
 clean: ## Remove build artifacts and caches
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

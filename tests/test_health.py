@@ -1,9 +1,8 @@
 """Health check endpoint tests."""
 
 import pytest
-from fastapi import status
 
-from packages.health.checks import HealthStatus, CheckResult
+from packages.health.checks import CheckResult, HealthStatus
 
 
 class TestHealthChecks:

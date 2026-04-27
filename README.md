@@ -40,6 +40,21 @@ open http://localhost:3000
 
 ### Development Setup
 
+**One-command startup (recommended):**
+
+```bash
+# Start full development stack (backend + frontend)
+make dev
+
+# Or start production-like stack in background
+make start
+
+# Stop everything
+make stop
+```
+
+**Manual setup:**
+
 ```bash
 # Install dependencies
 uv sync

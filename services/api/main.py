@@ -12,8 +12,8 @@ from services.api.middleware import (
     HealthCheckMiddleware,
     RateLimitMiddleware,
     RequestIDMiddleware,
-    SecurityHeadersMiddleware,
     RequestSizeLimitMiddleware,
+    SecurityHeadersMiddleware,
 )
 from services.api.routes import (
     aethergit,

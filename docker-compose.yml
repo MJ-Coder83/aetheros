@@ -1,8 +1,6 @@
 # InkosAI Production Docker Compose
 # Includes: PostgreSQL, Redis, and the API server
 
-version: "3.8"
-
 services:
   # PostgreSQL Database
   postgres:

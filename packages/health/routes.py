@@ -8,7 +8,6 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from packages.health.checks import (
-    HealthChecker,
     HealthStatus,
     check_database,
     check_disk_space,

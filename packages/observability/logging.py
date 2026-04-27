@@ -9,7 +9,7 @@ from typing import Any
 
 import structlog
 from structlog.processors import JSONRenderer, TimeStamper
-from structlog.stdlib import filter_by_level, LoggerFactory
+from structlog.stdlib import LoggerFactory, filter_by_level
 
 # Context variable for correlation/request ID
 correlation_id: ContextVar[str | None] = ContextVar("correlation_id", default=None)

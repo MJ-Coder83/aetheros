@@ -1,7 +1,5 @@
 """Smoke tests for critical application paths."""
 
-import pytest
-from unittest.mock import AsyncMock, patch
 
 
 class TestCriticalPathsSmoke:
@@ -13,7 +11,6 @@ class TestCriticalPathsSmoke:
         from packages.observability import get_logger
         from packages.observability.metrics import (
             http_requests_total,
-            record_http_request,
         )
 
         assert create_health_router is not None
@@ -25,9 +22,6 @@ class TestCriticalPathsSmoke:
         from packages.auth import (
             User,
             UserRole,
-            TokenResponse,
-            LoginRequest,
-            RegisterRequest,
         )
 
         user = User(
@@ -39,7 +33,7 @@ class TestCriticalPathsSmoke:
 
     def test_config_import(self) -> None:
         """Verify config imports."""
-        from packages.config import Settings, get_settings
+        from packages.config import get_settings
 
         settings = get_settings()
         assert settings is not None
@@ -59,6 +53,7 @@ class TestHealthChecksSmoke:
     def test_disk_space_check_runs(self) -> None:
         """Verify disk space check executes."""
         import asyncio
+
         from packages.health.checks import check_disk_space
 
         result = asyncio.run(check_disk_space())
@@ -72,12 +67,12 @@ class TestObservabilitySmoke:
     def test_metrics_record_functions(self) -> None:
         """Verify metrics functions work."""
         from packages.observability.metrics import (
-            record_http_request,
-            record_domain_created,
-            record_swarm_invocation,
-            record_plugin_execution,
-            record_canvas_operation,
             record_auth_event,
+            record_canvas_operation,
+            record_domain_created,
+            record_http_request,
+            record_plugin_execution,
+            record_swarm_invocation,
         )
 
         # Should not raise
@@ -103,11 +98,11 @@ class TestMiddlewareSmoke:
     def test_middleware_imports(self) -> None:
         """Verify middleware imports."""
         from services.api.middleware import (
-            RequestIDMiddleware,
-            RateLimitMiddleware,
             HealthCheckMiddleware,
-            SecurityHeadersMiddleware,
+            RateLimitMiddleware,
+            RequestIDMiddleware,
             RequestSizeLimitMiddleware,
+            SecurityHeadersMiddleware,
         )
 
         assert RequestIDMiddleware is not None
@@ -171,7 +166,6 @@ class TestVersionConsistency:
 
     def test_main_app_version(self) -> None:
         """Verify FastAPI app has version."""
-        from services.api.main import app
 
         # The version is set in the app initialization
         # We can't easily test this without importing the full app

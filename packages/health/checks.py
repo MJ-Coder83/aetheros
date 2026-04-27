@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -11,7 +10,11 @@ from typing import TYPE_CHECKING
 from sqlalchemy import text
 
 from packages.observability.logging import get_logger
-from packages.observability.metrics import health_check_duration, db_connections_active, redis_connections_active
+from packages.observability.metrics import (
+    db_connections_active,
+    health_check_duration,
+    redis_connections_active,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -128,6 +131,7 @@ async def check_database(db: AsyncSession | None = None) -> CheckResult:
 async def check_redis() -> CheckResult:
     """Check Redis connectivity."""
     import redis.asyncio as redis
+
     from packages.config import get_settings
 
     start = datetime.now(UTC)

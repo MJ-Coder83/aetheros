@@ -15,6 +15,12 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         router.push("/prime");
       }
+
+      // Cmd/Ctrl + , → Settings
+      if ((e.metaKey || e.ctrlKey) && e.key === ",") {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("open-settings"));
+      }
     }
 
     document.addEventListener("keydown", handleKeyDown);

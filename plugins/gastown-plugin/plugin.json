@@ -1,0 +1,80 @@
+{
+  "id": "gastown-plugin",
+  "name": "Gastown Planning Domain Plugin",
+  "version": "1.0.0",
+  "description": "Official InkosAI plugin for the Gastown multi-agent workspace orchestration domain. Provides workspace management, agent coordination, and session persistence.",
+  "author": "InkosAI",
+  "homepage_url": "https://inkos.ai/plugins/gastown",
+  "repository_url": "https://github.com/inkosai/plugins/gastown",
+  "license": "MIT",
+  "plugin_type": "agent",
+  "permissions": [
+    "read",
+    "agent_comm",
+    "tape_read",
+    "tape_write",
+    "domain_read",
+    "domain_write"
+  ],
+  "commands": [
+    {
+      "name": "initialize_workspace",
+      "description": "Initialize a new Gastown workspace with all required components",
+      "parameters": {
+        "workspace_name": {"type": "string", "required": true},
+        "agent_pool_size": {"type": "integer", "required": false, "default": 5}
+      }
+    },
+    {
+      "name": "list_agents",
+      "description": "List all agents in the current workspace",
+      "parameters": {}
+    },
+    {
+      "name": "coordinate_agents",
+      "description": "Coordinate multiple agents for a task",
+      "parameters": {
+        "task": {"type": "string", "required": true},
+        "agent_ids": {"type": "array", "required": true}
+      }
+    },
+    {
+      "name": "check_session_health",
+      "description": "Check health of current agent session",
+      "parameters": {}
+    },
+    {
+      "name": "allocate_resources",
+      "description": "Allocate resources for a specific task",
+      "parameters": {
+        "task_id": {"type": "string", "required": true},
+        "resource_requirements": {"type": "object", "required": true}
+      }
+    }
+  ],
+  "event_subscriptions": [
+    {
+      "event_type": "workspace.created",
+      "description": "Log workspace creation events"
+    },
+    {
+      "event_type": "agent.registered",
+      "description": "Track agent registrations"
+    },
+    {
+      "event_type": "session.started",
+      "description": "Track session lifecycle"
+    }
+  ],
+  "events_published": [
+    "gastown.workspace_initialized",
+    "gastown.agents_coordinated",
+    "gastown.session_health_changed",
+    "gastown.resource_allocated"
+  ],
+  "tags": ["planning", "workspace", "orchestration", "multi-agent"],
+  "category": "Planning",
+  "icon": "LayoutGrid",
+  "min_platform_version": "1.0.0",
+  "target_domains": ["gastown"]
+}

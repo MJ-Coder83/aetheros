@@ -271,3 +271,82 @@ The profile system uses a unified `UserProfile` model that embeds the `Intellige
 ## Tech Stack
 
 Python 3.13+, FastAPI, LangGraph, Pydantic v2, PostgreSQL, Next.js 16, shadcn/ui, AetherGit (custom), Tape (immutable log)
+
+## Production Readiness (Phase 1)
+
+### Authentication & Authorization
+
+**JWT-based Authentication:**
+- Access tokens (60 min expiry) + refresh tokens (7 day expiry)
+- bcrypt password hashing with salt
+- Token blacklist via database (revocation support)
+- All auth events logged to Tape
+
+**User Roles:**
+| Role | Access Level |
+|------|-------------|
+| admin | Full system access |
+| operator | Domain management, proposals |
+| viewer | Read-only, view canvas/simulations |
+
+**Database Schema:**
+- `users` — id, username, email, hashed_password, role, is_active, last_login
+- `refresh_tokens` — jti, user_id, expires_at, revoked (for token revocation)
+
+### Security Hardening
+
+**Rate Limiting:**
+- 120 requests per 60 seconds per IP
+- Applied to public endpoints via middleware
+
+**CORS:**
+- Configurable allowed origins via env var
+- Production: `CORS_ORIGINS=https://inkos.ai`
+
+**Input Sanitization:**
+- Pydantic v2 validation on all API requests
+- SQL injection prevention via SQLAlchemy ORM
+- XSS prevention via React escaping (frontend)
+
+**Plugin Sandbox:**
+- Deno-based plugin runtime in `/sandbox/plugin-executor.ts`
+- Network whitelist enforcement
+- Filesystem restricted to `/tmp/sandbox`
+- 30-second execution timeout
+- Process isolation via container
+
+### Deployment
+
+**Docker:**
+- Multi-stage build for optimized image
+- Non-root user (`inkosai`)
+- Health check endpoints
+- PostgreSQL + Redis services
+
+**Docker Compose:**
+```bash
+docker-compose up -d
+```
+Services: postgres, redis, api, plugin-sandbox
+
+**GitHub Actions:**
+- Python: ruff, mypy, pytest
+- Next.js: ESLint, tsc, build
+- Docker: build test
+- Security: vulnerability scan
+
+**Environment Variables:**
+- See `.env.example` for complete list
+- Required: `DATABASE_URL`, `JWT_SECRET_KEY`, `REDIS_URL`
+- Security: Rotate `JWT_SECRET_KEY` in production
+
+### Operations
+
+**Health Checks:**
+- `/api/health` — Basic liveness
+- Database + Redis connection validation
+
+**Monitoring:**
+- All events log to Tape (immutable audit log)
+- Console logging for debugging
+- Sentry integration ready (set `SENTRY_DSN`)

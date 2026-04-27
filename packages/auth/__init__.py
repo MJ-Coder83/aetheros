@@ -99,7 +99,8 @@ class TokenPayload(BaseModel):
     role: str
     exp: int  # POSIX integer timestamp — PyJWT requires int for exp
     iat: int  # POSIX integer timestamp — PyJWT requires int for iat
-    jti: str = Field(default_factory=lambda: secrets.token_hex(8))
+    jti: str | None = None
+    type: str = "access"
 
 
 class TokenResponse(BaseModel):
@@ -256,6 +257,7 @@ def _create_access_token(
         role=user.role.value,
         exp=int(expire.timestamp()),
         iat=int(datetime.now(UTC).timestamp()),
+        jti=secrets.token_hex(16),  # Add jti to satisfy PyJWT validation
     )
     return jwt.encode(payload.model_dump(), JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 

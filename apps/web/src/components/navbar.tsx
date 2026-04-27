@@ -49,9 +49,9 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 glass-strong">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
+      <div className="mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
+        {/* Logo - always visible */}
+        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
           <div className="relative">
             <Brain className="h-6 w-6 text-inkos-cyan transition-colors group-hover:text-inkos-teal-300" />
             <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-inkos-emerald opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -62,8 +62,8 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Navigation */}
-        <nav className="hidden md:flex items-center gap-0.5">
+        {/* Navigation - Horizontal scrolling on desktop */}
+        <nav className="hidden md:flex items-center gap-0.5 overflow-x-auto scrollbar-none px-2 mx-2 flex-1 min-w-0">
           {NAV_ITEMS.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -72,22 +72,23 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 whitespace-nowrap shrink-0",
                   active
                     ? "bg-inkos-cyan/10 text-inkos-cyan shadow-sm shadow-inkos-cyan/5"
                     : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
                 )}
+                title={item.label}
               >
-                <item.icon className="h-4 w-4" />
-                {item.label}
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="hidden xl:inline">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Right side: search trigger + settings */}
-        <div className="flex items-center gap-2">
-          {/* Command palette trigger */}
+        {/* Right side */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Command palette trigger - hidden on smaller screens */}
           <button
             onClick={() =>
               document.dispatchEvent(
@@ -98,49 +99,49 @@ export function Navbar() {
                 }),
               )
             }
-            className="hidden sm:flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-muted-foreground hover:border-inkos-cyan/20 hover:text-foreground transition-all duration-200"
+            className="hidden lg:flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-xs text-muted-foreground hover:border-inkos-cyan/20 hover:text-foreground transition-all duration-200 shrink-0"
           >
             <Search className="h-3.5 w-3.5" />
             <span>Search</span>
             <kbd className="font-mono text-[9px] bg-inkos-navy-800/60 px-1.5 py-0.5 rounded border border-white/[0.06] ml-2">
               ⌘K
             </kbd>
-        </button>
+          </button>
 
-        {settings?.active_provider_id && settings?.active_model_id && (
-          <Link
-            href="/settings"
-            className="hidden sm:flex items-center gap-1.5 rounded-lg border border-inkos-cyan/15 bg-inkos-cyan/5 px-2.5 py-1 text-[11px] text-inkos-cyan hover:bg-inkos-cyan/10 transition-all duration-200"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-inkos-cyan" />
-            <span className="truncate max-w-[120px]">
-              {activeProvider?.display_name ?? settings.active_provider_id}
-            </span>
-            <span className="text-inkos-cyan/40">/</span>
-            <span className="truncate max-w-[80px]">
-              {settings.active_model_id}
-            </span>
-          </Link>
-        )}
+          {settings?.active_provider_id && settings?.active_model_id && (
+            <Link
+              href="/settings"
+              className="hidden xl:flex items-center gap-1.5 rounded-lg border border-inkos-cyan/15 bg-inkos-cyan/5 px-2.5 py-1 text-[11px] text-inkos-cyan hover:bg-inkos-cyan/10 transition-all duration-200 shrink-0"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-inkos-cyan" />
+              <span className="truncate max-w-[100px]">
+                {activeProvider?.display_name ?? settings.active_provider_id}
+              </span>
+              <span className="text-inkos-cyan/40">/</span>
+              <span className="truncate max-w-[60px]">
+                {settings.active_model_id}
+              </span>
+            </Link>
+          )}
 
-        {/* Settings button */}
+          {/* Settings button */}
           <button
             onClick={() =>
               window.dispatchEvent(new CustomEvent("open-settings"))
             }
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-white/[0.04] hover:text-foreground transition-all duration-200 focus-ring"
+            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-white/[0.04] hover:text-foreground transition-all duration-200 focus-ring shrink-0"
           >
             <Settings className="h-4 w-4" />
           </button>
 
           {/* User avatar */}
-          <div className="h-8 w-8 rounded-full bg-inkos-cyan/10 border border-inkos-cyan/15 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-inkos-cyan/10 border border-inkos-cyan/15 flex items-center justify-center shrink-0">
             <Brain className="h-3.5 w-3.5 text-inkos-cyan" />
           </div>
         </div>
       </div>
 
-      {/* Mobile nav */}
+      {/* Mobile nav - horizontal scrolling */}
       <nav className="md:hidden flex items-center gap-0.5 overflow-x-auto px-4 pb-2 scrollbar-none">
         {NAV_ITEMS.map((item) => {
           const active =
@@ -150,11 +151,12 @@ export function Navbar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all duration-200",
+                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-200",
                 active
                   ? "bg-inkos-cyan/10 text-inkos-cyan"
                   : "text-muted-foreground hover:bg-white/[0.03] hover:text-foreground",
               )}
+              title={item.label}
             >
               <item.icon className="h-3.5 w-3.5" />
               {item.label}

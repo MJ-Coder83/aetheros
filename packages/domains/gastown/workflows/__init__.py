@@ -7,9 +7,9 @@ workspace orchestration domain.
 from __future__ import annotations
 
 __all__ = [
-    "WORKSPACE_INITIALIZATION_WORKFLOW",
     "MULTI_AGENT_COORDINATION_WORKFLOW",
     "SESSION_LIFECYCLE_WORKFLOW",
+    "WORKSPACE_INITIALIZATION_WORKFLOW",
 ]
 
 # Workflow configuration exports

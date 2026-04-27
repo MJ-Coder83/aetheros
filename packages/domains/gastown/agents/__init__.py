@@ -10,11 +10,11 @@ from __future__ import annotations
 # This package structure allows for future agent implementations
 
 __all__ = [
-    "WORKSPACE_MANAGER_CONFIG",
     "AGENT_COORDINATOR_CONFIG",
-    "SESSION_MANAGER_CONFIG",
     "RESOURCE_ALLOCATOR_CONFIG",
+    "SESSION_MANAGER_CONFIG",
     "TASK_DISTRIBUTOR_CONFIG",
+    "WORKSPACE_MANAGER_CONFIG",
 ]
 
 # Agent configuration exports (for IDE/type checking)

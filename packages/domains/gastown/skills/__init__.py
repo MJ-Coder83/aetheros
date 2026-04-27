@@ -7,11 +7,11 @@ workspace orchestration domain.
 from __future__ import annotations
 
 __all__ = [
-    "WORKSPACE_ORCHESTRATION_SKILL",
     "AGENT_COORDINATION_SKILL",
-    "SESSION_MANAGEMENT_SKILL",
     "RESOURCE_ALLOCATION_SKILL",
+    "SESSION_MANAGEMENT_SKILL",
     "TASK_DISTRIBUTION_SKILL",
+    "WORKSPACE_ORCHESTRATION_SKILL",
 ]
 
 # Skill configuration exports

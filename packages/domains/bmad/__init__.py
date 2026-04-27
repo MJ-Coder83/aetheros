@@ -23,8 +23,8 @@ Example::
 from __future__ import annotations
 
 from packages.domains.bmad.blueprint import (
-    BMADDomainBlueprint,
     BMADAgentBlueprint,
+    BMADDomainBlueprint,
     BMADSkillBlueprint,
     BMADWorkflowBlueprint,
 )

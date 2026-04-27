@@ -34,11 +34,11 @@ Example::
 from __future__ import annotations
 
 from packages.domains.constants import (
-    PlanningDomainType,
+    PLANNING_DOMAIN_VERSION,
     PlanningAgentRole,
+    PlanningDomainType,
     PlanningSkillType,
     PlanningWorkflowType,
-    PLANNING_DOMAIN_VERSION,
 )
 
 __all__ = [

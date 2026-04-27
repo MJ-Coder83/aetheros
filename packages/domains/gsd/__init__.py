@@ -23,8 +23,8 @@ Example::
 from __future__ import annotations
 
 from packages.domains.gsd.blueprint import (
-    GSDDomainBlueprint,
     GSDAgentBlueprint,
+    GSDDomainBlueprint,
     GSDSkillBlueprint,
     GSDWorkflowBlueprint,
 )

@@ -11,9 +11,7 @@ Tests for:
 
 from __future__ import annotations
 
-import inspect
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 from packages.domain.domain_blueprint import (
     AgentBlueprint,
@@ -21,34 +19,31 @@ from packages.domain.domain_blueprint import (
     SkillBlueprint,
     WorkflowBlueprint,
 )
+from packages.domains.bmad.blueprint import (
+    BMADAgentBlueprint,
+    BMADDomainBlueprint,
+    BMADSkillBlueprint,
+    BMADWorkflowBlueprint,
+)
 from packages.domains.constants import (
-    PlanningDomainType,
-    PlanningAgentRole,
-    PlanningSkillType,
-    PlanningWorkflowType,
-    DOMAIN_VISUAL_STYLES,
     CONFLICT_RESOLUTION_STRATEGIES,
+    DOMAIN_VISUAL_STYLES,
     HYBRID_PATTERNS,
     PLANNING_DOMAIN_VERSION,
+    PlanningDomainType,
 )
 from packages.domains.factory import PlanningDomainFactory
 from packages.domains.gastown.blueprint import (
-    GastownDomainBlueprint,
     GastownAgentBlueprint,
+    GastownDomainBlueprint,
     GastownSkillBlueprint,
     GastownWorkflowBlueprint,
 )
 from packages.domains.gsd.blueprint import (
-    GSDDomainBlueprint,
     GSDAgentBlueprint,
+    GSDDomainBlueprint,
     GSDSkillBlueprint,
     GSDWorkflowBlueprint,
-)
-from packages.domains.bmad.blueprint import (
-    BMADDomainBlueprint,
-    BMADAgentBlueprint,
-    BMADSkillBlueprint,
-    BMADWorkflowBlueprint,
 )
 from packages.domains.super_domain.blueprint import (
     PlanningSuperDomainBlueprint,
@@ -57,9 +52,8 @@ from packages.domains.super_domain.blueprint import (
     SuperDomainWorkflowBlueprint,
 )
 from packages.prime.domain_creation import AgentRole, WorkflowType
-from packages.tape.service import TapeService
 from packages.tape.repository import InMemoryTapeRepository
-
+from packages.tape.service import TapeService
 
 # =============================================================================
 # Gastown Domain Tests

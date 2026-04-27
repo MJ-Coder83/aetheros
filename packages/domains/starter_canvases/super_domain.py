@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from packages.domain.starter_canvas import CanvasLayout, StarterCanvas
 from packages.domains.constants import PlanningDomainType
-from packages.domains.super_domain.blueprint import PlanningSuperDomainBlueprint
 from packages.domains.starter_canvases.base import PlanningStarterCanvasBase
+from packages.domains.super_domain.blueprint import PlanningSuperDomainBlueprint
 from packages.tape.service import TapeService
 
 

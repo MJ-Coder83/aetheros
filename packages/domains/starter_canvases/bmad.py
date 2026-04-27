@@ -7,8 +7,8 @@ for Agile AI-Driven Development) domain.
 from __future__ import annotations
 
 from packages.domain.starter_canvas import CanvasLayout, StarterCanvas
-from packages.domains.constants import PlanningDomainType
 from packages.domains.bmad.blueprint import BMADDomainBlueprint
+from packages.domains.constants import PlanningDomainType
 from packages.domains.starter_canvases.base import PlanningStarterCanvasBase
 from packages.tape.service import TapeService
 

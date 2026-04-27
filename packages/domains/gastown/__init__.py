@@ -23,30 +23,30 @@ Example::
 
 from __future__ import annotations
 
+from packages.domains.gastown.agents import (
+    AGENT_COORDINATOR_CONFIG,
+    RESOURCE_ALLOCATOR_CONFIG,
+    SESSION_MANAGER_CONFIG,
+    TASK_DISTRIBUTOR_CONFIG,
+    WORKSPACE_MANAGER_CONFIG,
+)
 from packages.domains.gastown.blueprint import (
-    GastownDomainBlueprint,
     GastownAgentBlueprint,
+    GastownDomainBlueprint,
     GastownSkillBlueprint,
     GastownWorkflowBlueprint,
 )
-from packages.domains.gastown.agents import (
-    WORKSPACE_MANAGER_CONFIG,
-    AGENT_COORDINATOR_CONFIG,
-    SESSION_MANAGER_CONFIG,
-    RESOURCE_ALLOCATOR_CONFIG,
-    TASK_DISTRIBUTOR_CONFIG,
-)
 from packages.domains.gastown.skills import (
-    WORKSPACE_ORCHESTRATION_SKILL,
     AGENT_COORDINATION_SKILL,
-    SESSION_MANAGEMENT_SKILL,
     RESOURCE_ALLOCATION_SKILL,
+    SESSION_MANAGEMENT_SKILL,
     TASK_DISTRIBUTION_SKILL,
+    WORKSPACE_ORCHESTRATION_SKILL,
 )
 from packages.domains.gastown.workflows import (
-    WORKSPACE_INITIALIZATION_WORKFLOW,
     MULTI_AGENT_COORDINATION_WORKFLOW,
     SESSION_LIFECYCLE_WORKFLOW,
+    WORKSPACE_INITIALIZATION_WORKFLOW,
 )
 
 __all__ = [

@@ -9,10 +9,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from packages.domain.domain_blueprint import DomainFolderTreeGenerator
+from packages.domains.bmad.blueprint import BMADDomainBlueprint
 from packages.domains.constants import PlanningDomainType
 from packages.domains.gastown.blueprint import GastownDomainBlueprint
 from packages.domains.gsd.blueprint import GSDDomainBlueprint
-from packages.domains.bmad.blueprint import BMADDomainBlueprint
 from packages.domains.super_domain.blueprint import PlanningSuperDomainBlueprint
 from packages.tape.service import TapeService
 

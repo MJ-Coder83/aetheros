@@ -16,8 +16,8 @@ from packages.domain.starter_canvas import (
     StarterCanvasGenerator,
 )
 from packages.domains.constants import (
-    PlanningDomainType,
     DOMAIN_VISUAL_STYLES,
+    PlanningDomainType,
 )
 from packages.tape.service import TapeService
 

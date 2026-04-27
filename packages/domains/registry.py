@@ -98,7 +98,7 @@ class PlanningDomainRegistry:
             agent_id="planning_domain_registry",
             payload={
                 "registered_count": len(results),
-                "domain_types": [dt.value for dt in results.keys()],
+                "domain_types": [dt.value for dt in results],
             },
         )
 

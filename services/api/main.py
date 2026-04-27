@@ -12,6 +12,8 @@ from services.api.middleware import (
     HealthCheckMiddleware,
     RateLimitMiddleware,
     RequestIDMiddleware,
+    SecurityHeadersMiddleware,
+    RequestSizeLimitMiddleware,
 )
 from services.api.routes import (
     aethergit,
@@ -53,6 +55,8 @@ app = FastAPI(
 
 # Middleware (order matters — outermost first)
 app.add_middleware(RequestIDMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)  # Security headers on all responses
+app.add_middleware(RequestSizeLimitMiddleware, max_size_bytes=10 * 1024 * 1024)  # 10MB limit
 app.add_middleware(RateLimitMiddleware, max_requests=120, window_seconds=60)  # type: ignore
 app.add_middleware(HealthCheckMiddleware)
 

@@ -93,3 +93,106 @@ class HealthCheckMiddleware(BaseHTTPMiddleware):
             response.headers["X-Health-Check-Duration-Ms"] = str(duration_ms)
             return response
         return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# Security headers middleware (CSP, HSTS, X-Frame-Options, etc.)
+# ---------------------------------------------------------------------------
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses.
+
+    Implements security best practices:
+    - Content-Security-Policy
+    - X-Content-Type-Options
+    - X-Frame-Options
+    - Strict-Transport-Security
+    - Referrer-Policy
+    - Permissions-Policy
+    """
+
+    def __init__(
+        self,
+        app: FastAPI,
+        csp_policy: str | None = None,
+    ) -> None:
+        super().__init__(app)
+        self._csp = csp_policy or (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob:; "
+            "font-src 'self'; "
+            "connect-src 'self' ws: wss:; "
+            "frame-ancestors 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self';"
+        )
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        response = await call_next(request)
+
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = self._csp
+
+        return response
+
+
+# ---------------------------------------------------------------------------
+# Request size limit middleware
+# ---------------------------------------------------------------------------
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Limit request payload size."""
+
+    def __init__(
+        self,
+        app: FastAPI,
+        max_size_bytes: int = 10 * 1024 * 1024,  # 10MB default
+    ) -> None:
+        super().__init__(app)
+        self._max_size = max_size_bytes
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                size = int(content_length)
+                if size > self._max_size:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": f"Request too large. Max size: {self._max_size} bytes"},
+                    )
+            except ValueError:
+                pass
+
+        # Also check actual body size for chunked transfers
+        body = await request.body()
+        if len(body) > self._max_size:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": f"Request too large. Max size: {self._max_size} bytes"},
+            )
+
+        # Recreate request with body for downstream handlers
+        async def receive():
+            return {"type": "http.request", "body": body}
+
+        request = Request(request.scope, receive, request._send)
+        return await call_next(request)

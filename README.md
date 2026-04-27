@@ -14,23 +14,52 @@ InkosAI combines the best ideas from AG2, CrewAI, LangGraph, DSPy, Pydantic AI, 
 
 ## Quick Start
 
+### 🚀 Five-Minute Launch
+
 ```bash
-# Clone the repository
-git clone https://github.com/MJ-Coder83/inkosai.git
+# 1. Clone and enter directory
+git clone https://github.com/inkosai/inkosai.git
 cd inkosai
 
-# Install dependencies (requires uv)
+# 2. Create environment file
+cp .env.example .env
+
+# 3. Start everything (requires Docker)
+docker-compose up -d
+
+# 4. Check health
+curl http://localhost:8000/api/health
+
+# 5. Open the web UI
+open http://localhost:3000
+```
+
+**Default credentials:**
+- Username: `admin`
+- Password: See `.env` file
+
+### Development Setup
+
+```bash
+# Install dependencies
 uv sync
 
-# Start the dev server
-make dev
+# Start development server
+uv run uvicorn services.api.main:app --reload
 
-# Run tests
-make test
+# Run tests (2100+ tests)
+uv run pytest
 
-# Lint & format
-make lint && make format
+# Lint and format
+uv run ruff check . && uv run ruff format . && uv run mypy packages/ services/
 ```
+
+### Next Steps
+
+- **User Guide**: Learn about Domains, Canvas, Swarm, and Prime → [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- **API Documentation**: Full API reference → [docs/API.md](docs/API.md)
+- **Deployment**: Docker, K8s, production setup → [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+- **Architecture**: Technical specification → [docs/LIVING_SPEC.md](docs/LIVING_SPEC.md)
 
 ## Tech Stack
 

@@ -54,6 +54,7 @@ from __future__ import annotations
 import math
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
 from packages.canvas.models import (
     Canvas,
@@ -76,7 +77,7 @@ from packages.canvas.models import (
 from packages.tape.service import TapeService
 
 if TYPE_CHECKING:
-    from packages.folder_tree import FolderTreeService
+    from packages.folder_tree import FolderTree, FolderTreeService
     from packages.prime.domain_creation import DomainBlueprint
 
 __all__ = [
@@ -120,6 +121,10 @@ _NODE_COLOURS: dict[CanvasNodeType, str] = {
     CanvasNodeType.DATA_SOURCE: "#64748b",
     CanvasNodeType.BROWSER: "#3b82f6",
     CanvasNodeType.TERMINAL: "#22c55e",
+    CanvasNodeType.LIVE_TERMINAL: "#16a34a",  # Darker green
+    CanvasNodeType.TUI_DESIGNER: "#84cc16",  # Lime green
+    CanvasNodeType.FILE_BROWSER: "#f97316",
+    CanvasNodeType.MARKDOWN_VIEWER: "#ec4899",
     CanvasNodeType.CUSTOM: "#94a3b8",
 }
 
@@ -132,6 +137,10 @@ _NODE_ICONS: dict[CanvasNodeType, str] = {
     CanvasNodeType.DATA_SOURCE: "database",
     CanvasNodeType.BROWSER: "monitor",
     CanvasNodeType.TERMINAL: "terminal",
+    CanvasNodeType.LIVE_TERMINAL: "terminal-square",
+    CanvasNodeType.TUI_DESIGNER: "layout-grid",
+    CanvasNodeType.FILE_BROWSER: "folder",
+    CanvasNodeType.MARKDOWN_VIEWER: "file-text",
     CanvasNodeType.CUSTOM: "box",
 }
 
@@ -145,6 +154,8 @@ _LAYERED_ORDER: list[CanvasNodeType] = [
     CanvasNodeType.TEMPLATE,
     CanvasNodeType.BROWSER,
     CanvasNodeType.TERMINAL,
+    CanvasNodeType.FILE_BROWSER,
+    CanvasNodeType.MARKDOWN_VIEWER,
     CanvasNodeType.CUSTOM,
 ]
 
@@ -368,41 +379,216 @@ class LayoutEngine:
 
 
 # ---------------------------------------------------------------------------
-# CanvasStore — in-memory backing store
+# CanvasStore — PostgreSQL-backed store
 # ---------------------------------------------------------------------------
 
 
 class CanvasStore:
-    """In-memory store for Canvas objects.
+    """PostgreSQL-backed store for Canvas objects.
 
     Keyed by domain_id (one canvas per domain).
-    Also maintains an integer version counter per canvas for diff support.
     """
 
     def __init__(self) -> None:
-        self._canvases: dict[str, Canvas] = {}
-        self._versions: dict[str, int] = {}
+        self._cache: dict[str, Canvas] = {}  # Runtime cache
 
-    def add(self, canvas: Canvas) -> None:
-        self._canvases[canvas.domain_id] = canvas
-        self._versions[canvas.domain_id] = 1
+    async def add(self, canvas: Canvas) -> None:
+        """Persist a new canvas to the database."""
+        from sqlalchemy import select
 
-    def get(self, domain_id: str) -> Canvas | None:
-        return self._canvases.get(domain_id)
+        from services.api.database import CanvasEdgeORM, CanvasNodeORM, CanvasORM, async_session
 
-    def update(self, canvas: Canvas) -> None:
-        self._canvases[canvas.domain_id] = canvas
-        self._versions[canvas.domain_id] = self._versions.get(canvas.domain_id, 1) + 1
+        async with async_session() as session, session.begin():
+            # Check if canvas already exists
+            result = await session.execute(
+                select(CanvasORM).where(CanvasORM.domain_id == canvas.domain_id)
+            )
+            existing = result.scalar_one_or_none()
 
-    def remove(self, domain_id: str) -> Canvas | None:
-        self._versions.pop(domain_id, None)
-        return self._canvases.pop(domain_id, None)
+            if existing:
+                # Update existing canvas
+                existing.domain_name = canvas.domain_name
+                existing.layout = canvas.layout.value
+                existing.view_mode = canvas.view_mode.value
+                existing.viewport_x = canvas.viewport_x
+                existing.viewport_y = canvas.viewport_y
+                existing.viewport_zoom = canvas.viewport_zoom
+                existing.updated_at = datetime.now(UTC)
 
-    def list_domain_ids(self) -> list[str]:
-        return list(self._canvases.keys())
+                # Delete existing nodes and edges
+                await session.execute(
+                    select(CanvasNodeORM).where(CanvasNodeORM.canvas_id == str(canvas.id))
+                )
+                await session.execute(
+                    select(CanvasEdgeORM).where(CanvasEdgeORM.canvas_id == str(canvas.id))
+                )
 
-    def version(self, domain_id: str) -> int:
-        return self._versions.get(domain_id, 0)
+            # Create new canvas or use existing
+            if not existing:
+                canvas_orm = CanvasORM(
+                    id=str(canvas.id),
+                    domain_id=canvas.domain_id,
+                    domain_name=canvas.domain_name,
+                    layout=canvas.layout.value,
+                    view_mode=canvas.view_mode.value,
+                    viewport_x=canvas.viewport_x,
+                    viewport_y=canvas.viewport_y,
+                    viewport_zoom=canvas.viewport_zoom,
+                    created_at=canvas.created_at,
+                    updated_at=canvas.updated_at,
+                )
+                session.add(canvas_orm)
+            else:
+                canvas_orm = existing
+
+            # Add nodes
+            for node in canvas.nodes:
+                node_orm = CanvasNodeORM(
+                    id=node.id,
+                    canvas_id=str(canvas.id),
+                    node_type=node.node_type.value,
+                    label=node.label,
+                    x=node.x,
+                    y=node.y,
+                    width=node.width,
+                    height=node.height,
+                    folder_path=node.folder_path,
+                    selected=node.selected,
+                    locked=node.locked,
+                    meta_data=node.metadata,
+                )
+                session.add(node_orm)
+
+            # Add edges
+            for edge in canvas.edges:
+                edge_orm = CanvasEdgeORM(
+                    id=edge.id if edge.id else str(uuid4()),
+                    canvas_id=str(canvas.id),
+                    source=edge.source,
+                    target=edge.target,
+                    edge_type=edge.edge_type.value,
+                    label=edge.label,
+                    animated=edge.animated,
+                    waypoints=edge.waypoints,
+                    meta_data=edge.metadata,
+                )
+                session.add(edge_orm)
+
+        # Update cache
+        self._cache[canvas.domain_id] = canvas
+
+    async def get(self, domain_id: str) -> Canvas | None:
+        """Retrieve a canvas by domain ID from the database."""
+        # Check cache first
+        if domain_id in self._cache:
+            return self._cache[domain_id]
+
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+
+        from services.api.database import CanvasORM, async_session
+
+        async with async_session() as session:
+            result = await session.execute(
+                select(CanvasORM)
+                .where(CanvasORM.domain_id == domain_id)
+                .options(selectinload(CanvasORM.nodes))
+                .options(selectinload(CanvasORM.edges))
+            )
+            orm = result.scalar_one_or_none()
+
+            if orm is None:
+                return None
+
+            # Convert ORM to Pydantic model
+            canvas = Canvas(
+                id=UUID(orm.id),
+                domain_id=orm.domain_id,
+                domain_name=orm.domain_name,
+                layout=CanvasLayout(orm.layout),
+                view_mode=CanvasViewMode(orm.view_mode),
+                viewport_x=orm.viewport_x,
+                viewport_y=orm.viewport_y,
+                viewport_zoom=orm.viewport_zoom,
+                created_at=orm.created_at,
+                updated_at=orm.updated_at,
+            )
+
+            # Convert nodes
+            for node_orm in orm.nodes:
+                node = CanvasNode(
+                    id=node_orm.id,
+                    node_type=CanvasNodeType(node_orm.node_type),
+                    label=node_orm.label,
+                    x=node_orm.x,
+                    y=node_orm.y,
+                    width=node_orm.width,
+                    height=node_orm.height,
+                    folder_path=node_orm.folder_path,
+                    selected=node_orm.selected,
+                    locked=node_orm.locked,
+                    metadata=node_orm.meta_data or {},
+                )
+                canvas.nodes.append(node)
+
+            # Convert edges
+            for edge_orm in orm.edges:
+                edge = CanvasEdge(
+                    id=edge_orm.id,
+                    source=edge_orm.source,
+                    target=edge_orm.target,
+                    edge_type=CanvasEdgeType(edge_orm.edge_type),
+                    label=edge_orm.label,
+                    animated=edge_orm.animated,
+                    waypoints=edge_orm.waypoints or [],
+                    metadata=edge_orm.meta_data or {},
+                )
+                canvas.edges.append(edge)
+
+            self._cache[domain_id] = canvas
+            return canvas
+
+    async def update(self, canvas: Canvas) -> None:
+        """Update an existing canvas in the database."""
+        await self.add(canvas)  # add handles upsert
+
+    async def remove(self, domain_id: str) -> Canvas | None:
+        """Remove a canvas from the database."""
+        from sqlalchemy import select
+
+        from services.api.database import CanvasORM, async_session
+
+        canvas = await self.get(domain_id)
+        if canvas is None:
+            return None
+
+        async with async_session() as session, session.begin():
+            result = await session.execute(
+                select(CanvasORM).where(CanvasORM.domain_id == domain_id)
+            )
+            orm = result.scalar_one_or_none()
+            if orm:
+                await session.delete(orm)
+
+        self._cache.pop(domain_id, None)
+        return canvas
+
+    async def list_domain_ids(self) -> list[str]:
+        """List all domain IDs with canvases."""
+        from sqlalchemy import select
+
+        from services.api.database import CanvasORM, async_session
+
+        async with async_session() as session:
+            result = await session.execute(select(CanvasORM.domain_id))
+            return [row[0] for row in result.all()]
+
+    async def version(self, domain_id: str) -> int:
+        """Get the version number for a canvas."""
+        canvas = await self.get(domain_id)
+        if canvas is None:
+            return 0
+        return int(canvas.updated_at.timestamp())
 
 
 # ---------------------------------------------------------------------------
@@ -480,7 +666,7 @@ class CanvasService:
             domain_name=domain_name,
             layout=layout,
         )
-        self._store.add(canvas)
+        await self._store.add(canvas)
 
         await self._tape.log_event(
             event_type="canvas.created",
@@ -507,7 +693,7 @@ class CanvasService:
         CanvasNotFoundError
             If no canvas exists for the given domain ID.
         """
-        canvas = self._store.get(domain_id)
+        canvas = await self._store.get(domain_id)
         if canvas is None:
             raise CanvasNotFoundError(f"No canvas found for domain '{domain_id}'")
         return canvas
@@ -541,7 +727,7 @@ class CanvasService:
         NodeAlreadyExistsError
             If a node with the same ID already exists.
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         if canvas.get_node(node.id) is not None:
             raise NodeAlreadyExistsError(f"Node '{node.id}' already exists on canvas '{domain_id}'")
 
@@ -553,7 +739,7 @@ class CanvasService:
 
         canvas.nodes.append(node)
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         # Sync to folder tree
         if sync_to_tree and self._folder_tree is not None and node.folder_path:
@@ -592,7 +778,7 @@ class CanvasService:
         ------
         CanvasNotFoundError / NodeNotFoundError
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         node = canvas.get_node(node_id)
         if node is None:
             raise NodeNotFoundError(f"Node '{node_id}' not found on canvas '{domain_id}'")
@@ -604,7 +790,7 @@ class CanvasService:
         canvas.edges = [e for e in canvas.edges if e.source != node_id and e.target != node_id]
         canvas.nodes = [n for n in canvas.nodes if n.id != node_id]
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         # Sync to folder tree
         if sync_to_tree and self._folder_tree is not None and node.folder_path:
@@ -640,7 +826,7 @@ class CanvasService:
         ------
         CanvasNotFoundError / NodeNotFoundError
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         node = canvas.get_node(node_id)
         if node is None:
             raise NodeNotFoundError(f"Node '{node_id}' not found on canvas '{domain_id}'")
@@ -649,7 +835,7 @@ class CanvasService:
         node.x = x
         node.y = y
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         await self._tape.log_event(
             event_type="canvas.node_moved",
@@ -682,7 +868,7 @@ class CanvasService:
         ------
         CanvasNotFoundError / NodeNotFoundError
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         node = canvas.get_node(node_id)
         if node is None:
             raise NodeNotFoundError(f"Node '{node_id}' not found on canvas '{domain_id}'")
@@ -693,7 +879,7 @@ class CanvasService:
             node.metadata.update(metadata)
 
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         await self._tape.log_event(
             event_type="canvas.node_updated",
@@ -724,7 +910,7 @@ class CanvasService:
         CanvasNotFoundError / InvalidEdgeError
             If source or target nodes don't exist.
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
 
         # Validate source and target
         if canvas.get_node(edge.source) is None:
@@ -738,7 +924,7 @@ class CanvasService:
 
         canvas.edges.append(edge)
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         await self._tape.log_event(
             event_type="canvas.edge_added",
@@ -766,14 +952,14 @@ class CanvasService:
         ------
         CanvasNotFoundError / EdgeNotFoundError
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         edge = canvas.get_edge(edge_id)
         if edge is None:
             raise EdgeNotFoundError(f"Edge '{edge_id}' not found on canvas '{domain_id}'")
 
         canvas.edges = [e for e in canvas.edges if e.id != edge_id]
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         await self._tape.log_event(
             event_type="canvas.edge_removed",
@@ -808,14 +994,14 @@ class CanvasService:
         Canvas
             The updated canvas with new node positions.
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         chosen = strategy or canvas.layout
         self._layout_engine.layout(canvas, chosen)
 
         if strategy is not None:
             canvas.layout = strategy
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         await self._tape.log_event(
             event_type="canvas.layout_applied",
@@ -849,11 +1035,11 @@ class CanvasService:
         Canvas
             The updated canvas.
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         old_mode = canvas.view_mode
         canvas.view_mode = mode
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         # Pull latest folder-tree state when entering FOLDER mode
         if mode == CanvasViewMode.FOLDER and self._folder_tree is not None:
@@ -882,23 +1068,110 @@ class CanvasService:
     async def sync_to_folder_tree(self, domain_id: str) -> None:
         """Push canvas node changes to the FolderTreeService.
 
-        For every node that has a non-empty ``folder_path``, creates the
-        corresponding directory in the folder tree (idempotent).
+        Deep sync: for every node with a ``folder_path``, creates the
+        directory AND writes content files that represent the node:
+
+        - Agent nodes -> ``agents/<slug>/role.md``, ``agents/<slug>/goals.md``
+        - Skill nodes -> ``skills/<slug>.py``
+        - Workflow nodes -> ``workflows/<slug>/workflow.json``
+        - Domain nodes -> ``README.md`` update
+        - Other nodes -> ``<path>/node.json``
 
         Always logs to the Tape, even when no FolderTreeService is configured.
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         synced: list[str] = []
+        files_written: list[str] = []
 
         if self._folder_tree is not None:
+            import contextlib
+            import json
+
             for node in canvas.nodes:
                 if not node.folder_path:
                     continue
-                import contextlib
-
+                # Ensure the directory exists
                 with contextlib.suppress(Exception):
                     await self._folder_tree.create_directory(domain_id, node.folder_path)
                     synced.append(node.folder_path)
+
+                # Write node-specific content files
+                with contextlib.suppress(Exception):
+                    if node.node_type == CanvasNodeType.AGENT:
+                        role_path = f"{node.folder_path}/role.md"
+                        role_content = (
+                            f"# {node.label}\n\n"
+                            f"**Role**: {node.metadata.get('role', 'specialist')}\n\n"
+                            f"**Goal**: {node.metadata.get('description', 'No goal defined')}\n"
+                        )
+                        await self._folder_tree.write_file(
+                            domain_id, role_path, role_content,
+                        )
+                        files_written.append(role_path)
+
+                        goals_path = f"{node.folder_path}/goals.md"
+                        goals_content = (
+                            f"# Goals\n\n- "
+                            f"{node.metadata.get('description', 'No goals defined')}\n"
+                        )
+                        await self._folder_tree.write_file(
+                            domain_id, goals_path, goals_content,
+                        )
+                        files_written.append(goals_path)
+
+                    elif node.node_type == CanvasNodeType.SKILL:
+                        skill_file = (
+                            f"{node.folder_path}.py"
+                            if not node.folder_path.endswith(".py")
+                            else node.folder_path
+                        )
+                        skill_content = (
+                            f'"""{node.label} -- '
+                            f'{node.metadata.get("description", "")}"""\n\n'
+                            f"def execute(*args, **kwargs):\n"
+                            f'    """Execute the {node.label} skill."""\n'
+                            f"    pass\n"
+                        )
+                        await self._folder_tree.write_file(
+                            domain_id, skill_file, skill_content,
+                        )
+                        files_written.append(skill_file)
+
+                    elif node.node_type == CanvasNodeType.WORKFLOW:
+                        wf_json_path = f"{node.folder_path}/workflow.json"
+                        wf_data = {
+                            "name": node.label,
+                            "type": str(node.metadata.get("workflow_type", "sequential")),
+                            "description": node.metadata.get("description", ""),
+                        }
+                        await self._folder_tree.write_file(
+                            domain_id, wf_json_path, json.dumps(wf_data, indent=2),
+                        )
+                        files_written.append(wf_json_path)
+
+                    elif node.node_type == CanvasNodeType.DOMAIN:
+                        readme_path = f"{node.folder_path}/README.md"
+                        readme_content = (
+                            f"# {node.label}\n\n"
+                            f"{node.metadata.get('description', '')}\n\n"
+                            f"Generated by InkosAI Canvas sync.\n"
+                        )
+                        await self._folder_tree.write_file(
+                            domain_id, readme_path, readme_content,
+                        )
+                        files_written.append(readme_path)
+
+                    else:
+                        node_json_path = f"{node.folder_path}/node.json"
+                        meta_dict = {k: str(v) for k, v in node.metadata.items()}
+                        await self._folder_tree.write_file(
+                            domain_id, node_json_path,
+                            json.dumps(
+                                {"label": node.label, "type": node.node_type.value, "metadata": meta_dict},
+                                indent=2,
+                            ),
+                        )
+                        files_written.append(node_json_path)
 
         await self._tape.log_event(
             event_type="canvas.synced_to_tree",
@@ -906,7 +1179,9 @@ class CanvasService:
                 "canvas_id": str(canvas.id),
                 "domain_id": domain_id,
                 "synced_paths": synced,
+                "files_written": files_written,
                 "synced_count": len(synced),
+                "files_count": len(files_written),
             },
             agent_id="canvas-service",
         )
@@ -918,41 +1193,102 @@ class CanvasService:
     async def sync_from_folder_tree(self, domain_id: str) -> Canvas:
         """Pull FolderTree changes into the canvas.
 
-        Reads the root directory listing from the FolderTreeService and
-        creates/updates canvas nodes to match the folder structure.
-        Existing nodes whose IDs match a known folder path are preserved;
-        new paths become new CUSTOM nodes.
+        Recursively reads the folder tree and creates/updates canvas nodes
+        to match. Deep sync maps path structure to node types:
 
-        No-op (returns canvas unchanged) if no ``FolderTreeService``
-        is configured or the domain has no tree.
+        - ``agents/`` subdirectories -> AGENT nodes (label from role.md)
+        - ``skills/`` .py files -> SKILL nodes
+        - ``workflows/`` subdirectories -> WORKFLOW nodes (label from workflow.json)
+        - ``templates/``, ``data_sources/``, ``config/`` -> matching node types
+        - Other directories -> CUSTOM nodes
+
+        Existing nodes with matching ``folder_path`` are updated (not duplicated).
+        No-op if no ``FolderTreeService`` is configured or the domain has no tree.
 
         Returns
         -------
         Canvas
             The (possibly updated) canvas.
         """
-        canvas = self._get_canvas(domain_id)
+        canvas = await self._get_canvas(domain_id)
         added = 0
+        updated = 0
 
         if self._folder_tree is not None:
             import contextlib
 
-            children = []
+            tree = None
             with contextlib.suppress(Exception):
-                children = await self._folder_tree.list_directory(domain_id, "")
+                tree = await self._folder_tree.get_tree(domain_id)
 
-            existing_paths = {n.folder_path for n in canvas.nodes if n.folder_path}
+            if tree is not None:
+                existing_paths = {n.folder_path for n in canvas.nodes if n.folder_path}
+                added, updated = await self._sync_tree_recursive(
+                    domain_id, tree, tree.root_path, canvas, existing_paths, depth=0,
+                )
 
-            for child in children:
-                if child.path in existing_paths:
-                    continue
-                # Derive node type from path / name heuristics
-                node_type = self._infer_node_type(child.name)
+                if added or updated:
+                    canvas.updated_at = datetime.now(UTC)
+                    await self._store.update(canvas)
+
+            await self._tape.log_event(
+                event_type="canvas.synced_from_tree",
+                payload={
+                    "canvas_id": str(canvas.id),
+                    "domain_id": domain_id,
+                    "nodes_added": added,
+                    "nodes_updated": updated,
+                },
+                agent_id="canvas-service",
+            )
+
+        return canvas
+
+    async def _sync_tree_recursive(
+        self,
+        domain_id: str,
+        tree: FolderTree,
+        current_path: str,
+        canvas: Canvas,
+        existing_paths: set[str],
+        depth: int,
+    ) -> tuple[int, int]:
+        """Recursively walk the folder tree and sync nodes."""
+        added = 0
+        updated = 0
+        current_node = tree.nodes.get(current_path)
+        if current_node is None:
+            return added, updated
+
+        from packages.folder_tree import NodeType
+
+        # Skip files -- only directories map to canvas nodes
+        if current_node.node_type == NodeType.FILE:
+            return added, updated
+
+        # Skip the root itself (depth 0) -- it maps to the domain node
+        if depth > 0:
+            root_path = tree.root_path
+            rel_path = current_path
+            if current_path.startswith(root_path + "/"):
+                rel_path = current_path[len(root_path) + 1 :]
+            elif current_path == root_path:
+                rel_path = ""
+
+            if rel_path and rel_path not in existing_paths:
+                node_type = self._infer_node_type_from_path(rel_path)
+                label = current_node.name
+
+                # Try to get a better label from content files
+                label = await self._read_node_label_from_tree(
+                    domain_id, rel_path, node_type, label,
+                )
+
                 new_node = CanvasNode(
-                    id=f"tree-{child.path.replace('/', '-')}",
+                    id=f"tree-{current_path.replace('/', '-')}",
                     node_type=node_type,
-                    label=child.name,
-                    folder_path=child.path,
+                    label=label,
+                    folder_path=rel_path,
                     metadata={
                         "colour": _NODE_COLOURS.get(node_type, "#94a3b8"),
                         "icon": _NODE_ICONS.get(node_type, "box"),
@@ -960,24 +1296,92 @@ class CanvasService:
                     },
                 )
                 canvas.nodes.append(new_node)
-                existing_paths.add(child.path)
+                existing_paths.add(rel_path)
                 added += 1
+            elif rel_path in existing_paths:
+                for existing in canvas.nodes:
+                    if existing.folder_path == rel_path:
+                        new_label = await self._read_node_label_from_tree(
+                            domain_id, rel_path,
+                            self._infer_node_type_from_path(rel_path),
+                            existing.label,
+                        )
+                        if new_label != existing.label:
+                            existing.label = new_label
+                            updated += 1
+                        break
 
-            if added:
-                canvas.updated_at = datetime.now(UTC)
-                self._store.update(canvas)
+        # Recurse into children
+        for child_path in current_node.children:
+            child_added, child_updated = await self._sync_tree_recursive(
+                domain_id, tree, child_path, canvas, existing_paths, depth + 1,
+            )
+            added += child_added
+            updated += child_updated
 
-        await self._tape.log_event(
-            event_type="canvas.synced_from_tree",
-            payload={
-                "canvas_id": str(canvas.id),
-                "domain_id": domain_id,
-                "nodes_added": added,
-            },
-            agent_id="canvas-service",
-        )
+        return added, updated
 
-        return canvas
+    async def _read_node_label_from_tree(
+        self,
+        domain_id: str,
+        rel_path: str,
+        node_type: CanvasNodeType,
+        fallback_label: str,
+    ) -> str:
+        """Try to read a better label from the folder tree content."""
+        if self._folder_tree is None:
+            return fallback_label
+        import contextlib
+        import json
+
+        if node_type == CanvasNodeType.AGENT:
+            with contextlib.suppress(Exception):
+                node = await self._folder_tree.read_file(
+                    domain_id, f"{rel_path}/role.md",
+                )
+                file_content = getattr(node, "content", "")
+                first_line = file_content.split("\n")[0].strip()
+                if first_line.startswith("# "):
+                    return first_line[2:].strip()
+
+        if node_type == CanvasNodeType.WORKFLOW:
+            with contextlib.suppress(Exception):
+                node = await self._folder_tree.read_file(
+                    domain_id, f"{rel_path}/workflow.json",
+                )
+                file_content = getattr(node, "content", "")
+                data = json.loads(file_content)
+                if isinstance(data, dict) and "name" in data:
+                    return str(data["name"])
+
+        return fallback_label
+
+    @staticmethod
+    def _infer_node_type_from_path(rel_path: str) -> CanvasNodeType:
+        """Infer a canvas node type from a relative folder path.
+
+        More accurate than name-based inference because it uses
+        the full path context (e.g. ``agents/analyst`` -> AGENT).
+        """
+        parts = rel_path.lower().split("/")
+        if len(parts) >= 2:
+            parent = parts[0]
+            if parent in ("agents", "agent"):
+                return CanvasNodeType.AGENT
+            if parent in ("skills", "skill"):
+                return CanvasNodeType.SKILL
+            if parent in ("workflows", "workflow"):
+                return CanvasNodeType.WORKFLOW
+            if parent in ("templates", "template"):
+                return CanvasNodeType.TEMPLATE
+            if parent in ("data_sources", "data_source"):
+                return CanvasNodeType.DATA_SOURCE
+            if parent in ("config", "configuration"):
+                return CanvasNodeType.CUSTOM
+            if parent in ("canvas",):
+                return CanvasNodeType.DOMAIN
+        name = parts[-1] if parts else ""
+        return CanvasService._infer_node_type(name)
 
     # ------------------------------------------------------------------
     # canvas_from_domain_blueprint
@@ -1145,7 +1549,7 @@ class CanvasService:
         # Apply layout
         self._layout_engine.layout(canvas, layout)
         canvas.updated_at = datetime.now(UTC)
-        self._store.update(canvas)
+        await self._store.update(canvas)
 
         # Sync to folder tree if requested
         if sync_to_tree and self._folder_tree is not None:
@@ -1258,8 +1662,8 @@ class CanvasService:
 
         return CanvasDiff(
             canvas_id=old_canvas.id,
-            from_version=self._store.version(domain_id) - 1,
-            to_version=self._store.version(domain_id),
+            from_version=await self._store.version(domain_id) - 1,
+            to_version=await self._store.version(domain_id),
             added_nodes=added_nodes,
             removed_node_ids=removed_ids,
             moved_nodes=moved_nodes,
@@ -1272,9 +1676,9 @@ class CanvasService:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _get_canvas(self, domain_id: str) -> Canvas:
+    async def _get_canvas(self, domain_id: str) -> Canvas:
         """Retrieve canvas or raise CanvasNotFoundError."""
-        canvas = self._store.get(domain_id)
+        canvas = await self._store.get(domain_id)
         if canvas is None:
             raise CanvasNotFoundError(f"No canvas found for domain '{domain_id}'")
         return canvas

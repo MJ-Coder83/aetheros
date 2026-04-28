@@ -43,6 +43,11 @@ GitNexus-Inspired Enhancements:
   - AetherGit Versioning with visual diff and rewind
   - Swarm Integration (Quick Swarm + Governed Swarm, multi-domain support)
   - Full folder-tree dual representation (source of truth)
+  - Deep bidirectional sync: canvas -> tree writes content files (role.md, goals.md, workflow.json); tree -> canvas recurses full structure
+  - Domain Picker: select from existing domains or auto-bootstrap from blueprint
+  - Node Palette: drag-and-drop + right-click context menu for all 9 node types
+  - Empty State with Bootstrap from Blueprint CTA
+  - Folder Mode with real recursive tree rendering, content preview, and sync-to-canvas button
 - **Swarm Mode** — Quick Swarm (Ruflo-like speed) and Governed Swarm (structured + auditable) in the Coding Domain, with basic multi-domain support.
 - **Prime** — Self-aware meta-agent with Folder Thinking Mode, introspection, self-modification proposals, and cross-domain coordination.
 - **Skill Evolution Engine** — Continuous improvement (enhance, create, merge, split, deprecate) with proposal workflow.

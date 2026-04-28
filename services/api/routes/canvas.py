@@ -40,13 +40,23 @@ ExtParam = Annotated[str, Query(description="File extension to detect")]
 
 class CreateCanvasRequest(BaseModel):
     """Schema for creating a new canvas."""
+
     domain_id: str
     domain_name: str
+    layout: CanvasLayout | None = None
+    bootstrap_from_blueprint: bool = True
+
+
+class BootstrapFromBlueprintRequest(BaseModel):
+    """Schema for bootstrapping a canvas from a domain blueprint."""
+
+    domain_id: str
     layout: CanvasLayout | None = None
 
 
 class AddNodeRequest(BaseModel):
     """Schema for adding a node to the canvas."""
+
     id: str
     node_type: CanvasNodeType
     label: str
@@ -59,6 +69,7 @@ class AddNodeRequest(BaseModel):
 
 class AddEdgeRequest(BaseModel):
     """Schema for adding an edge to the canvas."""
+
     id: str | None = None
     source: str
     target: str
@@ -69,11 +80,13 @@ class AddEdgeRequest(BaseModel):
 
 class NLEditRequest(BaseModel):
     """Schema for a natural language canvas edit."""
+
     instruction: str
 
 
 class PluginNodeRequest(BaseModel):
     """Schema for adding a plugin node."""
+
     plugin_id: str
     label: str
     plugin_type: str = ""
@@ -84,6 +97,7 @@ class PluginNodeRequest(BaseModel):
 
 class SwarmRequest(BaseModel):
     """Schema for running a swarm on the canvas."""
+
     task: str
     agent_ids: list[str] | None = None
     mode: SwarmMode = SwarmMode.QUICK
@@ -91,6 +105,7 @@ class SwarmRequest(BaseModel):
 
 class SimulationOverlayRequest(BaseModel):
     """Schema for updating simulation overlay metrics."""
+
     node_metrics: dict[str, dict[str, float]]
 
 
@@ -117,9 +132,45 @@ async def create_canvas(
     body: CreateCanvasRequest,
     svc: CanvasServiceDep,
 ) -> dict[str, Any]:
-    """Create a new canvas for a domain."""
+    """Create a new canvas for a domain.
+
+    If ``bootstrap_from_blueprint`` is True (default), attempts to populate
+    the canvas from the domain's existing blueprint (agents, skills, workflows)
+    and sync to the folder tree.
+    """
     try:
         layout = body.layout or CanvasLayout.SMART
+
+        # Try to bootstrap from domain blueprint first
+        if body.bootstrap_from_blueprint:
+            try:
+                from packages.prime.domain_creation import DomainCreationEngine  # noqa: F401
+                from services.api.dependencies import get_domain_creation_service
+
+                domain_svc = get_domain_creation_service()
+                domains = await domain_svc.list_domains()
+                domain = None
+                for d in domains:
+                    if d.domain_id == body.domain_id:
+                        domain = d
+                        break
+
+                if domain is not None:
+                    blueprints = await domain_svc.list_blueprints()
+                    blueprint = None
+                    for bp in blueprints:
+                        if bp.domain_id == body.domain_id:
+                            blueprint = bp
+                            break
+
+                    if blueprint is not None:
+                        canvas = await svc.canvas_from_domain_blueprint(
+                            blueprint, layout=layout, sync_to_tree=True,
+                        )
+                        return canvas.model_dump()
+            except Exception:
+                pass  # Fall through to empty canvas
+
         canvas = await svc.create_canvas(
             domain_id=body.domain_id,
             domain_name=body.domain_name,
@@ -128,6 +179,91 @@ async def create_canvas(
         return canvas.model_dump()
     except CanvasError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{domain_id}/bootstrap")
+async def bootstrap_canvas_from_blueprint(
+    domain_id: str,
+    body: BootstrapFromBlueprintRequest,
+    svc: CanvasServiceDep,
+) -> dict[str, Any]:
+    """Bootstrap a canvas from a domain blueprint.
+
+    Looks up the domain's blueprint, creates a fully populated canvas
+    with agent/skill/workflow nodes and proper edges, then syncs to
+    the folder tree.
+    """
+    try:
+        from packages.prime.domain_creation import DomainCreationEngine  # noqa: F401
+        from services.api.dependencies import get_domain_creation_service
+
+        domain_svc = get_domain_creation_service()
+        blueprints = await domain_svc.list_blueprints()
+        blueprint = None
+        for bp in blueprints:
+            if bp.domain_id == domain_id:
+                blueprint = bp
+                break
+
+        if blueprint is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No blueprint found for domain '{domain_id}'",
+            )
+
+        layout = body.layout or CanvasLayout.SMART
+        canvas = await svc.canvas_from_domain_blueprint(
+            blueprint, layout=layout, sync_to_tree=True,
+        )
+        return canvas.model_dump()
+    except CanvasNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except CanvasError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{domain_id}/folder-tree")
+async def get_folder_tree(
+    domain_id: str,
+    svc: CanvasServiceDep,
+) -> dict[str, Any]:
+    """Get the folder tree data for a domain's canvas.
+
+    Returns the complete folder tree structure for rendering in
+    Folder Mode view.
+    """
+    try:
+        from services.api.dependencies import get_folder_tree_service
+
+        ft_svc = get_folder_tree_service()
+        tree = await ft_svc.get_tree(domain_id)
+        # Serialize the tree for the frontend
+        nodes_list = []
+        for _path, node in tree.nodes.items():
+            nodes_list.append({
+                "path": node.path,
+                "name": node.name,
+                "node_type": node.node_type.value,
+                "content": node.content[:500] if node.content else "",
+                "children": node.children,
+            })
+        return {
+            "domain_id": domain_id,
+            "root_path": tree.root_path,
+            "nodes": nodes_list,
+            "version": tree.version,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/domains")
+async def list_canvas_domains(
+    svc: CanvasServiceDep,
+) -> dict[str, Any]:
+    """List all domain IDs that have canvases."""
+    domain_ids = await svc._store.list_domain_ids()
+    return {"domain_ids": domain_ids, "count": len(domain_ids)}
 
 
 @router.post("/{domain_id}/nodes")
@@ -258,7 +394,8 @@ async def get_diff(
 ) -> dict[str, Any]:
     """Get the diff between two canvas versions."""
     try:
-        canvas_new = svc._get_canvas(domain_id)  # Simplified: return current canvas state
+        canvas_new = await svc._get_canvas(domain_id)
+        # Simplified: return current canvas state
         return canvas_new.model_dump()
     except CanvasNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

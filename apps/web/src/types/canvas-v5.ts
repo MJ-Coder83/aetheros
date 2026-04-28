@@ -107,14 +107,6 @@ export interface CanvasVersion {
   created_at: string;
 }
 
-export interface CanvasVersionDiff {
-  old_version: number;
-  new_version: number;
-  added_nodes: number;
-  removed_nodes: number;
-  moved_nodes: number;
-}
-
 /* -- Swarm -- */
 export type SwarmMode = "quick" | "governed";
 
@@ -136,15 +128,18 @@ export interface GovernedSwarmResult {
   approval_required: boolean;
 }
 
-/* -- Canvas View Mode -- */
-export type CanvasViewMode = "visual" | "folder";
+/* -- Folder Tree API response -- */
+export interface FolderTreeNodeAPI {
+  path: string;
+  name: string;
+  node_type: "file" | "directory";
+  content: string;
+  children: string[];
+}
 
-/* -- Canvas Operation -- */
-export interface CanvasOperation {
-  id: string;
-  type: string;
-  node_id?: string;
-  edge_id?: string;
-  payload: Record<string, unknown>;
-  timestamp: string;
+export interface FolderTreeAPIResponse {
+  domain_id: string;
+  root_path: string;
+  nodes: FolderTreeNodeAPI[];
+  version: number;
 }
